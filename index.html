@@ -123,25 +123,12 @@
   #palettes button:hover .swatch, #palettes button.active .swatch { filter: none; }
   #palettes .name { display: block; padding: 4px 0; background: rgba(255,255,255,.05); }
 
-  /* Segment-Schalter (Qualität) */
-  .seg {
-    position: relative; display: flex; padding: 3px; border-radius: 10px;
-    background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px var(--line);
-  }
-  .seg button {
-    flex: 1; position: relative; z-index: 1; border: none; background: none; cursor: pointer;
-    padding: 6px 0; font: inherit; font-size: 11.5px; color: var(--muted); border-radius: 7px;
-    transition: color .25s;
-  }
-  .seg button:hover { color: var(--text); }
-  .seg button.active { color: #fff; }
-  .seg .pill {
-    position: absolute; top: 3px; bottom: 3px; left: 3px; width: 0; border-radius: 7px;
-    background: linear-gradient(135deg, color-mix(in srgb, var(--a1) 55%, transparent), color-mix(in srgb, var(--a2) 55%, transparent));
-    box-shadow: 0 2px 10px -2px var(--a1);
-    transition: left .45s var(--spring), width .45s var(--spring);
-  }
-  .sub { margin-top: 6px; font-size: 11px; color: var(--muted); min-height: 14px; transition: color .3s; }
+  /* Qualitäts-Regler: kleine Markierungen für jede Stufe */
+  .ticks { display: flex; justify-content: space-between; padding: 0 5px; margin-top: 2px; }
+  .ticks i { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.25); transition: background .3s, transform .3s var(--spring); }
+  .ticks i.on { background: var(--a2); transform: scale(1.5); }
+  .heavy { color: #ffb36b !important; }
+  .sub { margin-top: 8px; font-size: 11px; color: var(--muted); min-height: 14px; line-height: 1.45; }
 
   /* Schalter (FPS anzeigen) */
   .switch-row { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; cursor: pointer; }
@@ -218,8 +205,13 @@
   </div>
   <div class="sec">
     <h3>Qualität</h3>
-    <div class="seg" id="quality"><span class="pill"></span></div>
+    <div class="row" style="margin-bottom:0">
+      <label for="quality">Stufe <output id="qualityOut"></output></label>
+      <input id="quality" type="range" min="0" max="5" step="any">
+      <div class="ticks" id="qualityTicks"></div>
+    </div>
     <div class="sub" id="qualityInfo"></div>
+    <label class="switch-row" id="autoSwitchRow">Automatisch anpassen <span class="switch on" id="autoSwitch"></span></label>
     <label class="switch-row" id="fpsSwitchRow">FPS anzeigen <span class="switch on" id="fpsSwitch"></span></label>
   </div>
   <div class="sec keys">
@@ -246,14 +238,18 @@ const CONFIG = {
 
 // Qualitätsstufen: sim = Raster der Strömung, dye = Auflösung der Farbe,
 // dpr = maximale Pixeldichte des Bildschirms, pressure = Rechendurchgänge für den Druck
+// over = wie viel feiner als der Bildschirm die Farbe höchstens berechnet wird
+// (über 1 = "Supersampling": Farbe bleibt länger gestochen scharf, kostet aber viel Leistung)
 const QUALITY = [
-  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,   pressure: 12 },
-  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5, pressure: 20 },
-  { name: 'Hoch',    sim: 160, dye: 1536, dpr: 2,   pressure: 25 },
-  { name: 'Ultra',   sim: 256, dye: 2048, dpr: 3,   pressure: 35 },
+  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12 },
+  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20 },
+  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25 },
+  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35 },
+  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, heavy: true },
+  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, heavy: true },
 ];
-let qualityMode = 'auto';   // 'auto' oder Index in QUALITY
-let qualityLevel = 2;       // tatsächlich verwendete Stufe
+let qualityMode = 'auto';   // 'auto' oder 'manual'
+let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
 
 // Werte, die über das Panel verändert werden. "target" = Reglerstellung,
 // "current" = Wert, mit dem gerade simuliert wird (läuft weich hinterher).
@@ -549,8 +545,10 @@ let dye, velocity, velocityPrev, divergence, curl, pressure;
 function initFramebuffers() {
   const q = QUALITY[qualityLevel];
   const sim = resolution(q.sim);
-  // Farbe nie feiner auflösen, als der Bildschirm Pixel hat
-  const dyeRes = resolution(Math.min(q.dye, Math.min(canvas.width, canvas.height)));
+  // Farbe höchstens "over"-mal so fein wie der Bildschirm – und nie größer, als die Grafikkarte erlaubt
+  const aspect = Math.max(canvas.width / canvas.height, canvas.height / canvas.width);
+  const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+  const dyeRes = resolution(Math.min(q.dye, Math.min(canvas.width, canvas.height) * q.over, maxTex / aspect));
   dye      = resizeDoubleFBO(dye, dyeRes.w, dyeRes.h, gl.RGBA16F, gl.RGBA);
   velocity = resizeDoubleFBO(velocity, sim.w, sim.h, gl.RG16F, gl.RG);
   for (const f of [velocityPrev, divergence, curl, pressure]) if (f) f.free();
@@ -817,13 +815,13 @@ const toggleBtn = $('toggle');
 function togglePanel() {
   const hidden = panel.classList.toggle('hidden');
   toggleBtn.classList.toggle('open', !hidden);
-  if (!hidden) { requestAnimationFrame(moveQualityPill); hideHint(); }
+  if (!hidden) hideHint();
 }
 toggleBtn.addEventListener('click', () => { togglePanel(); toggleBtn.blur(); });
 
 // Regler: der sichtbare Knopf gleitet weich zum Zielwert (z. B. beim Zurücksetzen)
 const sliders = [];
-function bindSlider(id, param, format) {
+function bindSlider(id, param, format, opts = {}) {
   const input = $(id);
   const out = $(id + 'Out');
   const row = input.closest('.row');
@@ -836,12 +834,15 @@ function bindSlider(id, param, format) {
   };
   s.show = show;
   input.addEventListener('input', () => {
-    param.target = s.shown = parseFloat(input.value);
+    s.shown = parseFloat(input.value);
+    param.target = opts.snap ? opts.snap(s.shown) : s.shown;
     show(s.shown);
+    if (opts.onInput) opts.onInput(param.target);
   });
   input.addEventListener('pointerdown', () => { s.dragging = true; row.classList.add('active'); });
   window.addEventListener('pointerup', () => { s.dragging = false; row.classList.remove('active'); input.blur(); });
   input.addEventListener('dblclick', () => {
+    if (opts.onReset) return opts.onReset();
     param.target = param.def;
     toast('Standardwert');
   });
@@ -867,30 +868,29 @@ for (const [name, colors] of Object.entries(PALETTES)) {
 }
 
 // ---------- Qualität ----------
-const qualityBox = $('quality');
-const qualityPill = qualityBox.querySelector('.pill');
-const qualityOptions = ['auto', 0, 1, 2, 3];
-for (const opt of qualityOptions) {
-  const btn = document.createElement('button');
-  btn.textContent = opt === 'auto' ? 'Auto' : QUALITY[opt].name;
-  btn.title = opt === 'auto' ? 'Passt sich automatisch an dein Gerät an' : '';
-  btn.addEventListener('click', () => { setQualityMode(opt); btn.blur(); });
-  qualityBox.appendChild(btn);
-}
+// Regler mit 6 Stufen. Beim Ziehen gleitet er frei, danach rastet er sanft auf der nächsten Stufe ein.
+const qualityParam = { target: qualityLevel };
+const qualityTicks = $('qualityTicks');
+QUALITY.forEach(() => qualityTicks.appendChild(document.createElement('i')));
 
-function moveQualityPill() {
-  const idx = qualityOptions.indexOf(qualityMode);
-  const btns = qualityBox.querySelectorAll('button');
-  btns.forEach((b, i) => b.classList.toggle('active', i === idx));
-  const b = btns[idx];
-  qualityPill.style.left = b.offsetLeft + 'px';
-  qualityPill.style.width = b.offsetWidth + 'px';
-}
+bindSlider('quality', qualityParam, v => QUALITY[v].name, {
+  snap: v => Math.round(v),
+  onInput: level => {
+    if (qualityMode === 'auto') setAuto(false, true);
+    if (level !== qualityLevel) applyQualityLevel(level);
+  },
+  onReset: () => setAuto(true),
+});
 
 function updateQualityInfo() {
   const q = QUALITY[qualityLevel];
-  $('qualityInfo').textContent = (qualityMode === 'auto' ? `Automatisch: ${q.name} · ` : '') +
-    `${canvas.width}×${canvas.height} Pixel, Strömung ${velocity.w}×${velocity.h}`;
+  qualityParam.target = qualityLevel;
+  $('qualityOut').classList.toggle('heavy', !!q.heavy);
+  [...qualityTicks.children].forEach((t, i) => t.classList.toggle('on', i === qualityLevel));
+  $('qualityInfo').innerHTML =
+    `Bild ${canvas.width}×${canvas.height} · Farbe ${dye.w}×${dye.h}<br>` +
+    `Strömung ${velocity.w}×${velocity.h} · ${q.pressure} Druck-Durchgänge` +
+    (q.heavy ? '<br><span class="heavy">Sehr anspruchsvoll – nur für starke Grafikkarten</span>' : '');
   document.querySelector('#fps .q').textContent = (qualityMode === 'auto' ? 'Auto · ' : '') + q.name;
 }
 
@@ -902,33 +902,37 @@ function applyQualityLevel(level) {
   updateQualityInfo();
 }
 
-function setQualityMode(mode) {
-  qualityMode = mode;
-  if (mode !== 'auto') applyQualityLevel(mode);
-  else { autoQ.low = 0; autoQ.high = 0; autoQ.cooldown = 2; updateQualityInfo(); }
-  moveQualityPill();
-  toast('Qualität: ' + (mode === 'auto' ? 'Automatisch' : QUALITY[mode].name));
+function setAuto(on, silent) {
+  qualityMode = on ? 'auto' : 'manual';
+  $('autoSwitch').classList.toggle('on', on);
+  if (on) Object.assign(autoQ, { low: 0, high: 0, cooldown: 2, ceiling: QUALITY.length - 1 });
+  updateQualityInfo();
+  if (!silent) toast(on ? 'Qualität passt sich automatisch an' : 'Qualität: ' + QUALITY[qualityLevel].name);
 }
+$('autoSwitchRow').addEventListener('click', e => { e.preventDefault(); setAuto(qualityMode !== 'auto'); });
 
+// Taste Q: eine Stufe höher (nach "Maximum" wieder "Niedrig")
 function cycleQuality() {
-  const i = qualityOptions.indexOf(qualityMode);
-  setQualityMode(qualityOptions[(i + 1) % qualityOptions.length]);
+  setAuto(false, true);
+  applyQualityLevel((qualityLevel + 1) % QUALITY.length);
+  toast('Qualität: ' + QUALITY[qualityLevel].name);
 }
 
-// Auto-Modus: Läuft es dauerhaft ruckelig, wird die Stufe gesenkt;
-// ist sehr viel Luft, wird vorsichtig wieder erhöht.
-const autoQ = { low: 0, high: 0, cooldown: 2, ceiling: 3 };
+// Auto-Modus: Das Ziel ist die volle Bildfrequenz des Bildschirms (z. B. 60, 144 oder 240 Hz).
+// Fällt die Bildrate dauerhaft darunter, wird die Stufe gesenkt; ist Luft, wird vorsichtig erhöht.
+const autoQ = { low: 0, high: 0, cooldown: 2, ceiling: QUALITY.length - 1, refresh: 60 };
 function autoQuality(dt, fps) {
+  autoQ.refresh = Math.max(autoQ.refresh, fps);   // höchste gemessene Bildrate ≈ Bildschirmfrequenz
   if (qualityMode !== 'auto') return;
   if (autoQ.cooldown > 0) { autoQ.cooldown -= dt; return; }
-  autoQ.low  = fps < 48 ? autoQ.low + dt : 0;
-  autoQ.high = fps > 58 ? autoQ.high + dt : 0;
+  autoQ.low  = fps < autoQ.refresh * 0.85 ? autoQ.low + dt : 0;
+  autoQ.high = fps > autoQ.refresh * 0.95 ? autoQ.high + dt : 0;
   if (autoQ.low > 2 && qualityLevel > 0) {
     autoQ.ceiling = qualityLevel - 1;      // diese Stufe war zu viel – nicht wieder hochschalten
     applyQualityLevel(qualityLevel - 1);
     toast('Qualität automatisch auf ' + QUALITY[qualityLevel].name + ' gesenkt');
     autoQ.low = 0;
-  } else if (autoQ.high > 6 && qualityLevel < autoQ.ceiling) {
+  } else if (autoQ.high > 5 && qualityLevel < autoQ.ceiling) {
     applyQualityLevel(qualityLevel + 1);
     autoQ.high = 0;
   }
@@ -1031,7 +1035,6 @@ function frame(now) {
 }
 
 if (window.innerWidth < 600) togglePanel();   // auf schmalen Bildschirmen erst mal eingeklappt
-moveQualityPill();
 updateQualityInfo();
 randomSplats(6);
 requestAnimationFrame(frame);
