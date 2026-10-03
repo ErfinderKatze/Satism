@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fluid-Simulation</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; user-select: none; }
   canvas { display: block; width: 100vw; height: 100vh; touch-action: none; cursor: crosshair; }
   #hint {
     position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
@@ -14,11 +14,62 @@
     pointer-events: none; transition: opacity 1s;
   }
   #error { display: none; color: #fff; font: 16px system-ui, sans-serif; padding: 40px; }
+
+  /* ---------- Einstellungs-Panel ---------- */
+  #toggle {
+    position: fixed; top: 14px; right: 14px; width: 38px; height: 38px;
+    border: none; border-radius: 50%; cursor: pointer;
+    background: rgba(20,20,28,.55); color: rgba(255,255,255,.85); font-size: 20px;
+    backdrop-filter: blur(8px); transition: transform .4s, background .2s;
+  }
+  #toggle:hover { background: rgba(40,40,55,.75); }
+  #toggle.open { transform: rotate(90deg); }
+  #panel {
+    position: fixed; top: 62px; right: 14px; width: 240px; padding: 16px 18px;
+    background: rgba(14,14,20,.62); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,.08); border-radius: 14px;
+    color: rgba(255,255,255,.88); font: 13px/1.3 system-ui, sans-serif;
+    transition: opacity .3s, transform .3s;
+  }
+  #panel.hidden { opacity: 0; transform: translateX(20px); pointer-events: none; }
+  #panel h3 { margin: 0 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .12em;
+              text-transform: uppercase; color: rgba(255,255,255,.5); }
+  #panel h3:not(:first-child) { margin-top: 18px; }
+  .row { margin-bottom: 12px; }
+  .row label { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .row output { color: rgba(255,255,255,.55); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: #b98cff; cursor: pointer; }
+  #palettes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #palettes button {
+    border: 2px solid transparent; border-radius: 9px; padding: 0; cursor: pointer;
+    background: none; color: #fff; font: 12px system-ui, sans-serif; overflow: hidden;
+  }
+  #palettes button .swatch { display: block; height: 22px; }
+  #palettes button span:last-child { display: block; padding: 3px 0; background: rgba(255,255,255,.06); }
+  #palettes button.active { border-color: rgba(255,255,255,.85); }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="hint">Fahre mit der Maus über das Fenster · Leertaste = leeren</div>
+<button id="toggle" class="open" title="Einstellungen (H)">⚙</button>
+<div id="panel">
+  <h3>Flüssigkeit</h3>
+  <div class="row">
+    <label for="viscosity">Viskosität <output id="viscosityOut"></output></label>
+    <input id="viscosity" type="range" min="0" max="1" step="0.01">
+  </div>
+  <div class="row">
+    <label for="curl">Wirbelstärke <output id="curlOut"></output></label>
+    <input id="curl" type="range" min="0" max="60" step="1">
+  </div>
+  <div class="row">
+    <label for="fade">Verblassen <output id="fadeOut"></output></label>
+    <input id="fade" type="range" min="0" max="3" step="0.05">
+  </div>
+  <h3>Farbpalette</h3>
+  <div id="palettes"></div>
+</div>
+<div id="hint">Fahre mit der Maus über das Fenster · Leertaste = leeren · H = Einstellungen</div>
 <div id="error">Dein Browser unterstützt leider kein WebGL2 mit Gleitkomma-Texturen.</div>
 
 <script>
@@ -28,12 +79,28 @@
 const CONFIG = {
   SIM_RESOLUTION: 128,      // Auflösung des Geschwindigkeitsfelds
   DYE_RESOLUTION: 1024,     // Auflösung der Farbe
-  DENSITY_DISSIPATION: 0.6, // wie schnell die Farbe verblasst
   VELOCITY_DISSIPATION: 0.2,
   PRESSURE_ITERATIONS: 20,
-  CURL: 30,                 // Stärke der Verwirbelung
+  VISCOSITY_ITERATIONS: 20,
   SPLAT_RADIUS: 0.25,
   SPLAT_FORCE: 6000,
+  EASING: 6,                // wie schnell Regler/Paletten ihrem Zielwert folgen (größer = schneller)
+};
+
+// Werte, die über das Panel verändert werden. "target" = Reglerstellung,
+// "current" = Wert, mit dem gerade simuliert wird (läuft weich hinterher).
+const PARAMS = {
+  viscosity: { target: 0,   current: 0   },  // Zähigkeit der Flüssigkeit (0 = wie Wasser)
+  curl:      { target: 30,  current: 30  },  // Stärke der Verwirbelung
+  fade:      { target: 0.6, current: 0.6 },  // wie schnell die Farbe verblasst
+};
+
+// Farbpaletten: je 5 Farben, die ringförmig ineinander übergehen
+const PALETTES = {
+  Neon:   ['#ff00d4', '#7b2bff', '#00e1ff', '#00ff9d', '#fff000'],
+  Sunset: ['#ff3d5a', '#ff8a3d', '#ffd23f', '#ff5fa2', '#8e4dff'],
+  Ozean:  ['#00c8ff', '#0060ff', '#00ffd0', '#2b8cff', '#9ef7ff'],
+  Lava:   ['#ff1e00', '#ff7a00', '#ffd000', '#b80000', '#ff4d1a'],
 };
 
 const canvas = document.getElementById('c');
@@ -137,6 +204,20 @@ const shaders = {
       fragColor = vec4(clamp(vel, -1000.0, 1000.0), 0.0, 1.0);
     }`,
 
+  // Viskosität: Geschwindigkeit wird mit den Nachbarn "verschmiert" (Diffusion, Jacobi-Iteration)
+  viscosity: header + `
+    uniform sampler2D uVelocity;
+    uniform sampler2D uSource;
+    uniform float alpha;
+    void main () {
+      vec2 L = texture(uVelocity, vL).xy;
+      vec2 R = texture(uVelocity, vR).xy;
+      vec2 T = texture(uVelocity, vT).xy;
+      vec2 B = texture(uVelocity, vB).xy;
+      vec2 b = texture(uSource, vUv).xy;
+      fragColor = vec4((L + R + T + B + alpha * b) / (4.0 + alpha), 0.0, 1.0);
+    }`,
+
   pressure: header + `
     uniform sampler2D uPressure;
     uniform sampler2D uDivergence;
@@ -166,13 +247,25 @@ const shaders = {
     uniform float value;
     void main () { fragColor = value * texture(uTexture, vUv); }`,
 
+  // Die Farb-Textur speichert: r = Dichte, g/b = Dichte * cos/sin(Palettenwinkel).
+  // Erst hier wird daraus über die aktuelle Palette eine sichtbare Farbe.
   display: header + `
     uniform sampler2D uTexture;
+    uniform vec3 uPalette[5];
+    vec3 palette (float t) {
+      t = fract(t) * 5.0;
+      int i = int(floor(t));
+      float f = smoothstep(0.0, 1.0, fract(t));
+      return mix(uPalette[i], uPalette[(i + 1) % 5], f);
+    }
     void main () {
-      vec3 c = texture(uTexture, vUv).rgb;
-      // weiches Tonemapping, damit überlagerte Farbe nicht "ausbrennt"
-      c = c / (1.0 + max(max(c.r, c.g), c.b) * 0.15);
-      fragColor = vec4(pow(c, vec3(1.0 / 1.4)), 1.0);
+      vec3 dye = texture(uTexture, vUv).rgb;
+      float density = max(dye.r, 0.0);
+      float t = atan(dye.b, dye.g) / 6.2831853;
+      vec3 col = palette(t) * (1.0 - exp(-density * 2.8));
+      // sehr dichte Stellen leuchten leicht weißlich auf
+      col = mix(col, vec3(1.0), smoothstep(2.5, 8.0, density) * 0.35);
+      fragColor = vec4(col, 1.0);
     }`,
 };
 
@@ -266,13 +359,14 @@ function resolution(base) {
   return aspect > 1 ? { w: max, h: min } : { w: min, h: max };
 }
 
-let dye, velocity, divergence, curl, pressure;
+let dye, velocity, velocityPrev, divergence, curl, pressure;
 
 function initFramebuffers() {
   const sim = resolution(CONFIG.SIM_RESOLUTION);
   const dyeRes = resolution(CONFIG.DYE_RESOLUTION);
   dye        = createDoubleFBO(dyeRes.w, dyeRes.h, gl.RGBA16F, gl.RGBA);
   velocity   = createDoubleFBO(sim.w, sim.h, gl.RG16F, gl.RG);
+  velocityPrev = createFBO(sim.w, sim.h, gl.RG16F, gl.RG);
   divergence = createFBO(sim.w, sim.h, gl.R16F, gl.RED);
   curl       = createFBO(sim.w, sim.h, gl.R16F, gl.RED);
   pressure   = createDoubleFBO(sim.w, sim.h, gl.R16F, gl.RED);
@@ -307,10 +401,29 @@ function step(dt) {
   gl.uniform2fv(u.texelSize, velocity.texel);
   gl.uniform1i(u.uVelocity, velocity.read.attach(0));
   gl.uniform1i(u.uCurl, curl.attach(1));
-  gl.uniform1f(u.curl, CONFIG.CURL);
+  gl.uniform1f(u.curl, PARAMS.curl.current);
   gl.uniform1f(u.dt, dt);
   blit(velocity.write);
   velocity.swap();
+
+  // Viskosität: zähe Flüssigkeit gleicht ihre Geschwindigkeit mit den Nachbarn aus
+  const nu = PARAMS.viscosity.current * PARAMS.viscosity.current * 80;
+  if (nu > 0.01) {
+    u = use('scale');                       // Ausgangszustand merken
+    gl.uniform1i(u.uTexture, velocity.read.attach(0));
+    gl.uniform1f(u.value, 1);
+    blit(velocityPrev);
+
+    u = use('viscosity');
+    gl.uniform2fv(u.texelSize, velocity.texel);
+    gl.uniform1i(u.uSource, velocityPrev.attach(0));
+    gl.uniform1f(u.alpha, 1 / (nu * dt));
+    for (let i = 0; i < CONFIG.VISCOSITY_ITERATIONS; i++) {
+      gl.uniform1i(u.uVelocity, velocity.read.attach(1));
+      blit(velocity.write);
+      velocity.swap();
+    }
+  }
 
   // Flüssigkeit inkompressibel machen (Druck lösen)
   u = use('divergence');
@@ -353,7 +466,7 @@ function step(dt) {
   gl.uniform2fv(u.texelSize, velocity.texel);
   gl.uniform1i(u.uVelocity, velocity.read.attach(0));
   gl.uniform1i(u.uSource, dye.read.attach(1));
-  gl.uniform1f(u.dissipation, CONFIG.DENSITY_DISSIPATION);
+  gl.uniform1f(u.dissipation, PARAMS.fade.current);
   blit(dye.write);
   dye.swap();
 }
@@ -381,30 +494,39 @@ function splat(x, y, dx, dy, color) {
 function render() {
   const u = use('display');
   gl.uniform1i(u.uTexture, dye.read.attach(0));
+  gl.uniform3fv(u['uPalette[0]'], currentPalette);
   blit(null);
 }
 
 // ---------- Farben ----------
-function hsvToRgb(h, s, v) {
-  const i = Math.floor(h * 6), f = h * 6 - i;
-  const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
-  const [r, g, b] = [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][i % 6];
-  return { r, g, b };
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
+}
+const paletteData = {};
+for (const [name, colors] of Object.entries(PALETTES)) paletteData[name] = colors.flatMap(hexToRgb);
+
+let activePalette = 'Neon';
+const currentPalette = new Float32Array(paletteData[activePalette]);  // wird weich zur Zielpalette überblendet
+
+// Farbe = Menge + Position auf der Palette (0..1). Gespeichert als Winkel,
+// damit sich Farben beim Vermischen sauber "in der Mitte" treffen.
+function dyeColor(t, amount) {
+  const a = t * Math.PI * 2;
+  return { r: amount, g: amount * Math.cos(a), b: amount * Math.sin(a) };
 }
 
-let hue = Math.random();
+let paletteT = Math.random();
 function nextColor() {
-  hue = (hue + 0.002) % 1;           // Farbe wandert langsam durch den Regenbogen
-  const c = hsvToRgb(hue, 1, 1);
-  return { r: c.r * 0.15, g: c.g * 0.15, b: c.b * 0.15 };
+  paletteT = (paletteT + 0.002) % 1;   // Farbe wandert langsam durch die Palette
+  return dyeColor(paletteT, 0.35);
 }
 
 function randomSplats(n) {
   for (let i = 0; i < n; i++) {
-    const c = hsvToRgb(Math.random(), 1, 1);
     splat(Math.random(), Math.random(),
       1000 * (Math.random() - 0.5), 1000 * (Math.random() - 0.5),
-      { r: c.r * 1.5, g: c.g * 1.5, b: c.b * 1.5 });
+      dyeColor(Math.random(), 2.5));
   }
 }
 
@@ -431,13 +553,60 @@ canvas.addEventListener('pointermove', e => movePointer(e.clientX, e.clientY));
 canvas.addEventListener('pointerdown', e => {
   pointer.init = false;
   movePointer(e.clientX, e.clientY);
-  const c = hsvToRgb(Math.random(), 1, 1);
-  splat(pointer.x, pointer.y, 0, 0, { r: c.r, g: c.g, b: c.b });
+  splat(pointer.x, pointer.y, 0, 0, dyeColor(Math.random(), 1.5));
 });
 canvas.addEventListener('pointerleave', () => { pointer.init = false; });
 window.addEventListener('keydown', e => {
   if (e.code === 'Space') { initFramebuffers(); e.preventDefault(); }
+  if (e.code === 'KeyH') togglePanel();
 });
+
+// ---------- Einstellungs-Panel ----------
+const panel = document.getElementById('panel');
+const toggleBtn = document.getElementById('toggle');
+function togglePanel() {
+  const hidden = panel.classList.toggle('hidden');
+  toggleBtn.classList.toggle('open', !hidden);
+}
+toggleBtn.addEventListener('click', e => { togglePanel(); toggleBtn.blur(); });
+if (window.innerWidth < 600) togglePanel();   // auf schmalen Bildschirmen erst mal eingeklappt
+
+function bindSlider(id, param, format) {
+  const input = document.getElementById(id);
+  const out = document.getElementById(id + 'Out');
+  input.value = param.target;
+  out.textContent = format(param.target);
+  input.addEventListener('input', () => {
+    param.target = parseFloat(input.value);
+    out.textContent = format(param.target);
+  });
+  input.addEventListener('keydown', e => { if (e.code === 'Space') e.preventDefault(); });
+}
+bindSlider('viscosity', PARAMS.viscosity, v => Math.round(v * 100) + ' %');
+bindSlider('curl',      PARAMS.curl,      v => v.toFixed(0));
+bindSlider('fade',      PARAMS.fade,      v => v.toFixed(2));
+
+const paletteBox = document.getElementById('palettes');
+for (const [name, colors] of Object.entries(PALETTES)) {
+  const btn = document.createElement('button');
+  btn.innerHTML = `<span class="swatch" style="background:linear-gradient(90deg,${colors.join(',')})"></span><span>${name}</span>`;
+  btn.classList.toggle('active', name === activePalette);
+  btn.addEventListener('click', () => {
+    activePalette = name;
+    for (const b of paletteBox.children) b.classList.toggle('active', b === btn);
+    btn.blur();
+  });
+  paletteBox.appendChild(btn);
+}
+
+// Weiches Nachziehen aller Werte (unabhängig von der Bildrate)
+function easeParams(dt) {
+  const k = 1 - Math.exp(-CONFIG.EASING * dt);
+  for (const p of Object.values(PARAMS)) p.current += (p.target - p.current) * k;
+  const target = paletteData[activePalette];
+  const kp = 1 - Math.exp(-CONFIG.EASING * 0.5 * dt);   // Paletten blenden etwas langsamer über
+  for (let i = 0; i < currentPalette.length; i++) currentPalette[i] += (target[i] - currentPalette[i]) * kp;
+}
 
 let hintTimer = null;
 function hideHint() {
@@ -451,6 +620,7 @@ function frame(now) {
   const dt = Math.min((now - last) / 1000, 1 / 30);
   last = now;
   if (resizeCanvas()) initFramebuffers();
+  easeParams(dt);
 
   if (pointer.moved) {
     pointer.moved = false;
