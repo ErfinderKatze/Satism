@@ -47,7 +47,15 @@ dunkler Hintergrund, kontrastreiche Paletten.
   Viskosität (Jacobi-Diffusion), Druck-Lösung (Jacobi), Gradienten-Subtraktion, Advektion.
 - Farbe wird als „Dichte + Position auf der Palette“ gespeichert (R = Dichte, G/B = Dichte·cos/sin des Palettenwinkels);
   erst beim Anzeigen wird über die aktive Palette eingefärbt. Dadurch blendet ein Palettenwechsel das ganze Bild sanft um.
-- Ausblendbares Einstellungs-Panel (Zahnrad oben rechts bzw. Taste `H`): Regler für Viskosität, Wirbelstärke, Verblassen;
-  Paletten Neon, Sunset, Ozean, Lava. Reglerwerte und Paletten werden weich interpoliert.
-- Bedienung: Maus bewegen = malen, Klick = Farbklecks, Leertaste = leeren, `H` = Panel ein/aus.
-- Noch nicht umgesetzt: Schwerkraft, Hindernisse, FPS-Zähler, Qualitätsstufen, Flacker-Reduktion, Audio, weitere Modi.
+- Ausblendbares Einstellungs-Panel (Zahnrad oben rechts bzw. Taste `H`): Regler für Viskosität, Wirbelstärke, Verblassen
+  (Doppelklick = Standardwert); Paletten Neon, Sunset, Ozean, Lava. Reglerwerte und Paletten werden weich interpoliert,
+  die Akzentfarben der Oberfläche folgen der aktiven Palette.
+- Qualitätsstufen Niedrig/Mittel/Hoch/Ultra + **Auto** (senkt bei dauerhaft < 48 FPS, erhöht vorsichtig bei viel Luft).
+  Stufen steuern Strömungsraster, Farbauflösung, Pixeldichte und Druck-Iterationen. Beim Wechsel wird das Bild in die neue
+  Auflösung übernommen (kein Reset). Physik ist auf `REF_RESOLUTION` normiert, damit sie sich auf jeder Stufe gleich anfühlt.
+- FPS-Anzeige oben links (Zahl, Farbpunkt, Mini-Diagramm der letzten 60 Bilder), ein/aus mit `F` oder Schalter im Panel.
+- UI-Prinzipien für Immersion: Glas-Optik, federnde Animationen, eigener leuchtender Pinsel-Cursor in Malfarbe,
+  UI tritt beim Malen zurück (wird transparent) und kommt beim Darüberfahren zurück, kurze Meldungen („Toasts“) als Feedback,
+  Leeren blendet sanft aus.
+- Bedienung: Maus bewegen = malen, Klick = Farbklecks, Leertaste = leeren, `H` = Panel, `F` = FPS, `Q` = Qualität durchschalten.
+- Noch nicht umgesetzt: Schwerkraft, Hindernisse, Flacker-Reduktion, Audio, weitere Modi.
