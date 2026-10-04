@@ -73,6 +73,10 @@
   #panel .sec:nth-child(2) { transition-delay: .04s; }
   #panel .sec:nth-child(3) { transition-delay: .08s; }
   #panel .sec:nth-child(4) { transition-delay: .12s; }
+  #panel .sec:nth-child(5) { transition-delay: .16s; }
+
+  /* Auto-Play als Bildschirmschoner: Oberfläche blendet langsam ganz aus */
+  body.screensaver .ui, body.screensaver #cursor { opacity: 0 !important; pointer-events: none; transition: opacity 1.8s var(--smooth); }
 
   #panel h3 { margin: 0 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .12em;
               text-transform: uppercase; color: var(--muted); }
@@ -214,8 +218,13 @@
     <label class="switch-row" id="autoSwitchRow">Automatisch anpassen <span class="switch on" id="autoSwitch"></span></label>
     <label class="switch-row" id="fpsSwitchRow">FPS anzeigen <span class="switch on" id="fpsSwitch"></span></label>
   </div>
+  <div class="sec">
+    <h3>Auto-Play</h3>
+    <label class="switch-row" id="autoplaySwitchRow" style="margin-top:0">Bei Inaktivität starten <span class="switch on" id="autoplaySwitch"></span></label>
+    <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
+  </div>
   <div class="sec keys">
-    <span><kbd>H</kbd>Panel</span><span><kbd>Leertaste</kbd>Leeren</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span>
+    <span><kbd>H</kbd>Panel</span><span><kbd>Leertaste</kbd>Leeren</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span>
   </div>
 </div>
 
@@ -233,6 +242,8 @@ const CONFIG = {
   SPLAT_RADIUS: 0.25,
   SPLAT_FORCE: 6000,
   EASING: 6,                // wie schnell Regler/Paletten ihrem Zielwert folgen (größer = schneller)
+  IDLE_SECONDS: 30,         // so lange ohne Eingabe, bis Auto-Play startet
+  AUTOPLAY_PALETTE_SECONDS: 25,  // im Auto-Play alle X Sekunden zur nächsten Palette überblenden
   REF_RESOLUTION: 128,      // Bezugsgröße, damit sich die Strömung bei jeder Qualität gleich anfühlt
 };
 
@@ -767,7 +778,7 @@ function movePointer(clientX, clientY) {
   hideHint();
 }
 
-canvas.addEventListener('pointermove', e => movePointer(e.clientX, e.clientY));
+canvas.addEventListener('pointermove', e => { if (!autoplay.active) movePointer(e.clientX, e.clientY); });
 canvas.addEventListener('pointerdown', e => {
   pointer.init = false;
   movePointer(e.clientX, e.clientY);
@@ -787,6 +798,8 @@ function clearCanvas() {
 
 window.addEventListener('keydown', e => {
   if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.code === 'KeyA') { autoplay.active ? stopAutoplay() : startAutoplay(true); return; }
+  userActive();
   if (e.code === 'Space') { clearCanvas(); e.preventDefault(); }
   if (e.code === 'KeyH') togglePanel();
   if (e.code === 'KeyF') setFpsVisible(!fpsVisible);
@@ -798,6 +811,12 @@ let hintTimer = null;
 function hideHint() {
   if (hintTimer) return;
   hintTimer = setTimeout(() => $('hint').classList.add('gone'), 1500);
+}
+function showHint(html) {
+  clearTimeout(hintTimer);
+  hintTimer = null;
+  $('hint').innerHTML = html;
+  $('hint').classList.remove('gone');
 }
 
 let toastTimer = null;
@@ -859,12 +878,13 @@ for (const [name, colors] of Object.entries(PALETTES)) {
   const btn = document.createElement('button');
   btn.innerHTML = `<span class="swatch" style="background:linear-gradient(90deg,${colors.join(',')})"></span><span class="name">${name}</span>`;
   btn.classList.toggle('active', name === activePalette);
-  btn.addEventListener('click', () => {
-    activePalette = name;
-    for (const b of paletteBox.children) b.classList.toggle('active', b === btn);
-    btn.blur();
-  });
+  btn.dataset.name = name;
+  btn.addEventListener('click', () => { setPalette(name); btn.blur(); });
   paletteBox.appendChild(btn);
+}
+function setPalette(name) {
+  activePalette = name;
+  for (const b of paletteBox.children) b.classList.toggle('active', b.dataset.name === name);
 }
 
 // ---------- Qualität ----------
@@ -1001,6 +1021,115 @@ function easeParams(dt) {
   }
 }
 
+// ---------- Auto-Play ----------
+// Drei unsichtbare "Pinsel" fahren auf weichen Schleifenbahnen (überlagerte Sinuskurven) durchs Bild.
+// Ab und zu kommt ein sanfter Farbstoß dazu, und die Palette wechselt langsam.
+const rand = (a, b) => a + Math.random() * (b - a);
+const autoplay = {
+  enabled: true,          // Schalter im Panel
+  active: false,
+  screensaver: false,     // true = nach Inaktivität gestartet → Oberfläche ausblenden
+  level: 0,               // 0..1, blendet die Pinsel weich ein und aus
+  time: 0,
+  lastInput: performance.now(),
+  wake: null,             // Mausposition beim Start (kleines Zittern soll Auto-Play nicht beenden)
+  nextBurst: 2,
+  paletteTimer: 0,
+  brushes: Array.from({ length: 3 }, (_, i) => ({
+    f: [rand(0.22, 0.42), rand(0.55, 1.0), rand(0.22, 0.42), rand(0.55, 1.0)],   // Frequenzen
+    p: [rand(0, 6.28), rand(0, 6.28), rand(0, 6.28), rand(0, 6.28)],             // Startphasen
+    t: i / 3,             // Position auf der Palette
+    prev: null,
+  })),
+};
+
+function brushPos(b, t) {
+  return [
+    0.5 + 0.32 * Math.sin(t * b.f[0] + b.p[0]) + 0.1 * Math.sin(t * b.f[1] + b.p[1]),
+    0.5 + 0.32 * Math.sin(t * b.f[2] + b.p[2]) + 0.1 * Math.sin(t * b.f[3] + b.p[3]),
+  ];
+}
+
+function startAutoplay(screensaver) {
+  if (autoplay.active) return;
+  autoplay.active = true;
+  autoplay.screensaver = screensaver;
+  autoplay.wake = null;
+  autoplay.paletteTimer = 0;
+  for (const b of autoplay.brushes) b.prev = null;
+  document.body.classList.toggle('screensaver', screensaver);
+  if (screensaver) showHint('Auto-Play · Bewege die Maus, um selbst zu malen');
+}
+
+function stopAutoplay() {
+  autoplay.active = false;
+  autoplay.lastInput = performance.now();
+  pointer.init = false;                 // sonst gäbe es einen Sprung von der alten Mausposition
+  document.body.classList.remove('screensaver');
+  if (autoplay.screensaver) hideHint();
+}
+
+// Jede echte Eingabe setzt den Inaktivitäts-Timer zurück und beendet Auto-Play
+function userActive() {
+  autoplay.lastInput = performance.now();
+  if (autoplay.active) stopAutoplay();
+}
+window.addEventListener('pointermove', e => {
+  if (!autoplay.active) return userActive();
+  if (!autoplay.wake) autoplay.wake = [e.clientX, e.clientY];
+  if (Math.hypot(e.clientX - autoplay.wake[0], e.clientY - autoplay.wake[1]) > 12) userActive();
+}, { capture: true });
+for (const type of ['pointerdown', 'wheel', 'touchstart']) {
+  window.addEventListener(type, userActive, { capture: true, passive: true });
+}
+
+function setAutoplayEnabled(on) {
+  autoplay.enabled = on;
+  $('autoplaySwitch').classList.toggle('on', on);
+  if (!on && autoplay.active) stopAutoplay();
+  toast(on ? 'Auto-Play bei Inaktivität an' : 'Auto-Play aus');
+}
+$('autoplaySwitchRow').addEventListener('click', e => { e.preventDefault(); setAutoplayEnabled(!autoplay.enabled); });
+
+function updateAutoplay(dt, now) {
+  if (!autoplay.active && autoplay.enabled && now - autoplay.lastInput > CONFIG.IDLE_SECONDS * 1000) startAutoplay(true);
+
+  autoplay.level += ((autoplay.active ? 1 : 0) - autoplay.level) * (1 - Math.exp(-1.5 * dt));
+  if (autoplay.level < 0.005) return;
+  autoplay.time += dt;
+
+  const aspect = canvas.width / canvas.height;
+  for (const b of autoplay.brushes) {
+    const [x, y] = brushPos(b, autoplay.time);
+    if (b.prev) {
+      const dx = (x - b.prev[0]) * (aspect < 1 ? aspect : 1);
+      const dy = (y - b.prev[1]) * (aspect > 1 ? 1 / aspect : 1);
+      b.t = (b.t + dt * 0.04) % 1;
+      // Pinsel "setzt ab und wieder auf": Farbmenge schwillt langsam an und ab
+      const pen = Math.pow(0.5 + 0.5 * Math.sin(autoplay.time * 0.35 + b.p[0]), 3);
+      splat(x, y, dx * CONFIG.SPLAT_FORCE * autoplay.level, dy * CONFIG.SPLAT_FORCE * autoplay.level,
+        dyeColor(b.t, 0.03 * pen * autoplay.level * dt * 60));
+    }
+    b.prev = [x, y];
+  }
+
+  if (!autoplay.active) return;
+  // gelegentlicher Farbstoß an zufälliger Stelle
+  autoplay.nextBurst -= dt;
+  if (autoplay.nextBurst <= 0) {
+    autoplay.nextBurst = rand(3, 7);
+    const a = rand(0, 6.28), force = rand(600, 1000);
+    splat(rand(0.2, 0.8), rand(0.2, 0.8), Math.cos(a) * force, Math.sin(a) * force, dyeColor(Math.random(), 0.8));
+  }
+  // langsam durch die Paletten wandern
+  autoplay.paletteTimer += dt;
+  if (autoplay.paletteTimer > CONFIG.AUTOPLAY_PALETTE_SECONDS) {
+    autoplay.paletteTimer = 0;
+    const names = Object.keys(PALETTES);
+    setPalette(names[(names.indexOf(activePalette) + 1) % names.length]);
+  }
+}
+
 // ---------- Hauptschleife ----------
 let last = performance.now();
 function frame(now) {
@@ -1011,6 +1140,7 @@ function frame(now) {
 
   if (resizeCanvas()) { initFramebuffers(); updateQualityInfo(); }
   easeParams(dt);
+  updateAutoplay(dt, now);
 
   if (pointer.moved) {
     pointer.moved = false;
@@ -1036,7 +1166,8 @@ function frame(now) {
 
 if (window.innerWidth < 600) togglePanel();   // auf schmalen Bildschirmen erst mal eingeklappt
 updateQualityInfo();
-randomSplats(6);
+randomSplats(4);
+startAutoplay(false);     // beim ersten Start malt die App sofort von selbst – Oberfläche bleibt sichtbar
 requestAnimationFrame(frame);
 </script>
 </body>

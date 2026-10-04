@@ -60,5 +60,10 @@ dunkler Hintergrund, kontrastreiche Paletten.
 - UI-Prinzipien für Immersion: Glas-Optik, federnde Animationen, eigener leuchtender Pinsel-Cursor in Malfarbe,
   UI tritt beim Malen zurück (wird transparent) und kommt beim Darüberfahren zurück, kurze Meldungen („Toasts“) als Feedback,
   Leeren blendet sanft aus.
-- Bedienung: Maus bewegen = malen, Klick = Farbklecks, Leertaste = leeren, `H` = Panel, `F` = FPS, `Q` = eine Qualitätsstufe höher (schaltet Auto ab).
+- **Auto-Play:** startet beim ersten Öffnen (Oberfläche bleibt sichtbar) und nach `IDLE_SECONDS` (30 s) ohne Eingabe als
+  Bildschirmschoner (Oberfläche und Cursor blenden ganz aus, Hinweis unten). Drei unsichtbare Pinsel auf überlagerten
+  Sinusbahnen, die Farbe an- und abschwellend abgeben; alle 3–7 s ein sanfter Farbstoß; alle 25 s nächste Palette.
+  Jede Eingabe (Taste, Klick, Scrollen, Mausbewegung > 12 px) beendet es; Pinsel blenden weich aus. Taste `A` startet/stoppt
+  sofort, Schalter „Bei Inaktivität starten“ im Panel.
+- Bedienung: Maus bewegen = malen, Klick = Farbklecks, Leertaste = leeren, `H` = Panel, `F` = FPS, `Q` = eine Qualitätsstufe höher (schaltet Auto ab), `A` = Auto-Play.
 - Noch nicht umgesetzt: Schwerkraft, Hindernisse, Flacker-Reduktion, Audio, weitere Modi.
