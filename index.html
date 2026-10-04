@@ -22,8 +22,10 @@
   #error { display: none; color: #fff; font-size: 16px; padding: 40px; }
 
   /* ---------- Pinsel-Cursor ---------- */
-  #cursor {
-    position: fixed; left: 0; top: 0; width: 28px; height: 28px; margin: -14px 0 0 -14px;
+  #cursor, #brushPreview {
+    --size: 28px;           /* wird per JavaScript auf die echte Pinselgröße gesetzt */
+    position: fixed; left: 0; top: 0; width: var(--size); height: var(--size);
+    margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
     border-radius: 50%; pointer-events: none; opacity: 0;
     border: 2px solid var(--brush, #fff);
     box-shadow: 0 0 12px var(--brush, #fff), inset 0 0 8px var(--brush, #fff);
@@ -31,6 +33,9 @@
   }
   #cursor.on { opacity: .85; }
   @media (pointer: coarse) { #cursor { display: none; } }
+  /* Vorschau in der Bildmitte, solange der Pinselgrößen-Regler bewegt wird */
+  #brushPreview { left: 50%; top: 50%; transition: opacity .45s var(--smooth); }
+  #brushPreview.on { opacity: .9; }
 
   /* ---------- Glas-Elemente (gemeinsamer Stil) ---------- */
   .glass {
@@ -179,6 +184,7 @@
 <body>
 <canvas id="c"></canvas>
 <div id="cursor"></div>
+<div id="brushPreview"></div>
 
 <div id="fps" class="glass ui" title="Bilder pro Sekunde (F)">
   <span class="dot"></span><span class="num">– FPS</span><canvas id="graph" width="120" height="36"></canvas><span class="q"></span>
@@ -189,6 +195,10 @@
 <div id="panel" class="glass ui">
   <div class="sec">
     <h3>Flüssigkeit</h3>
+    <div class="row">
+      <label for="brush">Pinselgröße <output id="brushOut"></output></label>
+      <input id="brush" type="range" min="0.3" max="3" step="0.01">
+    </div>
     <div class="row">
       <label for="viscosity">Viskosität <output id="viscosityOut"></output></label>
       <input id="viscosity" type="range" min="0" max="1" step="0.01">
@@ -268,6 +278,7 @@ const PARAMS = {
   viscosity: { target: 0,   current: 0,   def: 0   },  // Zähigkeit der Flüssigkeit (0 = wie Wasser)
   curl:      { target: 30,  current: 30,  def: 30  },  // Stärke der Verwirbelung
   fade:      { target: 0.6, current: 0.6, def: 0.6 },  // wie schnell die Farbe verblasst
+  brush:     { target: 1,   current: 1,   def: 1   },  // Pinselgröße (1 = Standard, als Faktor auf den Radius)
 };
 
 // Farbpaletten: je 5 Farben, die ringförmig ineinander übergehen
@@ -685,7 +696,18 @@ function step(dt) {
   }
 }
 
-function splat(x, y, dx, dy, color) {
+// Radius-Wert für den Splat-Shader. size = Pinselgröße als Faktor (1 = Standard).
+function splatRadius(size = 1) {
+  let r = CONFIG.SPLAT_RADIUS / 100 * size * size;
+  if (canvas.width > canvas.height) r *= canvas.width / canvas.height;
+  return r;
+}
+// Durchmesser des Pinsels in Bildschirm-Pixeln (dort, wo die Farbe halb so stark ist wie in der Mitte)
+function brushDiameterPx(size) {
+  return 2 * Math.sqrt(splatRadius(size) * Math.LN2) * canvas.clientHeight;
+}
+
+function splat(x, y, dx, dy, color, size = 1) {
   const aspect = canvas.width / canvas.height;
   let u = use('splat');
   gl.uniform2fv(u.texelSize, velocity.texel);
@@ -693,9 +715,7 @@ function splat(x, y, dx, dy, color) {
   gl.uniform1f(u.aspectRatio, aspect);
   gl.uniform2f(u.point, x, y);
   gl.uniform3f(u.color, dx, dy, 0);
-  let r = CONFIG.SPLAT_RADIUS / 100;
-  if (aspect > 1) r *= aspect;
-  gl.uniform1f(u.radius, r);
+  gl.uniform1f(u.radius, splatRadius(size));
   blit(velocity.write);
   velocity.swap();
 
@@ -782,7 +802,7 @@ canvas.addEventListener('pointermove', e => { if (!autoplay.active) movePointer(
 canvas.addEventListener('pointerdown', e => {
   pointer.init = false;
   movePointer(e.clientX, e.clientY);
-  splat(pointer.x, pointer.y, 0, 0, dyeColor(Math.random(), 1.5));
+  splat(pointer.x, pointer.y, 0, 0, dyeColor(Math.random(), 1.5), PARAMS.brush.current);
   cursorScale = 1.8;                    // kleiner "Puls" beim Klicken
 });
 canvas.addEventListener('pointerleave', () => {
@@ -869,6 +889,16 @@ function bindSlider(id, param, format, opts = {}) {
   show(param.target);
   sliders.push(s);
 }
+// Pinselgröße: während des Ziehens erscheint eine Vorschau in der Bildmitte
+const brushPreview = $('brushPreview');
+let brushPreviewTimer = null;
+function flashBrushPreview() {
+  brushPreview.classList.add('on');
+  clearTimeout(brushPreviewTimer);
+  brushPreviewTimer = setTimeout(() => brushPreview.classList.remove('on'), 900);
+}
+bindSlider('brush', PARAMS.brush, v => Math.round(v * 100) + ' %', { onInput: flashBrushPreview });
+$('brush').addEventListener('dblclick', flashBrushPreview);
 bindSlider('viscosity', PARAMS.viscosity, v => Math.round(v * 100) + ' %');
 bindSlider('curl',      PARAMS.curl,      v => v.toFixed(0));
 bindSlider('fade',      PARAMS.fade,      v => v === 0 ? 'nie' : v.toFixed(2));
@@ -1144,7 +1174,7 @@ function frame(now) {
 
   if (pointer.moved) {
     pointer.moved = false;
-    splat(pointer.x, pointer.y, pointer.dx * CONFIG.SPLAT_FORCE, pointer.dy * CONFIG.SPLAT_FORCE, nextColor());
+    splat(pointer.x, pointer.y, pointer.dx * CONFIG.SPLAT_FORCE, pointer.dy * CONFIG.SPLAT_FORCE, nextColor(), PARAMS.brush.current);
     // Pinsel-Cursor: wird bei schneller Bewegung etwas größer
     const speed = Math.hypot(pointer.dx, pointer.dy) / dt;
     cursorScale = Math.max(cursorScale, 1 + Math.min(speed * 0.35, 0.6));
@@ -1154,7 +1184,13 @@ function frame(now) {
   if (pointer.cx !== undefined) {
     cursorEl.style.transform = `translate3d(${pointer.cx}px, ${pointer.cy}px, 0) scale(${cursorScale.toFixed(3)})`;
   }
-  cursorEl.style.setProperty('--brush', paletteColor(paletteT));
+  // Ring und Vorschau zeigen die echte Pinselgröße und die aktuelle Malfarbe
+  const brushColor = paletteColor(paletteT);
+  const brushSize = Math.max(14, brushDiameterPx(PARAMS.brush.current)).toFixed(1) + 'px';
+  for (const el of [cursorEl, brushPreview]) {
+    el.style.setProperty('--brush', brushColor);
+    el.style.setProperty('--size', brushSize);
+  }
 
   // Beim Malen tritt die Oberfläche in den Hintergrund
   document.body.classList.toggle('immersed', now - lastPaint < 1200);
