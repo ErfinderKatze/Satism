@@ -46,7 +46,10 @@ dunkler Hintergrund, kontrastreiche Paletten.
 - Fluid-Modus nach Stable Fluids auf der GPU (WebGL2 + `EXT_color_buffer_float`): Vorticity Confinement (Wirbel),
   Viskosität (Jacobi-Diffusion), Druck-Lösung (Jacobi), Gradienten-Subtraktion, Advektion.
 - Farbe wird als „Dichte + Position auf der Palette“ gespeichert (R = Dichte, G/B = Dichte·cos/sin des Palettenwinkels);
-  erst beim Anzeigen wird über die aktive Palette eingefärbt. Dadurch blendet ein Palettenwechsel das ganze Bild sanft um.
+  erst beim Anzeigen wird eingefärbt – durch den aktiven **Look** (siehe unten). Dadurch blendet ein Palettenwechsel
+  das ganze Bild sanft um.
+- Looks (Farbdarstellungen): **Palette** und **Regenbogen** – wählbar im Panel-Abschnitt „Look“ oder mit `1`–`9`
+  (Details im Abschnitt „Look-System“ unten).
 - Ausblendbares Einstellungs-Panel (Zahnrad oben rechts bzw. Taste `H`): Regler für Pinselgröße (30–300 %, wirkt nur auf
   das eigene Malen, nicht auf Auto-Play; Pinsel-Ring zeigt die echte Größe, beim Ziehen Vorschau-Ring in der Bildmitte),
   Viskosität, Wirbelstärke, Verblassen
@@ -67,5 +70,21 @@ dunkler Hintergrund, kontrastreiche Paletten.
   Sinusbahnen, die Farbe an- und abschwellend abgeben; alle 3–7 s ein sanfter Farbstoß; alle 25 s nächste Palette.
   Jede Eingabe (Taste, Klick, Scrollen, Mausbewegung > 12 px) beendet es; Pinsel blenden weich aus. Taste `A` startet/stoppt
   sofort, Schalter „Bei Inaktivität starten“ im Panel.
-- Bedienung: Maus bewegen = malen, Klick = Farbklecks, Leertaste = leeren, `H` = Panel, `F` = FPS, `Q` = eine Qualitätsstufe höher (schaltet Auto ab), `A` = Auto-Play.
-- Noch nicht umgesetzt: Schwerkraft, Hindernisse, Flacker-Reduktion, Audio, weitere Modi.
+- Bedienung: Maus bewegen = malen, Klick = Farbklecks, Leertaste = leeren, `H` = Panel, `F` = FPS, `Q` = eine Qualitätsstufe höher (schaltet Auto ab), `A` = Auto-Play, `1`–`9` = Look wählen.
+- Noch nicht umgesetzt: Schwerkraft, Hindernisse, Flacker-Reduktion, Audio, weitere Modi, weitere Looks (siehe unten).
+
+## Look-System (Farbdarstellungen)
+- Looks verändern **nur die Darstellung, nie die Simulation**. Jeder Look ist ein Eintrag in der Liste `LOOKS`
+  (`index.html`): `{ name, usesPalette?, glsl }`. `glsl` enthält genau eine Funktion `vec3 look(LookInput L)`.
+- `LookInput`: `L.uv` (Bildposition 0..1), `L.density` (Farbmenge), `L.t` (Palettenposition 0..1), `L.dye` (Rohdaten).
+  Gemeinsame Hilfen im `lookHeader`: `palette(t)`, `hsv2rgb(hsv)`, `brightness(density)`, `uTime`,
+  `uVelocity` (Strömung .xy), `uCurl` (Wirbel .x). `lookMain` liest die Farb-Textur und ruft `look()` auf.
+- Jeder Look wird beim Start zu einem eigenen Shader-Programm (`programs['look' + i]`) übersetzt; nur der aktive wird
+  gezeichnet (1 Vollbild-Durchgang wie vorher). Beim Wechsel werden 0,6 s lang beide gezeichnet und weich überblendet.
+- Auswahl: Abschnitt „Look“ im Panel (Knöpfe werden automatisch aus `LOOKS` erzeugt) und Zifferntasten `1`–`9`.
+  Nutzt ein Look die Palette nicht (`usesPalette` fehlt), wird die Paletten-Auswahl im Panel abgeblendet.
+- **Neuen Look hinzufügen = nur einen Eintrag in `LOOKS` ergänzen.**
+- Fertig: **Palette** (bisherige Darstellung), **Regenbogen** (Farbton aus √Dichte, Verlauf wandert langsam mit der Zeit).
+- Geplant (nacheinander einbauen): Metallic, Glas/Kristall, Wasser, Geschwindigkeits- und Wirbelfarben,
+  Seifenblase/Ölfilm, Feuer/Glut, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie/Nebel/Aurora.
+  Hinweis: Mehr als 9 Looks → Tasten reichen nur bis 9, die Knöpfe im Panel funktionieren für alle.

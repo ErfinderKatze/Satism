@@ -79,6 +79,7 @@
   #panel .sec:nth-child(3) { transition-delay: .08s; }
   #panel .sec:nth-child(4) { transition-delay: .12s; }
   #panel .sec:nth-child(5) { transition-delay: .16s; }
+  #panel .sec:nth-child(6) { transition-delay: .2s; }
 
   /* Auto-Play als Bildschirmschoner: Oberfläche blendet langsam ganz aus */
   body.screensaver .ui, body.screensaver #cursor { opacity: 0 !important; pointer-events: none; transition: opacity 1.8s var(--smooth); }
@@ -116,6 +117,23 @@
   input[type=range]:active::-webkit-slider-thumb { transform: scale(1.4); box-shadow: 0 0 14px 3px var(--a2); }
   input[type=range]:hover::-moz-range-thumb { transform: scale(1.2); box-shadow: 0 0 10px 1px var(--a2); }
   input[type=range]:active::-moz-range-thumb { transform: scale(1.4); box-shadow: 0 0 14px 3px var(--a2); }
+
+  /* Looks */
+  #looks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #looks button {
+    display: flex; justify-content: space-between; align-items: center;
+    border: none; border-radius: 10px; padding: 8px 10px; cursor: pointer;
+    background: rgba(255,255,255,.05); color: var(--text); font: inherit; font-size: 12px;
+    box-shadow: 0 0 0 1px var(--line);
+    transition: transform .35s var(--spring), box-shadow .3s, background .3s;
+  }
+  #looks button:hover { transform: translateY(-2px); background: rgba(255,255,255,.09); }
+  #looks button:active { transform: scale(.95); }
+  #looks button.active { box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 4px 18px -4px var(--a1); background: rgba(255,255,255,.1); }
+  #looks kbd { margin: 0; opacity: .7; }
+  /* Paletten-Auswahl tritt zurück, wenn der aktive Look sie nicht benutzt */
+  #paletteSection { transition: opacity .4s var(--smooth); }
+  #paletteSection.unused { opacity: .35; }
 
   /* Paletten */
   #palettes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -214,6 +232,10 @@
     <div class="hint-reset">Doppelklick auf einen Regler = Standardwert</div>
   </div>
   <div class="sec">
+    <h3>Look</h3>
+    <div id="looks"></div>
+  </div>
+  <div class="sec" id="paletteSection">
     <h3>Farbpalette</h3>
     <div id="palettes"></div>
   </div>
@@ -234,7 +256,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>H</kbd>Panel</span><span><kbd>Leertaste</kbd>Leeren</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span>
+    <span><kbd>H</kbd>Panel</span><span><kbd>Leertaste</kbd>Leeren</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>1</kbd>–<kbd>9</kbd>Look</span>
   </div>
 </div>
 
@@ -432,28 +454,82 @@ const shaders = {
     uniform sampler2D uTexture;
     uniform float value;
     void main () { fragColor = value * texture(uTexture, vUv); }`,
-
-  // Die Farb-Textur speichert: r = Dichte, g/b = Dichte * cos/sin(Palettenwinkel).
-  // Erst hier wird daraus über die aktuelle Palette eine sichtbare Farbe.
-  display: header + `
-    uniform sampler2D uTexture;
-    uniform vec3 uPalette[5];
-    vec3 palette (float t) {
-      t = fract(t) * 5.0;
-      int i = int(floor(t));
-      float f = smoothstep(0.0, 1.0, fract(t));
-      return mix(uPalette[i], uPalette[(i + 1) % 5], f);
-    }
-    void main () {
-      vec3 dye = texture(uTexture, vUv).rgb;
-      float density = max(dye.r, 0.0);
-      float t = atan(dye.b, dye.g) / 6.2831853;
-      vec3 col = palette(t) * (1.0 - exp(-density * 2.8));
-      // sehr dichte Stellen leuchten leicht weißlich auf
-      col = mix(col, vec3(1.0), smoothstep(2.5, 8.0, density) * 0.35);
-      fragColor = vec4(col, 1.0);
-    }`,
 };
+
+// ---------- Looks (Farbdarstellungen) ----------
+// Ein Look entscheidet NUR, wie die Simulation aussieht – er verändert sie nie.
+// Jeder Look ist eine GLSL-Funktion mit derselben Schnittstelle:
+//
+//     vec3 look(LookInput L)      → gibt die Farbe für einen Bildpunkt zurück
+//
+// LookInput enthält pro Bildpunkt:
+//   L.uv       Position auf dem Bildschirm (0..1)
+//   L.density  wie viel Farbe hier ist (0 = nichts, ab ca. 1 kräftig, kann deutlich höher werden)
+//   L.t        Position auf der Palette (0..1), die beim Malen mitgegeben wurde
+//   L.dye      Rohdaten der Farb-Textur (r = Dichte, g/b = Dichte · cos/sin des Palettenwinkels)
+// Außerdem stehen allen Looks zur Verfügung:
+//   palette(t), hsv2rgb(hsv), brightness(density), uTime (Sekunden),
+//   uVelocity (Strömungsgeschwindigkeit, .xy), uCurl (Wirbelstärke, .x)
+// Neuer Look = neuer Eintrag in LOOKS. Sonst muss nichts angefasst werden.
+const lookHeader = header + `
+  uniform sampler2D uDye;
+  uniform sampler2D uVelocity;
+  uniform sampler2D uCurl;
+  uniform vec3 uPalette[5];
+  uniform float uTime;
+  uniform float uAlpha;
+
+  struct LookInput { vec2 uv; float density; float t; vec3 dye; };
+
+  // Farbe an Position t der aktiven Palette (5 Farben, ringförmig)
+  vec3 palette (float t) {
+    t = fract(t) * 5.0;
+    int i = int(floor(t));
+    float f = smoothstep(0.0, 1.0, fract(t));
+    return mix(uPalette[i], uPalette[(i + 1) % 5], f);
+  }
+  // Farbton/Sättigung/Helligkeit (je 0..1) → RGB
+  vec3 hsv2rgb (vec3 c) {
+    vec3 p = abs(fract(c.xxx + vec3(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+    return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
+  }
+  // Helligkeit aus der Dichte: wenig Farbe = dunkel, viel Farbe = voll
+  float brightness (float density) { return 1.0 - exp(-density * 2.8); }
+`;
+const lookMain = `
+  void main () {
+    vec3 dye = texture(uDye, vUv).rgb;
+    LookInput L;
+    L.uv = vUv;
+    L.dye = dye;
+    L.density = max(dye.r, 0.0);
+    L.t = fract(atan(dye.b, dye.g) / 6.2831853);
+    fragColor = vec4(look(L), uAlpha);
+  }`;
+
+const LOOKS = [
+  {
+    name: 'Palette',
+    usesPalette: true,   // die Paletten-Auswahl im Panel wirkt auf diesen Look
+    glsl: `
+      vec3 look (LookInput L) {
+        vec3 col = palette(L.t) * brightness(L.density);
+        // sehr dichte Stellen leuchten leicht weißlich auf
+        return mix(col, vec3(1.0), smoothstep(2.5, 8.0, L.density) * 0.35);
+      }`,
+  },
+  {
+    name: 'Regenbogen',
+    glsl: `
+      vec3 look (LookInput L) {
+        // Die Dichte bestimmt die Stelle im Regenbogen; der ganze Verlauf wandert langsam weiter.
+        // sqrt spreizt die häufigen kleinen Dichten, sodass auch dünne Schleier bunt werden.
+        float hue = fract(sqrt(L.density) * 0.9 - uTime * 0.06);
+        vec3 col = hsv2rgb(vec3(hue, 0.95, 1.0)) * brightness(L.density * 1.5);
+        return mix(col, vec3(1.0), smoothstep(4.0, 12.0, L.density) * 0.25);
+      }`,
+  },
+];
 
 function compile(type, src) {
   const s = gl.createShader(type);
@@ -464,8 +540,7 @@ function compile(type, src) {
 }
 
 const vs = compile(gl.VERTEX_SHADER, baseVertex);
-const programs = {};
-for (const [name, src] of Object.entries(shaders)) {
+function makeProgram(src) {
   const p = gl.createProgram();
   gl.attachShader(p, vs);
   gl.attachShader(p, compile(gl.FRAGMENT_SHADER, src));
@@ -478,8 +553,12 @@ for (const [name, src] of Object.entries(shaders)) {
     const u = gl.getActiveUniform(p, i).name;
     uniforms[u] = gl.getUniformLocation(p, u);
   }
-  programs[name] = { program: p, uniforms };
+  return { program: p, uniforms };
 }
+const programs = {};
+for (const [name, src] of Object.entries(shaders)) programs[name] = makeProgram(src);
+// Jeder Look wird beim Start einmal zu einem eigenen Shader-Programm übersetzt
+LOOKS.forEach((look, i) => { programs['look' + i] = makeProgram(lookHeader + look.glsl + lookMain); });
 
 // Vollbild-Rechteck
 gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
@@ -725,11 +804,33 @@ function splat(x, y, dx, dy, color, size = 1) {
   dye.swap();
 }
 
-function render() {
-  const u = use('display');
-  gl.uniform1i(u.uTexture, dye.read.attach(0));
-  gl.uniform3fv(u['uPalette[0]'], currentPalette);
+// ---------- Darstellung ----------
+let lookIndex = 0;        // aktiver Look
+let prevLook = 0;         // Look, von dem gerade weggeblendet wird
+let lookFade = 1;         // 0..1, Fortschritt der Überblendung (1 = fertig)
+
+function drawLook(i, alpha, time) {
+  const u = use('look' + i);
+  gl.uniform1i(u.uDye, dye.read.attach(0));
+  // Nur übergeben, was der Look wirklich benutzt (ungenutzte Uniforms entfernt der Shader-Compiler)
+  if (u.uVelocity) gl.uniform1i(u.uVelocity, velocity.read.attach(1));
+  if (u.uCurl) gl.uniform1i(u.uCurl, curl.attach(2));
+  if (u['uPalette[0]']) gl.uniform3fv(u['uPalette[0]'], currentPalette);
+  if (u.uTime) gl.uniform1f(u.uTime, time);
+  gl.uniform1f(u.uAlpha, alpha);
   blit(null);
+}
+
+function render(time, dt) {
+  if (lookFade >= 1) return drawLook(lookIndex, 1, time);
+  // Beim Wechsel kurz beide Looks zeichnen und den neuen weich darüberblenden
+  lookFade = Math.min(1, lookFade + dt / 0.6);
+  const k = lookFade * lookFade * (3 - 2 * lookFade);
+  drawLook(prevLook, 1, time);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  drawLook(lookIndex, k, time);
+  gl.disable(gl.BLEND);
 }
 
 // ---------- Farben ----------
@@ -820,6 +921,8 @@ window.addEventListener('keydown', e => {
   if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === 'KeyA') { autoplay.active ? stopAutoplay() : startAutoplay(true); return; }
   userActive();
+  const digit = /^Digit([1-9])$/.exec(e.code);
+  if (digit) setLook(Number(digit[1]) - 1);
   if (e.code === 'Space') { clearCanvas(); e.preventDefault(); }
   if (e.code === 'KeyH') togglePanel();
   if (e.code === 'KeyF') setFpsVisible(!fpsVisible);
@@ -912,6 +1015,27 @@ for (const [name, colors] of Object.entries(PALETTES)) {
   btn.addEventListener('click', () => { setPalette(name); btn.blur(); });
   paletteBox.appendChild(btn);
 }
+// Look-Auswahl: Knöpfe werden automatisch aus der LOOKS-Liste erzeugt
+const lookBox = $('looks');
+LOOKS.forEach((look, i) => {
+  const btn = document.createElement('button');
+  btn.innerHTML = `<span>${look.name}</span>` + (i < 9 ? `<kbd>${i + 1}</kbd>` : '');
+  btn.addEventListener('click', () => { setLook(i); btn.blur(); });
+  lookBox.appendChild(btn);
+});
+function setLook(i) {
+  if (i >= LOOKS.length) return;
+  if (i !== lookIndex) {
+    prevLook = lookIndex;
+    lookIndex = i;
+    lookFade = 0;
+    toast('Look: ' + LOOKS[i].name);
+  }
+  [...lookBox.children].forEach((b, j) => b.classList.toggle('active', j === i));
+  $('paletteSection').classList.toggle('unused', !LOOKS[i].usesPalette);
+}
+setLook(0);
+
 function setPalette(name) {
   activePalette = name;
   for (const b of paletteBox.children) b.classList.toggle('active', b.dataset.name === name);
@@ -1196,7 +1320,7 @@ function frame(now) {
   document.body.classList.toggle('immersed', now - lastPaint < 1200);
 
   step(dt);
-  render();
+  render(now / 1000, dt);
   requestAnimationFrame(frame);
 }
 
