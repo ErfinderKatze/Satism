@@ -48,8 +48,8 @@ dunkler Hintergrund, kontrastreiche Paletten.
 - Farbe wird als „Dichte + Position auf der Palette“ gespeichert (R = Dichte, G/B = Dichte·cos/sin des Palettenwinkels);
   erst beim Anzeigen wird eingefärbt – durch den aktiven **Look** (siehe unten). Dadurch blendet ein Palettenwechsel
   das ganze Bild sanft um.
-- Looks (Farbdarstellungen): **Palette** und **Regenbogen** – wählbar im Panel-Abschnitt „Look“ oder mit `1`–`9`
-  (Details im Abschnitt „Look-System“ unten).
+- Looks (Farbdarstellungen): **Palette**, **Regenbogen**, **Geschwindigkeit**, **Wirbel** – wählbar im Panel-Abschnitt
+  „Look“ oder mit `1`–`9` (Details im Abschnitt „Look-System“ unten).
 - Ausblendbares Einstellungs-Panel (Zahnrad oben rechts bzw. Taste `H`): Regler für Pinselgröße (30–300 %, wirkt nur auf
   das eigene Malen, nicht auf Auto-Play; Pinsel-Ring zeigt die echte Größe, beim Ziehen Vorschau-Ring in der Bildmitte),
   Viskosität, Wirbelstärke, Verblassen
@@ -75,16 +75,29 @@ dunkler Hintergrund, kontrastreiche Paletten.
 
 ## Look-System (Farbdarstellungen)
 - Looks verändern **nur die Darstellung, nie die Simulation**. Jeder Look ist ein Eintrag in der Liste `LOOKS`
-  (`index.html`): `{ name, usesPalette?, glsl }`. `glsl` enthält genau eine Funktion `vec3 look(LookInput L)`.
+  (`index.html`): `{ name, usesPalette?, params?, smoothCurl?, glsl }`. `glsl` enthält genau eine Funktion
+  `vec3 look(LookInput L)` (darf eigene Hilfsfunktionen davor definieren).
 - `LookInput`: `L.uv` (Bildposition 0..1), `L.density` (Farbmenge), `L.t` (Palettenposition 0..1), `L.dye` (Rohdaten).
-  Gemeinsame Hilfen im `lookHeader`: `palette(t)`, `hsv2rgb(hsv)`, `brightness(density)`, `uTime`,
-  `uVelocity` (Strömung .xy), `uCurl` (Wirbel .x). `lookMain` liest die Farb-Textur und ruft `look()` auf.
+  Gemeinsame Hilfen im `lookHeader`: `palette(t)`, `hsv2rgb(hsv)`, `brightness(density)`, `dyeColor(L)` (eingemalte
+  Farbe wie im Look „Palette“), `uTime`, `speedAt(uv)` (Tempo), `curlAt(uv)` (rohe Drehung, ±),
+  `curlSmoothAt(uv)` (geglättete Drehung). `lookMain` liest die Farb-Textur und ruft `look()` auf.
+- Werte sind auf die Bezugsgröße (`REF_RESOLUTION`) normiert (`uSimScale`), damit Looks auf jeder Qualitätsstufe gleich
+  aussehen. Gemessene Größenordnungen: Tempo typisch ≈ 25, schnell ≈ 150; geglättete Drehung ruhig ≈ 1–4,
+  Auto-Play ≈ 4–37, gemalter Strich bis ≈ 30–75.
+- `params: ['sensitivity', 'dyeMix']` → Panel zeigt unter den Look-Knöpfen die Look-Regler „Empfindlichkeit“
+  (`uSensitivity`, 0,2–5×) und „Farbstoff-Anteil“ (`uDyeMix`, 0–100 %, 0 = nur Bewegung). Sie klappen weich auf/zu und
+  gelten gemeinsam für alle Looks, die sie nutzen.
+- `smoothCurl: true` → vor dem Zeichnen wird die Wirbel-Textur der Simulation (nur gelesen!) per `curlDownsample` auf
+  ein kleines Bild (48 px kurze Seite) heruntergerechnet und dabei gemittelt (`curlSmooth`). Entfernt das kleinteilige
+  Pixelrauschen der Wirbelverstärkung; läuft nur, wenn ein sichtbarer Look es braucht.
 - Jeder Look wird beim Start zu einem eigenen Shader-Programm (`programs['look' + i]`) übersetzt; nur der aktive wird
   gezeichnet (1 Vollbild-Durchgang wie vorher). Beim Wechsel werden 0,6 s lang beide gezeichnet und weich überblendet.
 - Auswahl: Abschnitt „Look“ im Panel (Knöpfe werden automatisch aus `LOOKS` erzeugt) und Zifferntasten `1`–`9`.
   Nutzt ein Look die Palette nicht (`usesPalette` fehlt), wird die Paletten-Auswahl im Panel abgeblendet.
 - **Neuen Look hinzufügen = nur einen Eintrag in `LOOKS` ergänzen.**
-- Fertig: **Palette** (bisherige Darstellung), **Regenbogen** (Farbton aus √Dichte, Verlauf wandert langsam mit der Zeit).
-- Geplant (nacheinander einbauen): Metallic, Glas/Kristall, Wasser, Geschwindigkeits- und Wirbelfarben,
-  Seifenblase/Ölfilm, Feuer/Glut, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie/Nebel/Aurora.
+- Fertig: **Palette** (bisherige Darstellung), **Regenbogen** (Farbton aus √Dichte, Verlauf wandert langsam mit der Zeit),
+  **Geschwindigkeit** (Tempo → dunkles Blau → Violett → Pink → Gelb → Weiß), **Wirbel** (geglättete Drehung: eine
+  Richtung Blau→Cyan, andere Magenta→Orange, ruhig = dunkel). Beide mit Look-Reglern Empfindlichkeit/Farbstoff-Anteil.
+- Geplant (nacheinander einbauen): Metallic, Glas/Kristall, Wasser, Seifenblase/Ölfilm, Feuer/Glut, Tinte & Aquarell,
+  Marmorpapier (Ebru), Galaxie/Nebel/Aurora.
   Hinweis: Mehr als 9 Looks → Tasten reichen nur bis 9, die Knöpfe im Panel funktionieren für alle.

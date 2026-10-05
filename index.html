@@ -131,6 +131,10 @@
   #looks button:active { transform: scale(.95); }
   #looks button.active { box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 4px 18px -4px var(--a1); background: rgba(255,255,255,.1); }
   #looks kbd { margin: 0; opacity: .7; }
+  /* Look-Regler klappen weich auf und zu */
+  .look-param { overflow: hidden; max-height: 60px; margin: 12px 0 0;
+                transition: max-height .45s var(--smooth), opacity .35s var(--smooth), margin .45s var(--smooth); }
+  .look-param.off { max-height: 0; opacity: 0; margin: 0; pointer-events: none; }
   /* Paletten-Auswahl tritt zurück, wenn der aktive Look sie nicht benutzt */
   #paletteSection { transition: opacity .4s var(--smooth); }
   #paletteSection.unused { opacity: .35; }
@@ -234,6 +238,15 @@
   <div class="sec">
     <h3>Look</h3>
     <div id="looks"></div>
+    <!-- Look-Regler: erscheinen nur bei Looks, die sie in "params" angeben -->
+    <div class="row look-param" data-param="sensitivity">
+      <label for="sensitivity">Empfindlichkeit <output id="sensitivityOut"></output></label>
+      <input id="sensitivity" type="range" min="0.2" max="5" step="0.05">
+    </div>
+    <div class="row look-param" data-param="dyeMix">
+      <label for="dyeMix">Farbstoff-Anteil <output id="dyeMixOut"></output></label>
+      <input id="dyeMix" type="range" min="0" max="1" step="0.01">
+    </div>
   </div>
   <div class="sec" id="paletteSection">
     <h3>Farbpalette</h3>
@@ -301,6 +314,8 @@ const PARAMS = {
   curl:      { target: 30,  current: 30,  def: 30  },  // Stärke der Verwirbelung
   fade:      { target: 0.6, current: 0.6, def: 0.6 },  // wie schnell die Farbe verblasst
   brush:     { target: 1,   current: 1,   def: 1   },  // Pinselgröße (1 = Standard, als Faktor auf den Radius)
+  sensitivity: { target: 1,    current: 1,    def: 1    },  // Look-Regler: wie stark Bewegung in Helligkeit umgesetzt wird
+  dyeMix:      { target: 0.25, current: 0.25, def: 0.25 },  // Look-Regler: wie stark die eingemalte Farbe durchscheint
 };
 
 // Farbpaletten: je 5 Farben, die ringförmig ineinander übergehen
@@ -454,6 +469,19 @@ const shaders = {
     uniform sampler2D uTexture;
     uniform float value;
     void main () { fragColor = value * texture(uTexture, vUv); }`,
+
+  // Nur für die Darstellung: rechnet die Wirbel-Textur auf ein kleines Bild herunter und mittelt dabei
+  // jeweils 4×4 Messpunkte. Das entfernt das feine Pixelrauschen, große Wirbel bleiben erhalten.
+  curlDownsample: header + `
+    uniform sampler2D uCurl;
+    uniform vec2 uFootprint;   // Größe eines Pixels im kleinen Bild
+    void main () {
+      float s = 0.0;
+      for (int j = 0; j < 4; j++)
+        for (int i = 0; i < 4; i++)
+          s += texture(uCurl, vUv + (vec2(i, j) - 1.5) / 4.0 * uFootprint).x;
+      fragColor = vec4(s / 16.0, 0.0, 0.0, 1.0);
+    }`,
 };
 
 // ---------- Looks (Farbdarstellungen) ----------
@@ -468,9 +496,12 @@ const shaders = {
 //   L.t        Position auf der Palette (0..1), die beim Malen mitgegeben wurde
 //   L.dye      Rohdaten der Farb-Textur (r = Dichte, g/b = Dichte · cos/sin des Palettenwinkels)
 // Außerdem stehen allen Looks zur Verfügung:
-//   palette(t), hsv2rgb(hsv), brightness(density), uTime (Sekunden),
-//   uVelocity (Strömungsgeschwindigkeit, .xy), uCurl (Wirbelstärke, .x)
+//   palette(t), hsv2rgb(hsv), brightness(density), dyeColor(L), uTime (Sekunden),
+//   speedAt(uv) (Tempo der Strömung), curlAt(uv) (Drehung, + / − = Drehrichtung),
+//   curlSmoothAt(uv) (geglättete Drehung ohne Pixelrauschen – nur mit smoothCurl: true im Look),
+//   uSensitivity und uDyeMix (Look-Regler "Empfindlichkeit" / "Farbstoff-Anteil")
 // Neuer Look = neuer Eintrag in LOOKS. Sonst muss nichts angefasst werden.
+// Mit params: ['sensitivity', 'dyeMix'] zeigt das Panel die passenden Look-Regler an.
 const lookHeader = header + `
   uniform sampler2D uDye;
   uniform sampler2D uVelocity;
@@ -478,6 +509,10 @@ const lookHeader = header + `
   uniform vec3 uPalette[5];
   uniform float uTime;
   uniform float uAlpha;
+  uniform float uSimScale;      // Umrechnung Strömungsraster → Bezugsgröße (gleiche Werte auf jeder Qualitätsstufe)
+  uniform sampler2D uCurlSmooth; // geglättete Wirbel-Textur (nur für Looks mit smoothCurl: true)
+  uniform float uSensitivity;   // Look-Regler "Empfindlichkeit"
+  uniform float uDyeMix;        // Look-Regler "Farbstoff-Anteil"
 
   struct LookInput { vec2 uv; float density; float t; vec3 dye; };
 
@@ -495,6 +530,14 @@ const lookHeader = header + `
   }
   // Helligkeit aus der Dichte: wenig Farbe = dunkel, viel Farbe = voll
   float brightness (float density) { return 1.0 - exp(-density * 2.8); }
+  // Tempo der Strömung an dieser Stelle (liest die vorhandene Geschwindigkeits-Textur)
+  float speedAt (vec2 uv) { return length(texture(uVelocity, uv).xy); }
+  // Drehung der Strömung (liest die Wirbel-Textur, die die Simulation ohnehin berechnet)
+  float curlAt (vec2 uv) { return texture(uCurl, uv).x * uSimScale; }
+  // Geglättete Drehung ohne Pixelrauschen (Look braucht dafür smoothCurl: true)
+  float curlSmoothAt (vec2 uv) { return texture(uCurlSmooth, uv).x * uSimScale; }
+  // eingemalte Farbe so, wie sie im Look "Palette" aussehen würde
+  vec3 dyeColor (LookInput L) { return palette(L.t) * brightness(L.density); }
 `;
 const lookMain = `
   void main () {
@@ -527,6 +570,48 @@ const LOOKS = [
         float hue = fract(sqrt(L.density) * 0.9 - uTime * 0.06);
         vec3 col = hsv2rgb(vec3(hue, 0.95, 1.0)) * brightness(L.density * 1.5);
         return mix(col, vec3(1.0), smoothstep(4.0, 12.0, L.density) * 0.25);
+      }`,
+  },
+  {
+    name: 'Geschwindigkeit',
+    usesPalette: true,   // nur über den Farbstoff-Anteil
+    params: ['sensitivity', 'dyeMix'],
+    glsl: `
+      // Verlauf: dunkles Blau → Violett → Pink → Gelb → Weiß
+      vec3 speedRamp (float x) {
+        vec3 c0 = vec3(0.02, 0.02, 0.10), c1 = vec3(0.10, 0.10, 0.55), c2 = vec3(0.55, 0.15, 0.80),
+             c3 = vec3(1.00, 0.25, 0.55), c4 = vec3(1.00, 0.85, 0.25), c5 = vec3(1.0);
+        x = clamp(x, 0.0, 1.0) * 5.0;
+        if (x < 1.0) return mix(c0, c1, x);
+        if (x < 2.0) return mix(c1, c2, x - 1.0);
+        if (x < 3.0) return mix(c2, c3, x - 2.0);
+        if (x < 4.0) return mix(c3, c4, x - 3.0);
+        return mix(c4, c5, x - 4.0);
+      }
+      vec3 look (LookInput L) {
+        // langsam = dunkel, schnell = hell; exp sorgt dafür, dass es nie "überläuft".
+        // Gemessen: typisches Tempo ≈ 25, schnelle Stellen ≈ 150 → typisch bleibt dunkel, schnell leuchtet.
+        float x = 1.0 - exp(-pow(speedAt(L.uv) * uSensitivity / 150.0, 1.5));
+        return speedRamp(x) * smoothstep(0.0, 0.15, x) + dyeColor(L) * uDyeMix;
+      }`,
+  },
+  {
+    name: 'Wirbel',
+    usesPalette: true,   // nur über den Farbstoff-Anteil
+    params: ['sensitivity', 'dyeMix'],
+    smoothCurl: true,    // braucht die geglättete Wirbel-Textur
+    glsl: `
+      vec3 look (LookInput L) {
+        float w = curlSmoothAt(L.uv);
+        // Stärke der Drehung, 0..1. Gemessen (geglättet): ruhig/typisch ≈ 1–4, gemalter Strich ≈ 30–75.
+        // Die Potenz hält ruhige Bereiche dunkel, kräftige Wirbel leuchten.
+        float a = 1.0 - exp(-pow(abs(w) * uSensitivity / 30.0, 1.5));
+        // eine Drehrichtung kühl (Blau → Cyan), die andere warm (Magenta → Orange)
+        vec3 col = w > 0.0 ? mix(vec3(0.05, 0.25, 1.0), vec3(0.2, 1.0, 1.0), a)
+                           : mix(vec3(0.9, 0.1, 0.6), vec3(1.0, 0.6, 0.15), a);
+        col *= a;
+        col = mix(col, vec3(1.0), smoothstep(0.85, 1.0, a) * 0.4);   // sehr starke Wirbel glühen weißlich
+        return col + dyeColor(L) * uDyeMix;
       }`,
   },
 ];
@@ -817,11 +902,31 @@ function drawLook(i, alpha, time) {
   if (u.uCurl) gl.uniform1i(u.uCurl, curl.attach(2));
   if (u['uPalette[0]']) gl.uniform3fv(u['uPalette[0]'], currentPalette);
   if (u.uTime) gl.uniform1f(u.uTime, time);
+  if (u.uSimScale) gl.uniform1f(u.uSimScale, QUALITY[qualityLevel].sim / CONFIG.REF_RESOLUTION);
+  if (u.uCurlSmooth) gl.uniform1i(u.uCurlSmooth, curlSmooth.attach(3));
+  if (u.uSensitivity) gl.uniform1f(u.uSensitivity, PARAMS.sensitivity.current);
+  if (u.uDyeMix) gl.uniform1f(u.uDyeMix, PARAMS.dyeMix.current);
   gl.uniform1f(u.uAlpha, alpha);
   blit(null);
 }
 
+// Kleine, geglättete Kopie der Wirbel-Textur – wird nur berechnet, wenn ein sichtbarer Look sie braucht
+let curlSmooth = null;
+function updateCurlSmooth() {
+  const res = resolution(48);   // grob genug, dass kleinteiliges Rauschen verschwindet, große Wirbel bleiben
+  if (!curlSmooth || curlSmooth.w !== res.w || curlSmooth.h !== res.h) {
+    if (curlSmooth) curlSmooth.free();
+    curlSmooth = createFBO(res.w, res.h, gl.R16F, gl.RED);
+  }
+  const u = use('curlDownsample');
+  gl.uniform2fv(u.texelSize, curlSmooth.texel);
+  gl.uniform2fv(u.uFootprint, curlSmooth.texel);
+  gl.uniform1i(u.uCurl, curl.attach(0));
+  blit(curlSmooth);
+}
+
 function render(time, dt) {
+  if (LOOKS[lookIndex].smoothCurl || (lookFade < 1 && LOOKS[prevLook].smoothCurl)) updateCurlSmooth();
   if (lookFade >= 1) return drawLook(lookIndex, 1, time);
   // Beim Wechsel kurz beide Looks zeichnen und den neuen weich darüberblenden
   lookFade = Math.min(1, lookFade + dt / 0.6);
@@ -1033,7 +1138,12 @@ function setLook(i) {
   }
   [...lookBox.children].forEach((b, j) => b.classList.toggle('active', j === i));
   $('paletteSection').classList.toggle('unused', !LOOKS[i].usesPalette);
+  // nur die Regler zeigen, die der Look benutzt
+  const used = LOOKS[i].params || [];
+  for (const row of document.querySelectorAll('.look-param')) row.classList.toggle('off', !used.includes(row.dataset.param));
 }
+bindSlider('sensitivity', PARAMS.sensitivity, v => v.toFixed(2) + '×');
+bindSlider('dyeMix',      PARAMS.dyeMix,      v => Math.round(v * 100) + ' %');
 setLook(0);
 
 function setPalette(name) {
