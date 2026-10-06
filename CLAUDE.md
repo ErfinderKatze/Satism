@@ -49,9 +49,10 @@ dunkler Hintergrund, kontrastreiche Paletten.
   erst beim Anzeigen wird eingefärbt – durch den aktiven **Look** (siehe unten). Dadurch blendet ein Palettenwechsel
   das ganze Bild sanft um.
 - Looks (Farbdarstellungen): **Palette** (1), **Regenbogen** (2), **Geschwindigkeit** (3), **Wirbel** (4), **Feuer / Glut** (5),
-  **Metallic** (6), **Oberfläche (Test)** (7) – wählbar im Panel-Abschnitt „Look“ oder mit den Zifferntasten
-  (Details im Abschnitt „Look-System“ unten).
-- **Oberflächen-Baustein** (Höhenfeld + Neigung) für Metallic/Glas/Wasser/Ölfilm ist fertig, darauf aufbauend Metallic.
+  **Metallic** (6), **Glas / Kristall** (7), **Oberfläche (Test)** (8) – wählbar im Panel-Abschnitt „Look“ oder mit den
+  Zifferntasten (Details im Abschnitt „Look-System“ unten).
+- **Oberflächen-Baustein** (Höhenfeld + Neigung) für Metallic/Glas/Wasser/Ölfilm ist fertig, darauf aufbauend Metallic
+  und Glas / Kristall.
 - **Bloom (Glow)** als Nachbearbeitungs-Schritt nach dem Look – funktioniert mit allen Looks (Details im Abschnitt
   „Bloom“ unten). Panel-Abschnitt „Bloom“: Schalter „Glow“, Regler Bloom-Intensität/-Schwelle/-Weichheit.
 - Ausblendbares Einstellungs-Panel (Zahnrad oben rechts bzw. Taste `H`): Regler für Pinselgröße (30–300 %, wirkt nur auf
@@ -139,6 +140,9 @@ dunkler Hintergrund, kontrastreiche Paletten.
   **Hitze** 0,2–3× (Standard 1×), **Flackern** 0–100 % (Standard 50 %, 0 = aus), **Glutfarbe** 0–1 (Standard 0,5;
   Anzeige Glut/Mitte/Feuer; skaliert die Hitze mit 0,65…1,4 → rötliche Glut ↔ gelbweißes Feuer). Nutzt die Palette nicht.
   Gemessen: Auto-Play-Schlieren Dichte ≈ 0,2–0,6 (→ Rot bis Gelb), frisch gemalte Striche ≈ 1+ (→ Weiß/HDR).
+- **Spiegelnde Oberflächen – gemeinsame Hilfen im `lookHeader`** (von Metallic und Glas genutzt, nicht kopieren):
+  `softbox(...)`, `studio(r, soft)` (Studio-Umgebung, dreht mit `uEnvAngle`), `fresnelSchlick(f0, cosT)`,
+  `studioSpecular(n, gloss)` (Glanzlicht Lampe oben links).
 - **Metallic** (Taste `6`, `surface: true`, `surfaceBlur: 0.02`): Spiegelung einer im Code erzeugten Studio-Umgebung
   (`studio(r, soft)`): Horizont hell (≈ 0,4 – bewusst knapp unter der Bloom-Schwelle, damit mit Bloom nur die
   Lichtflächen glühen, nicht der ganze Metallkörper), nach oben und unten dunkler, aber nie schwarz (Himmel oben ≈ 0,14,
@@ -154,11 +158,24 @@ dunkler Hintergrund, kontrastreiche Paletten.
   (Standard 60 %: Kantenweichheit der Softboxen + Schärfe/Stärke des Glanzlichts), **Umgebung drehen** 0–100 %
   (Standard 20 %, 0 = aus). Nutzt die Palette nicht. Gemessen: Baustein ≈ 0,1 ms + Look ≈ 0,13 ms (Stufe Maximum) →
   läuft auf jeder Qualitätsstufe; keine besondere Stufe nötig.
-- **Oberfläche (Test)** (Taste `7`): Prüf-Look für den Oberflächen-Baustein. Zeigt die Normale als Farben (Normal-Map-Stil:
+- **Glas / Kristall** (Taste `7`, `surface: true`, `surfaceBlur: 0.012`, `usesPalette: true`): Hinter der Flüssigkeit ein
+  im Code erzeugtes, ruhiges Hintergrundmuster (`bgPattern`, 14 Zellen pro Bildschirmhöhe, kantengeglättet über `fwidth`):
+  **Gitter** (helle Linien auf farbigem Grund), **Streifen** (diagonal, orange/blau), **Punkte** (bunte Punkte auf dunklem
+  Grund), **Farbverlauf** (Regenbogen). Brechung: Versatz `−n.xy · (0,4 + Höhe) · Brechung · 0,06` (dicke, steile Stellen
+  stärker). Farbsäume: R/G/B mit Faktor `1 ± Farbsäume · (0,15 + 0,45 · Rand)` verschoben → **genau 3 Musterabfragen pro
+  Pixel**. Tönung: Muster × gemalte Farbe (`palette(L.t)`) plus leichte Eigenfarbe (× 0,22), dicker = satter (sonst wäre die
+  Farbe über dunklen Musterstellen nicht sichtbar). Fresnel (`f0 = 0,06`) mischt die Studio-Spiegelung ein, dazu
+  `studioSpecular(n, 0,85)`. Ohne Flüssigkeit: Muster unverzerrt, × 0,3 abgedunkelt, weicher Übergang
+  `smoothstep(0,02; 0,2; Höhe)`. Look-Regler (`params: ['refract', 'chroma', 'tint', 'bgType', 'bgBright']`):
+  **Brechung** 0–3× (Standard 1×), **Farbsäume** 0–100 % (Standard 50 %, 0 = aus), **Tönung** 0–100 % (Standard 60 %),
+  **Hintergrund** Gitter/Streifen/Punkte/Farbverlauf (rastet ein, blendet weich über; Standard Gitter),
+  **Hintergrund-Helligkeit** 10–150 % (Standard 70 %). Umgebung dreht mit dem Metallic-Regler „Umgebung drehen“ mit.
+  Gemessen (Stufe Maximum, 674×1322): Baustein ≈ 0,26 ms + Look ≈ 0,31 ms; alle Stufen fehlerfrei, 60 FPS.
+- **Oberfläche (Test)** (Taste `8`): Prüf-Look für den Oberflächen-Baustein. Zeigt die Normale als Farben (Normal-Map-Stil:
   Neigung nach rechts = Rot, nach oben = Grün, flach = Lila-Blau) mit leichter Schattierung durch ein festes Licht;
   Bereiche ohne Farbe schwarz. Vorläufige Regler (`params: ['bump', 'saturation']`, später entfernen oder in Metallic
   übernehmen): **Wölbung** 0–4× (`uBump`, Standard 1×) und **Sättigung** 0,3–6 (k in der Höhenformel, Standard 2).
-- Geplant (nacheinander einbauen): Glas/Kristall, Wasser, Seifenblase/Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru),
+- Geplant (nacheinander einbauen): Wasser, Seifenblase/Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru),
   Galaxie/Nebel/Aurora.
 
 ## Oberflächen-Baustein (Höhenfeld → Neigung)

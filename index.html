@@ -279,6 +279,26 @@
       <label for="gloss">Glanz <output id="glossOut"></output></label>
       <input id="gloss" type="range" min="0" max="1" step="0.01">
     </div>
+    <div class="row look-param" data-param="refract">
+      <label for="refract">Brechung <output id="refractOut"></output></label>
+      <input id="refract" type="range" min="0" max="3" step="0.05">
+    </div>
+    <div class="row look-param" data-param="chroma">
+      <label for="chroma">Farbsäume <output id="chromaOut"></output></label>
+      <input id="chroma" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="tint">
+      <label for="tint">Tönung <output id="tintOut"></output></label>
+      <input id="tint" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="bgType">
+      <label for="bgType">Hintergrund <output id="bgTypeOut"></output></label>
+      <input id="bgType" type="range" min="0" max="3" step="any">
+    </div>
+    <div class="row look-param" data-param="bgBright">
+      <label for="bgBright">Hintergrund-Helligkeit <output id="bgBrightOut"></output></label>
+      <input id="bgBright" type="range" min="0.1" max="1.5" step="0.01">
+    </div>
     <div class="row look-param" data-param="envSpin">
       <label for="envSpin">Umgebung drehen <output id="envSpinOut"></output></label>
       <input id="envSpin" type="range" min="0" max="1" step="0.01">
@@ -384,6 +404,11 @@ const PARAMS = {
   metal:       { target: 0,    current: 0,    def: 0    },  // Look-Regler (Metallic): 0 Chrom, 1 Gold, 2 Kupfer, 3 Rosé
   gloss:       { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Metallic): Glanz, 0 = weich, 1 = scharf
   envSpin:     { target: 0.2,  current: 0.2,  def: 0.2  },  // Look-Regler (Metallic): Drehgeschwindigkeit der Umgebung, 0 = aus
+  refract:     { target: 1,    current: 1,    def: 1    },  // Look-Regler (Glas): Stärke der Verzerrung
+  chroma:      { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Glas): Farbsäume, 0 = aus
+  tint:        { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Glas): wie stark die gemalte Farbe das Glas tönt
+  bgType:      { target: 0,    current: 0,    def: 0    },  // Look-Regler (Glas): 0 Gitter, 1 Streifen, 2 Punkte, 3 Farbverlauf
+  bgBright:    { target: 0.7,  current: 0.7,  def: 0.7  },  // Look-Regler (Glas): Hintergrund-Helligkeit
   bloomIntensity: { target: 1,    current: 1,    def: 1    },  // Bloom: Stärke des Glows (0 = aus)
   bloomThreshold: { target: 0.4,  current: 0.4,  def: 0.4  },  // Bloom: ab welcher Helligkeit (0..1) etwas leuchtet
   bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
@@ -674,6 +699,8 @@ const shaders = {
 //   uSensitivity und uDyeMix (Look-Regler "Empfindlichkeit" / "Farbstoff-Anteil")
 // Oberflächen-Baustein (nur mit surface: true im Look):
 //   heightAt(uv) (geglättete Höhe 0..1), surfaceNormal(uv, strength) (Oberflächenneigung, z zum Betrachter)
+// Spiegelnde Oberflächen (Metallic, Glas …):
+//   studio(r, soft) (Studio-Umgebung), fresnelSchlick(f0, cosT), studioSpecular(n, gloss) (Glanzlicht)
 // Neuer Look = neuer Eintrag in LOOKS. Sonst muss nichts angefasst werden.
 // Mit params: ['sensitivity', 'dyeMix'] zeigt das Panel die passenden Look-Regler an.
 const lookHeader = header + `
@@ -715,6 +742,49 @@ const lookHeader = header + `
   uniform float uMetal;         // Look-Regler "Metall-Typ" (0 Chrom, 1 Gold, 2 Kupfer, 3 Rosé – Zwischenwerte beim Überblenden)
   uniform float uGloss;         // Look-Regler "Glanz" (0 = weich/matt, 1 = scharf spiegelnd)
   uniform float uEnvAngle;      // aktueller Drehwinkel der Umgebung (wird in JavaScript aufsummiert)
+  uniform float uRefract;       // Look-Regler "Brechung" (Glas)
+  uniform float uChroma;        // Look-Regler "Farbsäume" (Glas, 0 = aus)
+  uniform float uTint;          // Look-Regler "Tönung" (Glas)
+  uniform float uBgType;        // Look-Regler "Hintergrund" (0 Gitter, 1 Streifen, 2 Punkte, 3 Farbverlauf)
+  uniform float uBgBright;      // Look-Regler "Hintergrund-Helligkeit"
+
+  // ----- Spiegelnde Oberflächen (gemeinsam für Metallic, Glas … ) -----
+  // weiches Rechteck (Softbox) in der Umgebung; p = (Richtung, Höhe), soft = Kantenweichheit
+  float softbox (vec2 p, vec2 center, vec2 halfSize, float soft) {
+    vec2 d = abs(p - center) - halfSize;
+    float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+    return 1.0 - smoothstep(-soft, soft, dist);
+  }
+  // Im Code erzeugte Studio-Umgebung: heller Horizont, dunkel nach oben, dunkler Boden, drei Lichtflächen.
+  // r = Blickrichtung in die Umgebung (z zeigt zum Betrachter, y nach oben), soft = Kantenweichheit der Lichtflächen.
+  vec3 studio (vec3 r, float soft) {
+    float ca = cos(uEnvAngle), sa = sin(uEnvAngle);
+    r = vec3(ca * r.x + sa * r.z, r.y, -sa * r.x + ca * r.z);        // langsam um die senkrechte Achse drehen
+    // Höhe über dem Horizont; der Horizont liegt leicht unter der Blickrichtung, damit flache Stellen
+    // den hellen Bereich knapp darüber spiegeln (statt halb den dunklen Boden)
+    float el = asin(clamp(r.y, -1.0, 1.0)) + 0.15;
+    float az = atan(r.x, r.z);                                       // Himmelsrichtung
+    // heller Horizont → flaches Metall mittelgrau, aber knapp unter der Bloom-Schwelle (≈ 0,4):
+    // so leuchten mit Bloom nur die Lichtflächen-Spiegelungen, nicht die ganze Fläche
+    vec3 horizon = vec3(0.40, 0.42, 0.46);
+    // dunkelste Stellen (Himmel oben, Boden unten) nicht ganz schwarz, damit spiegelnde Flächen
+    // auch dort noch vom schwarzen Hintergrund zu unterscheiden sind
+    vec3 sky   = mix(horizon, vec3(0.13, 0.14, 0.17), smoothstep(0.0, 1.0, el));
+    vec3 ground = mix(horizon * 0.6, vec3(0.12, 0.12, 0.13), smoothstep(0.0, -0.7, el));
+    vec3 c = mix(ground, sky, smoothstep(-0.05, 0.05, el));
+    vec2 p = vec2(az, el);
+    float s = softbox(p, vec2( 0.0, 0.42), vec2(0.95, 0.10), soft) * 3.0    // breite Lichtleiste oben
+            + softbox(p, vec2(-1.1, 0.05), vec2(0.14, 0.45), soft) * 2.2    // hohe Softbox links
+            + softbox(p, vec2( 1.3, 0.10), vec2(0.18, 0.35), soft) * 2.0;   // Softbox rechts
+    return c + vec3(1.0, 0.98, 0.95) * s;                            // Lichtflächen heller als Weiß → Bloom
+  }
+  // Fresnel (Schlick): f0 = Spiegelung bei senkrechtem Blick; an steilen Flanken (cosT klein) spiegelt alles stärker
+  vec3 fresnelSchlick (vec3 f0, float cosT) { return f0 + (1.0 - f0) * pow(1.0 - max(cosT, 0.0), 5.0); }
+  // scharfes Glanzlicht einer Lampe oben links (Blinn-Phong); gloss 0 = weich/schwach, 1 = scharf/kräftig
+  float studioSpecular (vec3 n, float gloss) {
+    vec3 hv = normalize(normalize(vec3(-0.4, 0.6, 0.7)) + vec3(0.0, 0.0, 1.0));
+    return pow(max(dot(n, hv), 0.0), mix(20.0, 300.0, gloss)) * mix(0.4, 1.5, gloss);
+  }
 
   // Farbe an Position t der aktiven Palette (5 Farben, ringförmig)
   vec3 palette (float t) {
@@ -865,51 +935,82 @@ const LOOKS = [
         m = clamp(m, 0.0, 3.0);
         return m < 1.0 ? mix(c0, c1, m) : m < 2.0 ? mix(c1, c2, m - 1.0) : mix(c2, c3, m - 2.0);
       }
-      // weiches Rechteck (Softbox) in der Umgebung; p = (Richtung, Höhe), soft = Kantenweichheit
-      float softbox (vec2 p, vec2 center, vec2 halfSize, float soft) {
-        vec2 d = abs(p - center) - halfSize;
-        float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
-        return 1.0 - smoothstep(-soft, soft, dist);
-      }
-      // Im Code erzeugte Studio-Umgebung: heller Horizont, dunkel nach oben, dunkler Boden, drei Lichtflächen.
-      // r = Blickrichtung in die Umgebung (z zeigt zum Betrachter, y nach oben).
-      vec3 studio (vec3 r, float soft) {
-        float ca = cos(uEnvAngle), sa = sin(uEnvAngle);
-        r = vec3(ca * r.x + sa * r.z, r.y, -sa * r.x + ca * r.z);        // langsam um die senkrechte Achse drehen
-        // Höhe über dem Horizont; der Horizont liegt leicht unter der Blickrichtung, damit flache Stellen
-        // den hellen Bereich knapp darüber spiegeln (statt halb den dunklen Boden)
-        float el = asin(clamp(r.y, -1.0, 1.0)) + 0.15;
-        float az = atan(r.x, r.z);                                       // Himmelsrichtung
-        // heller Horizont → flaches Metall mittelgrau, aber knapp unter der Bloom-Schwelle (≈ 0,4):
-        // so leuchten mit Bloom nur die Lichtflächen-Spiegelungen, nicht der ganze Metallkörper
-        vec3 horizon = vec3(0.40, 0.42, 0.46);
-        // dunkelste Stellen (Himmel oben, Boden unten) nicht ganz schwarz, damit spiegelnde Metallflächen
-        // auch dort noch vom schwarzen Hintergrund zu unterscheiden sind
-        vec3 sky   = mix(horizon, vec3(0.13, 0.14, 0.17), smoothstep(0.0, 1.0, el));
-        vec3 ground = mix(horizon * 0.6, vec3(0.12, 0.12, 0.13), smoothstep(0.0, -0.7, el));
-        vec3 c = mix(ground, sky, smoothstep(-0.05, 0.05, el));
-        vec2 p = vec2(az, el);
-        float s = softbox(p, vec2( 0.0, 0.42), vec2(0.95, 0.10), soft) * 3.0    // breite Lichtleiste oben
-                + softbox(p, vec2(-1.1, 0.05), vec2(0.14, 0.45), soft) * 2.2    // hohe Softbox links
-                + softbox(p, vec2( 1.3, 0.10), vec2(0.18, 0.35), soft) * 2.0;   // Softbox rechts
-        return c + vec3(1.0, 0.98, 0.95) * s;                            // Lichtflächen heller als Weiß → Bloom
-      }
       vec3 look (LookInput L) {
         // Spiegelungen reagieren sehr empfindlich auf kleine Wellen → intern halbe Wölbung, sonst glitzert alles
         vec3 n = surfaceNormal(L.uv, uBump * 0.5);
-        vec3 v = vec3(0.0, 0.0, 1.0);                     // wir schauen senkrecht auf die Oberfläche
-        vec3 r = reflect(-v, n);                          // Richtung, in die die Oberfläche spiegelt
+        vec3 r = reflect(vec3(0.0, 0.0, -1.0), n);        // wir schauen senkrecht drauf; Richtung der Spiegelung
         vec3 env = studio(r, mix(0.35, 0.02, uGloss));    // Glanz: scharfe oder weiche Spiegelung
         // Fresnel: an steilen Flanken (flacher Blickwinkel) spiegelt Metall stärker und farbneutraler
         vec3 f0 = metalColor(uMetal);
-        vec3 fresnel = f0 + (1.0 - f0) * pow(1.0 - max(n.z, 0.0), 5.0);
-        vec3 col = env * fresnel;
-        // scharfes Glanzlicht einer Lampe oben links
-        vec3 hv = normalize(normalize(vec3(-0.4, 0.6, 0.7)) + v);
-        float spec = pow(max(dot(n, hv), 0.0), mix(20.0, 300.0, uGloss)) * mix(0.4, 1.5, uGloss);
-        col += spec * mix(f0, vec3(1.0), 0.5);
+        vec3 col = env * fresnelSchlick(f0, n.z);
+        col += studioSpecular(n, uGloss) * mix(f0, vec3(1.0), 0.5);   // scharfes Glanzlicht
         // nur wo Flüssigkeit ist; zum Rand hin weich auslaufen
         return col * smoothstep(0.02, 0.15, heightAt(L.uv));
+      }`,
+  },
+  {
+    name: 'Glas / Kristall',
+    surface: true,
+    surfaceBlur: 0.012,   // glatter als der Standard, damit Brechung und Spiegelungen ruhig wirken
+    usesPalette: true,    // die gemalte Farbe tönt das Glas
+    params: ['refract', 'chroma', 'tint', 'bgType', 'bgBright'],
+    glsl: `
+      // Kantengeglättete Linie: 1 auf der Linie, 0 daneben; w = halbe Linienbreite (in Musterzellen)
+      float aaLine (float x, float w) {
+        float d = abs(fract(x - 0.5) - 0.5), aa = fwidth(x);
+        return 1.0 - smoothstep(w - aa, w + aa, d);
+      }
+      // Ruhige, im Code erzeugte Hintergrundmuster (bewegen sich nicht). q = Position in Musterzellen.
+      vec3 bgPattern (vec2 q, float type) {
+        // dezenter Farbverlauf als Grundton, damit auch die Muster farbig sind
+        vec3 base = hsv2rgb(vec3(fract(q.x * 0.035 + q.y * 0.02 + 0.55), 0.55, 0.35));
+        if (type < 0.5) {                                   // Gitter: helle Linien auf farbigem Grund
+          return mix(base, vec3(0.95), max(aaLine(q.x, 0.05), aaLine(q.y, 0.05)));
+        } else if (type < 1.5) {                            // Streifen: diagonal, warm/kühl im Wechsel
+          float s = (q.x + q.y) * 0.5, aa = fwidth(s);
+          float m = smoothstep(0.5 - aa, 0.5 + aa, abs(fract(s) - 0.5) * 2.0);
+          return mix(vec3(0.95, 0.55, 0.22), vec3(0.18, 0.40, 0.95), m);
+        } else if (type < 2.5) {                            // Punkte: bunte Punkte auf dunklem Grund
+          vec2 cell = floor(q);
+          float d = length(fract(q) - 0.5), aa = fwidth(d);
+          vec3 dotCol = hsv2rgb(vec3(fract(dot(cell, vec2(0.13, 0.07))), 0.65, 1.0));
+          return mix(base * 0.5, dotCol, 1.0 - smoothstep(0.24 - aa, 0.24 + aa, d));
+        }
+        // Farbverlauf: kräftiger Regenbogen-Verlauf quer über das Bild
+        return hsv2rgb(vec3(fract(q.x * 0.06 + q.y * 0.04), 0.7, 0.9));
+      }
+      // Muster an einer Bildposition; Zwischenwerte des Reglers blenden zwei Muster weich über
+      vec3 background (vec2 uv) {
+        vec2 q = vec2(uv.x * uAspect, uv.y) * 14.0;        // 14 Zellen pro Bildschirmhöhe, quadratisch
+        float i = floor(uBgType), f = uBgType - i;
+        vec3 c = bgPattern(q, i);
+        if (f > 0.001) c = mix(c, bgPattern(q, i + 1.0), f);
+        return c * uBgBright;
+      }
+      vec3 look (LookInput L) {
+        float h = heightAt(L.uv);
+        float glass = smoothstep(0.02, 0.2, h);             // 0 = kein Glas, 1 = Glas – weicher Übergang
+        vec3 n = surfaceNormal(L.uv, 1.0);
+        // Brechung: Hintergrund um einen Versatz aus der Neigung verschieben; dicke, steile Stellen stärker
+        vec2 off = -n.xy * (0.4 + h) * uRefract * 0.06 * glass;
+        // Farbsäume: Rot, Grün, Blau unterschiedlich weit verschoben, an den Rändern (steile Neigung) stärker
+        float edge = clamp((1.0 - n.z) * 12.0, 0.0, 1.0);
+        float ca = uChroma * (0.15 + 0.45 * edge);
+        // genau drei Abfragen des Hintergrunds (eine pro Farbkanal)
+        vec3 seen = vec3(background(L.uv + off * (1.0 + ca)).r,
+                         background(L.uv + off).g,
+                         background(L.uv + off * (1.0 - ca)).b);
+        // Tönung durch die gemalte Farbe; dickere Bereiche etwas satter. Das durchscheinende Muster wird eingefärbt,
+        // dazu kommt eine leichte Eigenfarbe des Glases – so bleibt die Farbe auch über dunklen Musterstellen sichtbar.
+        vec3 tintCol = palette(L.t);
+        float tintAmount = uTint * (0.35 + 0.65 * h);
+        vec3 tinted = seen * mix(vec3(1.0), tintCol, tintAmount) + tintCol * tintAmount * 0.22;
+        // Spiegelung der Studio-Umgebung (aus Metallic) mit Fresnel: Ränder heller und spiegelnder
+        vec3 r = reflect(vec3(0.0, 0.0, -1.0), n);
+        float F = fresnelSchlick(vec3(0.06), n.z).r;
+        vec3 col = mix(tinted, studio(r, 0.05), F) + studioSpecular(n, 0.85);
+        // ohne Flüssigkeit: Hintergrund unverzerrt (off = 0), aber abgedunkelt – weich überblendet
+        return mix(seen * 0.3, col, glass);
       }`,
   },
   {
@@ -1230,6 +1331,11 @@ function drawLook(i, alpha, time, target) {
   if (u.uMetal) gl.uniform1f(u.uMetal, PARAMS.metal.current);
   if (u.uGloss) gl.uniform1f(u.uGloss, PARAMS.gloss.current);
   if (u.uEnvAngle) gl.uniform1f(u.uEnvAngle, envAngle);
+  if (u.uRefract) gl.uniform1f(u.uRefract, PARAMS.refract.current);
+  if (u.uChroma) gl.uniform1f(u.uChroma, PARAMS.chroma.current);
+  if (u.uTint) gl.uniform1f(u.uTint, PARAMS.tint.current);
+  if (u.uBgType) gl.uniform1f(u.uBgType, PARAMS.bgType.current);
+  if (u.uBgBright) gl.uniform1f(u.uBgBright, PARAMS.bgBright.current);
   gl.uniform1f(u.uAlpha, alpha);
   blit(target);   // null = direkt auf den Bildschirm, sonst in die Szenen-Textur für den Bloom
 }
@@ -1611,6 +1717,12 @@ bindSlider('saturation', PARAMS.saturation, v => v.toFixed(2));
 bindSlider('metal',   PARAMS.metal,   v => ['Chrom', 'Gold', 'Kupfer', 'Rosé'][v], { snap: v => Math.round(v) });
 bindSlider('gloss',   PARAMS.gloss,   v => Math.round(v * 100) + ' %');
 bindSlider('envSpin', PARAMS.envSpin, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('refract',  PARAMS.refract,  v => v.toFixed(2) + '×');
+bindSlider('chroma',   PARAMS.chroma,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('tint',     PARAMS.tint,     v => Math.round(v * 100) + ' %');
+// Hintergrund: rastet auf ein Muster ein, Zwischenstellungen blenden beim Wechsel weich über
+bindSlider('bgType',   PARAMS.bgType,   v => ['Gitter', 'Streifen', 'Punkte', 'Farbverlauf'][v], { snap: v => Math.round(v) });
+bindSlider('bgBright', PARAMS.bgBright, v => Math.round(v * 100) + ' %');
 bindSlider('dyeMix',      PARAMS.dyeMix,      v => Math.round(v * 100) + ' %');
 setLook(0);
 
