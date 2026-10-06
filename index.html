@@ -80,6 +80,10 @@
   #panel .sec:nth-child(4) { transition-delay: .12s; }
   #panel .sec:nth-child(5) { transition-delay: .16s; }
   #panel .sec:nth-child(6) { transition-delay: .2s; }
+  #panel .sec:nth-child(7) { transition-delay: .24s; }
+  /* Bloom-Regler treten zurück, wenn der Glow ausgeschaltet ist */
+  #bloomControls { transition: opacity .4s var(--smooth); }
+  #bloomControls.unused { opacity: .35; }
 
   /* Auto-Play als Bildschirmschoner: Oberfläche blendet langsam ganz aus */
   body.screensaver .ui, body.screensaver #cursor { opacity: 0 !important; pointer-events: none; transition: opacity 1.8s var(--smooth); }
@@ -253,6 +257,24 @@
     <div id="palettes"></div>
   </div>
   <div class="sec">
+    <h3>Bloom</h3>
+    <label class="switch-row" id="bloomSwitchRow" style="margin-top:0">Glow <span class="switch on" id="bloomSwitch"></span></label>
+    <div id="bloomControls">
+      <div class="row" style="margin-top:12px">
+        <label for="bloomIntensity">Bloom-Intensität <output id="bloomIntensityOut"></output></label>
+        <input id="bloomIntensity" type="range" min="0" max="2" step="0.01">
+      </div>
+      <div class="row">
+        <label for="bloomThreshold">Bloom-Schwelle <output id="bloomThresholdOut"></output></label>
+        <input id="bloomThreshold" type="range" min="0" max="1" step="0.01">
+      </div>
+      <div class="row" style="margin-bottom:0">
+        <label for="bloomSoftness">Bloom-Weichheit <output id="bloomSoftnessOut"></output></label>
+        <input id="bloomSoftness" type="range" min="0" max="1" step="0.01">
+      </div>
+    </div>
+  </div>
+  <div class="sec">
     <h3>Qualität</h3>
     <div class="row" style="margin-bottom:0">
       <label for="quality">Stufe <output id="qualityOut"></output></label>
@@ -290,19 +312,23 @@ const CONFIG = {
   IDLE_SECONDS: 30,         // so lange ohne Eingabe, bis Auto-Play startet
   AUTOPLAY_PALETTE_SECONDS: 25,  // im Auto-Play alle X Sekunden zur nächsten Palette überblenden
   REF_RESOLUTION: 128,      // Bezugsgröße, damit sich die Strömung bei jeder Qualität gleich anfühlt
+  BLOOM_GAIN: 6,            // Verstärkung des Glows: Looks liefern höchstens Helligkeit 1, beim Weichzeichnen
+                            // kommt außen nur ein kleiner Bruchteil an – ohne Verstärkung wäre er kaum sichtbar.
+                            // Ausbleichen verhindert die "Aufhellen"-Mischung in bloomFinal.
 };
 
 // Qualitätsstufen: sim = Raster der Strömung, dye = Auflösung der Farbe,
 // dpr = maximale Pixeldichte des Bildschirms, pressure = Rechendurchgänge für den Druck
 // over = wie viel feiner als der Bildschirm die Farbe höchstens berechnet wird
 // (über 1 = "Supersampling": Farbe bleibt länger gestochen scharf, kostet aber viel Leistung)
+// bloomDiv = Bloom startet bei Bildschirmauflösung / bloomDiv, bloomLevels = Anzahl der Weichzeichnungs-Stufen
 const QUALITY = [
-  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12 },
-  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20 },
-  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25 },
-  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35 },
-  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, heavy: true },
-  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, heavy: true },
+  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4 },
+  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5 },
+  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6 },
+  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7 },
+  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, heavy: true },
+  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, heavy: true },
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
@@ -316,6 +342,10 @@ const PARAMS = {
   brush:     { target: 1,   current: 1,   def: 1   },  // Pinselgröße (1 = Standard, als Faktor auf den Radius)
   sensitivity: { target: 1,    current: 1,    def: 1    },  // Look-Regler: wie stark Bewegung in Helligkeit umgesetzt wird
   dyeMix:      { target: 0.25, current: 0.25, def: 0.25 },  // Look-Regler: wie stark die eingemalte Farbe durchscheint
+  bloomIntensity: { target: 1,    current: 1,    def: 1    },  // Bloom: Stärke des Glows (0 = aus)
+  bloomThreshold: { target: 0.4,  current: 0.4,  def: 0.4  },  // Bloom: ab welcher Helligkeit (0..1) etwas leuchtet
+  bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
+  bloomOn:        { target: 1,    current: 1,    def: 1    },  // Bloom-Schalter (wird weich ein-/ausgeblendet)
 };
 
 // Farbpaletten: je 5 Farben, die ringförmig ineinander übergehen
@@ -481,6 +511,72 @@ const shaders = {
         for (int i = 0; i < 4; i++)
           s += texture(uCurl, vUv + (vec2(i, j) - 1.5) / 4.0 * uFootprint).x;
       fragColor = vec4(s / 16.0, 0.0, 0.0, 1.0);
+    }`,
+
+  // ----- Bloom (Nachbearbeitung, arbeitet nur mit dem fertigen Bild des Looks) -----
+  // 1) Helle Bereiche herausfiltern und dabei verkleinern. Der "weiche Knick" (Knee) sorgt dafür,
+  //    dass Dinge knapp unter der Schwelle sanft einsetzen statt hart aufzuleuchten.
+  bloomPrefilter: header + `
+    uniform sampler2D uTexture;
+    uniform vec2 uSrcTexel;
+    uniform float uThreshold;
+    uniform float uKnee;
+    void main () {
+      vec3 c = 0.25 * (texture(uTexture, vUv + vec2(-1.0, -1.0) * uSrcTexel).rgb +
+                       texture(uTexture, vUv + vec2( 1.0, -1.0) * uSrcTexel).rgb +
+                       texture(uTexture, vUv + vec2(-1.0,  1.0) * uSrcTexel).rgb +
+                       texture(uTexture, vUv + vec2( 1.0,  1.0) * uSrcTexel).rgb);
+      float br = max(c.r, max(c.g, c.b));
+      float soft = clamp(br - uThreshold + uKnee, 0.0, 2.0 * uKnee);
+      soft = soft * soft / (4.0 * uKnee + 1e-4);
+      float contribution = max(soft, br - uThreshold) / max(br, 1e-4);
+      fragColor = vec4(c * contribution, 1.0);
+    }`,
+
+  // 2) Halbieren und dabei weichzeichnen (4 Messpunkte, jeder mittelt durch die Grafikkarte 2×2 Pixel)
+  bloomDown: header + `
+    uniform sampler2D uTexture;
+    uniform vec2 uSrcTexel;
+    void main () {
+      fragColor = vec4(0.25 * (texture(uTexture, vUv + vec2(-1.0, -1.0) * uSrcTexel).rgb +
+                               texture(uTexture, vUv + vec2( 1.0, -1.0) * uSrcTexel).rgb +
+                               texture(uTexture, vUv + vec2(-1.0,  1.0) * uSrcTexel).rgb +
+                               texture(uTexture, vUv + vec2( 1.0,  1.0) * uSrcTexel).rgb), 1.0);
+    }`,
+
+  // 3) Kleinere (weichere) Stufe vergrößern ("Zelt-Filter" aus 9 Punkten) und mit der größeren Stufe mischen.
+  //    uScatter = Mischverhältnis: je höher, desto mehr Licht wandert in die weiten, weichen Stufen
+  //    → bestimmt, wie weit der Glow ausstrahlt, ohne das Bild insgesamt heller zu machen.
+  bloomUp: header + `
+    uniform sampler2D uHigh;     // gleiche Größe wie das Ziel (schärfer)
+    uniform sampler2D uLow;      // halbe Größe (weicher), schon zusammengesetzt
+    uniform vec2 uLowTexel;
+    uniform float uScatter;
+    void main () {
+      vec2 d = uLowTexel;
+      vec3 c = texture(uLow, vUv).rgb * 4.0;
+      c += (texture(uLow, vUv + vec2(-d.x, 0.0)).rgb + texture(uLow, vUv + vec2(d.x, 0.0)).rgb +
+            texture(uLow, vUv + vec2(0.0, -d.y)).rgb + texture(uLow, vUv + vec2(0.0, d.y)).rgb) * 2.0;
+      c += texture(uLow, vUv + vec2(-d.x, -d.y)).rgb + texture(uLow, vUv + vec2(d.x, -d.y)).rgb +
+           texture(uLow, vUv + vec2(-d.x,  d.y)).rgb + texture(uLow, vUv + vec2(d.x,  d.y)).rgb;
+      fragColor = vec4(mix(texture(uHigh, vUv).rgb, c / 16.0, uScatter), 1.0);
+    }`,
+
+  // 4) Glow auf das Originalbild legen.
+  //    a) Farbtreu begrenzen: der Glow wird als Ganzes heruntergeregelt (nie über Weiß), die Farbanteile bleiben gleich.
+  //    b) "Aufhellen": pro Bildpunkt gilt der hellere Wert von Bild und Glow. Helle Flächen bleiben unverändert
+  //       (nichts bleicht aus), der Glow zeigt sich als Schein in der dunkleren Umgebung. Wo kein Glow ist,
+  //       bleibt das Bild exakt wie vorher – dunkel bleibt dunkel.
+  bloomFinal: header + `
+    uniform sampler2D uScene;
+    uniform sampler2D uBloom;
+    uniform float uIntensity;
+    void main () {
+      vec3 s = clamp(texture(uScene, vUv).rgb, 0.0, 1.0);
+      vec3 b = texture(uBloom, vUv).rgb * uIntensity;
+      float m = max(b.r, max(b.g, b.b));
+      b *= (1.0 - exp(-m)) / max(m, 1e-4);
+      fragColor = vec4(max(s, b), 1.0);
     }`,
 };
 
@@ -893,7 +989,7 @@ let lookIndex = 0;        // aktiver Look
 let prevLook = 0;         // Look, von dem gerade weggeblendet wird
 let lookFade = 1;         // 0..1, Fortschritt der Überblendung (1 = fertig)
 
-function drawLook(i, alpha, time) {
+function drawLook(i, alpha, time, target) {
   const u = use('look' + i);
   gl.uniform1i(u.uDye, dye.read.attach(0));
   // Nur übergeben, was der Look wirklich benutzt (ungenutzte Uniforms entfernt der Shader-Compiler)
@@ -906,7 +1002,7 @@ function drawLook(i, alpha, time) {
   if (u.uSensitivity) gl.uniform1f(u.uSensitivity, PARAMS.sensitivity.current);
   if (u.uDyeMix) gl.uniform1f(u.uDyeMix, PARAMS.dyeMix.current);
   gl.uniform1f(u.uAlpha, alpha);
-  blit(null);
+  blit(target);   // null = direkt auf den Bildschirm, sonst in die Szenen-Textur für den Bloom
 }
 
 // Kleine, geglättete Kopie der Wirbel-Textur – wird nur berechnet, wenn ein sichtbarer Look sie braucht
@@ -924,17 +1020,96 @@ function updateCurlSmooth() {
   blit(curlSmooth);
 }
 
+// ---------- Bloom (Nachbearbeitung) ----------
+// Läuft NACH dem Look: Der Look zeichnet in die Szenen-Textur, daraus entsteht der Glow,
+// und erst das Ergebnis kommt auf den Bildschirm. Die Weichzeichnung arbeitet nur mit verkleinerten Texturen.
+let scene = null;          // fertiges Bild des Looks in voller Auflösung
+let bloomLevels = [];      // Mip-Kette (Hinweg): jede Stufe halb so groß wie die vorige
+let bloomUpLevels = [];    // Rückweg: zusammengesetzte Stufen (gleiche Größen wie bloomLevels, ohne die kleinste)
+let bloomKey = '';
+function ensureBloomBuffers() {
+  const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, q = QUALITY[qualityLevel];
+  const key = `${w}x${h}:${qualityLevel}`;
+  if (key === bloomKey) return;           // Fenstergröße und Qualität unverändert → nichts zu tun
+  bloomKey = key;
+  if (scene) scene.free();
+  for (const l of [...bloomLevels, ...bloomUpLevels]) l.free();
+  scene = createFBO(w, h, gl.RGBA16F, gl.RGBA);
+  bloomLevels = [];
+  bloomUpLevels = [];
+  let bw = Math.floor(w / q.bloomDiv), bh = Math.floor(h / q.bloomDiv);
+  while (bloomLevels.length < q.bloomLevels && Math.min(bw, bh) >= 4) {
+    bloomLevels.push(createFBO(bw, bh, gl.RGBA16F, gl.RGBA));
+    bw = Math.floor(bw / 2); bh = Math.floor(bh / 2);
+  }
+  for (let i = 0; i < bloomLevels.length - 1; i++) {
+    bloomUpLevels.push(createFBO(bloomLevels[i].w, bloomLevels[i].h, gl.RGBA16F, gl.RGBA));
+  }
+}
+
+function applyBloom(intensity) {
+  const n = bloomLevels.length;
+  const threshold = PARAMS.bloomThreshold.current;
+  const scatter = 0.4 + 0.55 * PARAMS.bloomSoftness.current;   // Weichheit 0..1 → Mischverhältnis 0,4..0,95
+
+  // 1) helle Bereiche herausfiltern → erste (verkleinerte) Stufe
+  let u = use('bloomPrefilter');
+  gl.uniform1i(u.uTexture, scene.attach(0));
+  gl.uniform2fv(u.uSrcTexel, scene.texel);
+  gl.uniform1f(u.uThreshold, threshold);
+  gl.uniform1f(u.uKnee, Math.max(0.05, threshold * 0.5));
+  blit(bloomLevels[0]);
+
+  // 2) immer weiter halbieren
+  u = use('bloomDown');
+  for (let i = 1; i < n; i++) {
+    gl.uniform1i(u.uTexture, bloomLevels[i - 1].attach(0));
+    gl.uniform2fv(u.uSrcTexel, bloomLevels[i - 1].texel);
+    blit(bloomLevels[i]);
+  }
+
+  // 3) von der kleinsten Stufe zurück nach oben: jede Stufe wird mit der weicheren, kleineren gemischt
+  u = use('bloomUp');
+  gl.uniform1f(u.uScatter, scatter);
+  let low = bloomLevels[n - 1];
+  for (let i = n - 2; i >= 0; i--) {
+    gl.uniform1i(u.uHigh, bloomLevels[i].attach(0));
+    gl.uniform1i(u.uLow, low.attach(1));
+    gl.uniform2fv(u.uLowTexel, low.texel);
+    blit(bloomUpLevels[i]);
+    low = bloomUpLevels[i];
+  }
+
+  // 4) Glow auf das Original legen und auf den Bildschirm zeichnen
+  u = use('bloomFinal');
+  gl.uniform1i(u.uScene, scene.attach(0));
+  gl.uniform1i(u.uBloom, low.attach(1));
+  gl.uniform1f(u.uIntensity, intensity * CONFIG.BLOOM_GAIN);
+  blit(null);
+}
+
 function render(time, dt) {
   if (LOOKS[lookIndex].smoothCurl || (lookFade < 1 && LOOKS[prevLook].smoothCurl)) updateCurlSmooth();
-  if (lookFade >= 1) return drawLook(lookIndex, 1, time);
-  // Beim Wechsel kurz beide Looks zeichnen und den neuen weich darüberblenden
-  lookFade = Math.min(1, lookFade + dt / 0.6);
-  const k = lookFade * lookFade * (3 - 2 * lookFade);
-  drawLook(prevLook, 1, time);
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  drawLook(lookIndex, k, time);
-  gl.disable(gl.BLEND);
+
+  // Bloom nur, wenn er sichtbar etwas beiträgt – sonst zeichnet der Look direkt auf den Bildschirm (wie vorher)
+  const bloomAmount = PARAMS.bloomIntensity.current * PARAMS.bloomOn.current;
+  if (bloomAmount > 0.002) ensureBloomBuffers();
+  const target = bloomAmount > 0.002 && bloomLevels.length > 0 ? scene : null;
+
+  if (lookFade >= 1) {
+    drawLook(lookIndex, 1, time, target);
+  } else {
+    // Beim Wechsel kurz beide Looks zeichnen und den neuen weich darüberblenden
+    lookFade = Math.min(1, lookFade + dt / 0.6);
+    const k = lookFade * lookFade * (3 - 2 * lookFade);
+    drawLook(prevLook, 1, time, target);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    drawLook(lookIndex, k, time, target);
+    gl.disable(gl.BLEND);
+  }
+
+  if (target) applyBloom(bloomAmount);
 }
 
 // ---------- Farben ----------
@@ -1141,6 +1316,18 @@ function setLook(i) {
   const used = LOOKS[i].params || [];
   for (const row of document.querySelectorAll('.look-param')) row.classList.toggle('off', !used.includes(row.dataset.param));
 }
+// Bloom: Regler und Schalter (der Schalter blendet den Glow weich ein und aus)
+bindSlider('bloomIntensity', PARAMS.bloomIntensity, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('bloomThreshold', PARAMS.bloomThreshold, v => Math.round(v * 100) + ' %');
+bindSlider('bloomSoftness',  PARAMS.bloomSoftness,  v => Math.round(v * 100) + ' %');
+function setBloomOn(on) {
+  PARAMS.bloomOn.target = on ? 1 : 0;
+  $('bloomSwitch').classList.toggle('on', on);
+  $('bloomControls').classList.toggle('unused', !on);
+  toast(on ? 'Bloom an' : 'Bloom aus');
+}
+$('bloomSwitchRow').addEventListener('click', e => { e.preventDefault(); setBloomOn(PARAMS.bloomOn.target === 0); });
+
 bindSlider('sensitivity', PARAMS.sensitivity, v => v.toFixed(2) + '×');
 bindSlider('dyeMix',      PARAMS.dyeMix,      v => Math.round(v * 100) + ' %');
 setLook(0);
