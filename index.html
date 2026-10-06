@@ -263,6 +263,26 @@
       <label for="ember">Glutfarbe <output id="emberOut"></output></label>
       <input id="ember" type="range" min="0" max="1" step="0.01">
     </div>
+    <div class="row look-param" data-param="metal">
+      <label for="metal">Metall-Typ <output id="metalOut"></output></label>
+      <input id="metal" type="range" min="0" max="3" step="any">
+    </div>
+    <div class="row look-param" data-param="bump">
+      <label for="bump">Wölbung <output id="bumpOut"></output></label>
+      <input id="bump" type="range" min="0" max="4" step="0.05">
+    </div>
+    <div class="row look-param" data-param="saturation">
+      <label for="saturation">Sättigung <output id="saturationOut"></output></label>
+      <input id="saturation" type="range" min="0.3" max="6" step="0.05">
+    </div>
+    <div class="row look-param" data-param="gloss">
+      <label for="gloss">Glanz <output id="glossOut"></output></label>
+      <input id="gloss" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="envSpin">
+      <label for="envSpin">Umgebung drehen <output id="envSpinOut"></output></label>
+      <input id="envSpin" type="range" min="0" max="1" step="0.01">
+    </div>
   </div>
   <div class="sec" id="paletteSection">
     <h3>Farbpalette</h3>
@@ -324,6 +344,7 @@ const CONFIG = {
   IDLE_SECONDS: 30,         // so lange ohne Eingabe, bis Auto-Play startet
   AUTOPLAY_PALETTE_SECONDS: 25,  // im Auto-Play alle X Sekunden zur nächsten Palette überblenden
   REF_RESOLUTION: 128,      // Bezugsgröße, damit sich die Strömung bei jeder Qualität gleich anfühlt
+  SURFACE_BLUR: 0.006,      // Oberflächen-Baustein: Glättungsradius als Anteil der Bildschirmhöhe
   BLOOM_GAIN: 6,            // Verstärkung des Glows: Looks liefern höchstens Helligkeit 1, beim Weichzeichnen
                             // kommt außen nur ein kleiner Bruchteil an – ohne Verstärkung wäre er kaum sichtbar.
                             // Ausbleichen verhindert die "Aufhellen"-Mischung in bloomFinal.
@@ -334,13 +355,14 @@ const CONFIG = {
 // over = wie viel feiner als der Bildschirm die Farbe höchstens berechnet wird
 // (über 1 = "Supersampling": Farbe bleibt länger gestochen scharf, kostet aber viel Leistung)
 // bloomDiv = Bloom startet bei Bildschirmauflösung / bloomDiv, bloomLevels = Anzahl der Weichzeichnungs-Stufen
+// surfaceDiv = Höhenfeld des Oberflächen-Bausteins bei Bildschirmauflösung / surfaceDiv
 const QUALITY = [
-  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4 },
-  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5 },
-  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6 },
-  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7 },
-  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, heavy: true },
-  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, heavy: true },
+  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4 },
+  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2 },
+  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2 },
+  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1 },
+  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, heavy: true },
+  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, heavy: true },
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
@@ -357,6 +379,11 @@ const PARAMS = {
   heat:        { target: 1,    current: 1,    def: 1    },  // Look-Regler (Feuer): wie stark Dichte/Tempo in Hitze umgesetzt werden
   flicker:     { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Feuer): Stärke des Flackerns (0 = aus)
   ember:       { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Feuer): 0 = rötliche Glut, 1 = gelbweißes Feuer
+  bump:        { target: 1,    current: 1,    def: 1    },  // Look-Regler (Oberfläche, vorläufig): Wölbung = Stärke der Neigung
+  saturation:  { target: 2,    current: 2,    def: 2    },  // Look-Regler (Oberfläche, vorläufig): Sättigung k in 1 − exp(−Dichte·k)
+  metal:       { target: 0,    current: 0,    def: 0    },  // Look-Regler (Metallic): 0 Chrom, 1 Gold, 2 Kupfer, 3 Rosé
+  gloss:       { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Metallic): Glanz, 0 = weich, 1 = scharf
+  envSpin:     { target: 0.2,  current: 0.2,  def: 0.2  },  // Look-Regler (Metallic): Drehgeschwindigkeit der Umgebung, 0 = aus
   bloomIntensity: { target: 1,    current: 1,    def: 1    },  // Bloom: Stärke des Glows (0 = aus)
   bloomThreshold: { target: 0.4,  current: 0.4,  def: 0.4  },  // Bloom: ab welcher Helligkeit (0..1) etwas leuchtet
   bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
@@ -379,7 +406,7 @@ if (!gl || !gl.getExtension('EXT_color_buffer_float')) {
   $('error').style.display = 'block';
   throw new Error('WebGL2 / EXT_color_buffer_float nicht verfügbar');
 }
-gl.getExtension('OES_texture_float_linear');
+const floatLinear = !!gl.getExtension('OES_texture_float_linear');   // 32-Bit-Texturen weich filterbar?
 
 // ---------- Shader ----------
 const baseVertex = `#version 300 es
@@ -401,6 +428,12 @@ const header = `#version 300 es
   precision highp sampler2D;
   in vec2 vUv, vL, vR, vT, vB;
   out vec4 fragColor;
+`;
+
+// Gemeinsame Dichte-Funktion: Looks UND Oberflächen-Baustein lesen die Farbmenge auf genau dieselbe Weise
+const densityGLSL = `
+  // wie viel Farbe an dieser Stelle ist (Rot-Kanal der Farb-Textur, nie negativ)
+  float densityFrom (vec3 dye) { return max(dye.r, 0.0); }
 `;
 
 const shaders = {
@@ -593,6 +626,34 @@ const shaders = {
       b *= (1.0 - exp(-m)) / max(m, 1e-4);
       fragColor = vec4(max(s, b), 1.0);
     }`,
+
+  // ----- Oberflächen-Baustein (nur Darstellung: liest die Farb-Textur, schreibt nie in die Simulation) -----
+  // 1) Höhe aus der Dichte: 1 − exp(−Dichte · Sättigung) → steigt weich an und flacht bei viel Farbe ab.
+  //    4 Messpunkte je Bildpunkt mitteln, damit beim Verkleinern nichts flimmert.
+  surfaceHeight: header + densityGLSL + `
+    uniform sampler2D uDye;
+    uniform vec2 uDyeStep;      // Viertel eines Pixels im Höhenfeld
+    uniform float uSaturation;  // Look-Regler "Sättigung"
+    float h (vec2 uv) { return 1.0 - exp(-densityFrom(texture(uDye, uv).rgb) * uSaturation); }
+    void main () {
+      float s = h(vUv + vec2(-uDyeStep.x, -uDyeStep.y)) + h(vUv + vec2(uDyeStep.x, -uDyeStep.y))
+              + h(vUv + vec2(-uDyeStep.x,  uDyeStep.y)) + h(vUv + vec2(uDyeStep.x,  uDyeStep.y));
+      fragColor = vec4(s * 0.25, 0.0, 0.0, 1.0);
+    }`,
+
+  // 2) Glätten: Gauß-Weichzeichner aus 9 Punkten, einmal waagrecht und einmal senkrecht ("trennbar" = viel
+  //    günstiger als 9×9 Punkte). Entfernt Treppenstufen, damit die Neigung später glatt und rauschfrei ist.
+  surfaceBlur: header + `
+    uniform sampler2D uTexture;
+    uniform vec2 uStep;         // Abstand zwischen zwei Messpunkten, nur in einer Richtung
+    void main () {
+      float s = texture(uTexture, vUv).r * 0.2270;
+      s += (texture(uTexture, vUv + uStep).r       + texture(uTexture, vUv - uStep).r)       * 0.1945;
+      s += (texture(uTexture, vUv + uStep * 2.0).r + texture(uTexture, vUv - uStep * 2.0).r) * 0.1216;
+      s += (texture(uTexture, vUv + uStep * 3.0).r + texture(uTexture, vUv - uStep * 3.0).r) * 0.0540;
+      s += (texture(uTexture, vUv + uStep * 4.0).r + texture(uTexture, vUv - uStep * 4.0).r) * 0.0162;
+      fragColor = vec4(s, 0.0, 0.0, 1.0);
+    }`,
 };
 
 // ---------- Looks (Farbdarstellungen) ----------
@@ -611,6 +672,8 @@ const shaders = {
 //   speedAt(uv) (Tempo der Strömung), curlAt(uv) (Drehung, + / − = Drehrichtung),
 //   curlSmoothAt(uv) (geglättete Drehung ohne Pixelrauschen – nur mit smoothCurl: true im Look),
 //   uSensitivity und uDyeMix (Look-Regler "Empfindlichkeit" / "Farbstoff-Anteil")
+// Oberflächen-Baustein (nur mit surface: true im Look):
+//   heightAt(uv) (geglättete Höhe 0..1), surfaceNormal(uv, strength) (Oberflächenneigung, z zum Betrachter)
 // Neuer Look = neuer Eintrag in LOOKS. Sonst muss nichts angefasst werden.
 // Mit params: ['sensitivity', 'dyeMix'] zeigt das Panel die passenden Look-Regler an.
 const lookHeader = header + `
@@ -629,6 +692,29 @@ const lookHeader = header + `
   uniform float uEmber;         // Look-Regler "Glutfarbe" (0 = rötliche Glut, 1 = gelbweißes Feuer)
 
   struct LookInput { vec2 uv; float density; float t; vec3 dye; };
+` + densityGLSL + `
+  // ----- Oberflächen-Baustein (nur für Looks mit surface: true) -----
+  // Die Dichte wird als Höhenfeld behandelt (Berg = viel Farbe). Ein eigener Render-Schritt (updateSurface)
+  // rechnet daraus vorab ein geglättetes Höhenfeld; hier wird es nur noch gelesen.
+  uniform sampler2D uSurface;   // geglättetes Höhenfeld (0 = flach/leer, 1 = volle Höhe)
+  uniform vec2 uSurfaceStep;    // Abstand der Messpunkte für die Neigung (in Bildschirm-Koordinaten 0..1)
+  uniform float uAspect;        // Breite / Höhe des Bildschirms
+  // Höhe an dieser Stelle (0..1)
+  float heightAt (vec2 uv) { return texture(uSurface, uv).r; }
+  // Oberflächenneigung ("Normale"): aus den Höhenunterschieden zu den Nachbarpunkten links/rechts und oben/unten.
+  // strength = wie stark die Höhe die Oberfläche wölbt. Ergebnis: Einheitsvektor, z zeigt zum Betrachter.
+  vec3 surfaceNormal (vec2 uv, float strength) {
+    vec2 e = uSurfaceStep;
+    float dx = heightAt(uv + vec2(e.x, 0.0)) - heightAt(uv - vec2(e.x, 0.0));
+    float dy = heightAt(uv + vec2(0.0, e.y)) - heightAt(uv - vec2(0.0, e.y));
+    // Steigung pro Bildschirmhöhe (x-Abstand ist wegen des Seitenverhältnisses anders lang als y)
+    vec2 slope = vec2(dx / (2.0 * e.x * uAspect), dy / (2.0 * e.y));
+    return normalize(vec3(-slope * strength * 0.12, 1.0));
+  }
+  uniform float uBump;          // Look-Regler "Wölbung"
+  uniform float uMetal;         // Look-Regler "Metall-Typ" (0 Chrom, 1 Gold, 2 Kupfer, 3 Rosé – Zwischenwerte beim Überblenden)
+  uniform float uGloss;         // Look-Regler "Glanz" (0 = weich/matt, 1 = scharf spiegelnd)
+  uniform float uEnvAngle;      // aktueller Drehwinkel der Umgebung (wird in JavaScript aufsummiert)
 
   // Farbe an Position t der aktiven Palette (5 Farben, ringförmig)
   vec3 palette (float t) {
@@ -659,7 +745,7 @@ const lookMain = `
     LookInput L;
     L.uv = vUv;
     L.dye = dye;
-    L.density = max(dye.r, 0.0);
+    L.density = densityFrom(dye);
     L.t = fract(atan(dye.b, dye.g) / 6.2831853);
     fragColor = vec4(look(L), uAlpha);
   }`;
@@ -766,6 +852,80 @@ const LOOKS = [
         return fireRamp(heat) * smoothstep(0.02, 0.1, heat);
       }`,
   },
+  {
+    name: 'Metallic',
+    surface: true,
+    surfaceBlur: 0.02,   // flüssiges Metall: deutlich glattere Oberfläche als der Standard, sonst glitzern feine Wellen
+    params: ['metal', 'bump', 'gloss', 'envSpin'],
+    glsl: `
+      // Metallfarben (Grundreflexion): Chrom, Gold, Kupfer, Rosé – weich überblendet bei Zwischenwerten
+      vec3 metalColor (float m) {
+        vec3 c0 = vec3(0.92, 0.93, 0.95), c1 = vec3(1.0, 0.77, 0.32),
+             c2 = vec3(0.96, 0.56, 0.38), c3 = vec3(0.98, 0.70, 0.68);
+        m = clamp(m, 0.0, 3.0);
+        return m < 1.0 ? mix(c0, c1, m) : m < 2.0 ? mix(c1, c2, m - 1.0) : mix(c2, c3, m - 2.0);
+      }
+      // weiches Rechteck (Softbox) in der Umgebung; p = (Richtung, Höhe), soft = Kantenweichheit
+      float softbox (vec2 p, vec2 center, vec2 halfSize, float soft) {
+        vec2 d = abs(p - center) - halfSize;
+        float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+        return 1.0 - smoothstep(-soft, soft, dist);
+      }
+      // Im Code erzeugte Studio-Umgebung: heller Horizont, dunkel nach oben, dunkler Boden, drei Lichtflächen.
+      // r = Blickrichtung in die Umgebung (z zeigt zum Betrachter, y nach oben).
+      vec3 studio (vec3 r, float soft) {
+        float ca = cos(uEnvAngle), sa = sin(uEnvAngle);
+        r = vec3(ca * r.x + sa * r.z, r.y, -sa * r.x + ca * r.z);        // langsam um die senkrechte Achse drehen
+        // Höhe über dem Horizont; der Horizont liegt leicht unter der Blickrichtung, damit flache Stellen
+        // den hellen Bereich knapp darüber spiegeln (statt halb den dunklen Boden)
+        float el = asin(clamp(r.y, -1.0, 1.0)) + 0.15;
+        float az = atan(r.x, r.z);                                       // Himmelsrichtung
+        // heller Horizont → flaches Metall mittelgrau, aber knapp unter der Bloom-Schwelle (≈ 0,4):
+        // so leuchten mit Bloom nur die Lichtflächen-Spiegelungen, nicht der ganze Metallkörper
+        vec3 horizon = vec3(0.40, 0.42, 0.46);
+        vec3 sky   = mix(horizon, vec3(0.03, 0.035, 0.05), smoothstep(0.0, 1.0, el));
+        vec3 ground = mix(horizon * 0.6, vec3(0.03), smoothstep(0.0, -0.7, el));
+        vec3 c = mix(ground, sky, smoothstep(-0.05, 0.05, el));
+        vec2 p = vec2(az, el);
+        float s = softbox(p, vec2( 0.0, 0.42), vec2(0.95, 0.10), soft) * 3.0    // breite Lichtleiste oben
+                + softbox(p, vec2(-1.1, 0.05), vec2(0.14, 0.45), soft) * 2.2    // hohe Softbox links
+                + softbox(p, vec2( 1.3, 0.10), vec2(0.18, 0.35), soft) * 2.0;   // Softbox rechts
+        return c + vec3(1.0, 0.98, 0.95) * s;                            // Lichtflächen heller als Weiß → Bloom
+      }
+      vec3 look (LookInput L) {
+        // Spiegelungen reagieren sehr empfindlich auf kleine Wellen → intern halbe Wölbung, sonst glitzert alles
+        vec3 n = surfaceNormal(L.uv, uBump * 0.5);
+        vec3 v = vec3(0.0, 0.0, 1.0);                     // wir schauen senkrecht auf die Oberfläche
+        vec3 r = reflect(-v, n);                          // Richtung, in die die Oberfläche spiegelt
+        vec3 env = studio(r, mix(0.35, 0.02, uGloss));    // Glanz: scharfe oder weiche Spiegelung
+        // Fresnel: an steilen Flanken (flacher Blickwinkel) spiegelt Metall stärker und farbneutraler
+        vec3 f0 = metalColor(uMetal);
+        vec3 fresnel = f0 + (1.0 - f0) * pow(1.0 - max(n.z, 0.0), 5.0);
+        vec3 col = env * fresnel;
+        // scharfes Glanzlicht einer Lampe oben links
+        vec3 hv = normalize(normalize(vec3(-0.4, 0.6, 0.7)) + v);
+        float spec = pow(max(dot(n, hv), 0.0), mix(20.0, 300.0, uGloss)) * mix(0.4, 1.5, uGloss);
+        col += spec * mix(f0, vec3(1.0), 0.5);
+        // nur wo Flüssigkeit ist; zum Rand hin weich auslaufen
+        return col * smoothstep(0.02, 0.15, heightAt(L.uv));
+      }`,
+  },
+  {
+    // Prüf-Look für den Oberflächen-Baustein: zeigt die Neigung als Farben (wie eine "Normal Map").
+    // Neigung nach rechts = mehr Rot, nach oben = mehr Grün, flach = Lila-Blau. Bereiche ohne Farbe = schwarz.
+    name: 'Oberfläche (Test)',
+    surface: true,
+    params: ['bump', 'saturation'],   // vorläufige Regler – später entfernen oder in Metallic übernehmen
+    glsl: `
+      vec3 look (LookInput L) {
+        vec3 n = surfaceNormal(L.uv, uBump);
+        vec3 col = n * 0.5 + 0.5;
+        // leichte Schattierung durch ein festes Licht von links oben, damit man das Relief erkennt
+        float light = 0.55 + 0.45 * max(dot(n, normalize(vec3(-0.5, 0.6, 0.65))), 0.0);
+        // ohne Farbe schwarz (sonst würde der flache Hintergrund lila leuchten)
+        return col * light * smoothstep(0.01, 0.08, heightAt(L.uv));
+      }`,
+  },
 ];
 
 function compile(type, src) {
@@ -821,7 +981,7 @@ function blit(target) {
 }
 
 // ---------- Framebuffer ----------
-function createFBO(w, h, internalFormat, format) {
+function createFBO(w, h, internalFormat, format, type = gl.HALF_FLOAT) {
   gl.activeTexture(gl.TEXTURE0);
   const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -829,7 +989,7 @@ function createFBO(w, h, internalFormat, format) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, gl.HALF_FLOAT, null);
+  gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, null);
   const fbo = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
@@ -1061,6 +1221,13 @@ function drawLook(i, alpha, time, target) {
   if (u.uHeat) gl.uniform1f(u.uHeat, PARAMS.heat.current);
   if (u.uFlicker) gl.uniform1f(u.uFlicker, PARAMS.flicker.current);
   if (u.uEmber) gl.uniform1f(u.uEmber, PARAMS.ember.current);
+  if (u.uSurface) gl.uniform1i(u.uSurface, surfaceA.attach(4));
+  if (u.uSurfaceStep) gl.uniform2f(u.uSurfaceStep, surfaceStepPx * 1.5 / gl.drawingBufferWidth, surfaceStepPx * 1.5 / gl.drawingBufferHeight);
+  if (u.uAspect) gl.uniform1f(u.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
+  if (u.uBump) gl.uniform1f(u.uBump, PARAMS.bump.current);
+  if (u.uMetal) gl.uniform1f(u.uMetal, PARAMS.metal.current);
+  if (u.uGloss) gl.uniform1f(u.uGloss, PARAMS.gloss.current);
+  if (u.uEnvAngle) gl.uniform1f(u.uEnvAngle, envAngle);
   gl.uniform1f(u.uAlpha, alpha);
   blit(target);   // null = direkt auf den Bildschirm, sonst in die Szenen-Textur für den Bloom
 }
@@ -1078,6 +1245,48 @@ function updateCurlSmooth() {
   gl.uniform2fv(u.uFootprint, curlSmooth.texel);
   gl.uniform1i(u.uCurl, curl.attach(0));
   blit(curlSmooth);
+}
+
+// ---------- Oberflächen-Baustein (Höhenfeld) ----------
+// Eigener Render-Schritt, den jeder Look mit surface: true nutzen kann: Dichte → Höhe → glätten.
+// Die Looks lesen das Ergebnis über heightAt(uv) und surfaceNormal(uv, strength) (siehe lookHeader).
+// Läuft nur, wenn ein sichtbarer Look ihn braucht.
+let surfaceA = null, surfaceB = null, surfaceKey = '', surfaceStepPx = 1;
+let envAngle = 0;   // Drehwinkel der Studio-Umgebung im Look "Metallic"
+function updateSurface() {
+  const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+  // Glättungsradius: jeder Look kann mit surfaceBlur angeben, wie glatt seine Oberfläche sein soll (sonst Standardwert)
+  const blur = LOOKS[lookIndex].surfaceBlur || CONFIG.SURFACE_BLUR;
+  surfaceStepPx = Math.max(1, blur * H / 4);   // Abstand der Messpunkte beim Glätten (4 Schritte je Seite = Radius)
+  // Bei starker Glättung das Höhenfeld kleiner rechnen, damit die Messpunkte höchstens ~1,5 Pixel auseinander liegen
+  // (sonst entstehen Rautenmuster). Spart zugleich Rechenzeit.
+  const div = Math.max(QUALITY[qualityLevel].surfaceDiv, Math.floor(surfaceStepPx / 1.5));
+  const w = Math.max(1, Math.floor(W / div)), h = Math.max(1, Math.floor(H / div));
+  const key = `${w}x${h}`;
+  if (key !== surfaceKey) {
+    // 32-Bit-Genauigkeit (falls weich filterbar), damit feine Höhenunterschiede keine Treppenstufen erzeugen
+    const fmt = floatLinear ? gl.R32F : gl.R16F, type = floatLinear ? gl.FLOAT : gl.HALF_FLOAT;
+    if (surfaceA) { surfaceA.free(); surfaceB.free(); }
+    surfaceA = createFBO(w, h, fmt, gl.RED, type);
+    surfaceB = createFBO(w, h, fmt, gl.RED, type);
+    surfaceKey = key;
+  }
+
+  // 1) Höhe aus der Dichte
+  let u = use('surfaceHeight');
+  gl.uniform1i(u.uDye, dye.read.attach(0));
+  gl.uniform2f(u.uDyeStep, 0.25 / w, 0.25 / h);
+  gl.uniform1f(u.uSaturation, PARAMS.saturation.current);
+  blit(surfaceA);
+
+  // 2) Glätten (waagrecht, dann senkrecht). Radius als Anteil der Bildschirmhöhe → auf jeder Qualitätsstufe gleich glatt.
+  u = use('surfaceBlur');
+  gl.uniform1i(u.uTexture, surfaceA.attach(0));
+  gl.uniform2f(u.uStep, surfaceStepPx / W, 0);
+  blit(surfaceB);
+  gl.uniform1i(u.uTexture, surfaceB.attach(0));
+  gl.uniform2f(u.uStep, 0, surfaceStepPx / H);
+  blit(surfaceA);
 }
 
 // ---------- Bloom (Nachbearbeitung) ----------
@@ -1150,6 +1359,8 @@ function applyBloom(intensity) {
 
 function render(time, dt) {
   if (LOOKS[lookIndex].smoothCurl || (lookFade < 1 && LOOKS[prevLook].smoothCurl)) updateCurlSmooth();
+  if (LOOKS[lookIndex].surface || (lookFade < 1 && LOOKS[prevLook].surface)) updateSurface();
+  envAngle += PARAMS.envSpin.current * 0.3 * dt;   // Umgebung (Metallic) dreht sich langsam; aufsummiert = weich bei Reglerwechsel
 
   // Bloom nur, wenn er sichtbar etwas beiträgt – sonst zeichnet der Look direkt auf den Bildschirm (wie vorher)
   const bloomAmount = PARAMS.bloomIntensity.current * PARAMS.bloomOn.current;
@@ -1392,6 +1603,12 @@ bindSlider('sensitivity', PARAMS.sensitivity, v => v.toFixed(2) + '×');
 bindSlider('heat',    PARAMS.heat,    v => v.toFixed(2) + '×');
 bindSlider('flicker', PARAMS.flicker, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('ember',   PARAMS.ember,   v => v < 0.35 ? 'Glut' : v > 0.65 ? 'Feuer' : 'Mitte');
+bindSlider('bump',       PARAMS.bump,       v => v.toFixed(2) + '×');
+bindSlider('saturation', PARAMS.saturation, v => v.toFixed(2));
+// Metall-Typ: gleitet beim Ziehen frei und rastet auf Chrom/Gold/Kupfer/Rosé ein; die Farbe blendet weich über
+bindSlider('metal',   PARAMS.metal,   v => ['Chrom', 'Gold', 'Kupfer', 'Rosé'][v], { snap: v => Math.round(v) });
+bindSlider('gloss',   PARAMS.gloss,   v => Math.round(v * 100) + ' %');
+bindSlider('envSpin', PARAMS.envSpin, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('dyeMix',      PARAMS.dyeMix,      v => Math.round(v * 100) + ' %');
 setLook(0);
 

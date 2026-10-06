@@ -48,8 +48,10 @@ dunkler Hintergrund, kontrastreiche Paletten.
 - Farbe wird als „Dichte + Position auf der Palette“ gespeichert (R = Dichte, G/B = Dichte·cos/sin des Palettenwinkels);
   erst beim Anzeigen wird eingefärbt – durch den aktiven **Look** (siehe unten). Dadurch blendet ein Palettenwechsel
   das ganze Bild sanft um.
-- Looks (Farbdarstellungen): **Palette**, **Regenbogen**, **Geschwindigkeit**, **Wirbel**, **Feuer / Glut** – wählbar im
-  Panel-Abschnitt „Look“ oder mit `1`–`9` (Details im Abschnitt „Look-System“ unten).
+- Looks (Farbdarstellungen): **Palette** (1), **Regenbogen** (2), **Geschwindigkeit** (3), **Wirbel** (4), **Feuer / Glut** (5),
+  **Metallic** (6), **Oberfläche (Test)** (7) – wählbar im Panel-Abschnitt „Look“ oder mit den Zifferntasten
+  (Details im Abschnitt „Look-System“ unten).
+- **Oberflächen-Baustein** (Höhenfeld + Neigung) für Metallic/Glas/Wasser/Ölfilm ist fertig, darauf aufbauend Metallic.
 - **Bloom (Glow)** als Nachbearbeitungs-Schritt nach dem Look – funktioniert mit allen Looks (Details im Abschnitt
   „Bloom“ unten). Panel-Abschnitt „Bloom“: Schalter „Glow“, Regler Bloom-Intensität/-Schwelle/-Weichheit.
 - Ausblendbares Einstellungs-Panel (Zahnrad oben rechts bzw. Taste `H`): Regler für Pinselgröße (30–300 %, wirkt nur auf
@@ -98,7 +100,7 @@ dunkler Hintergrund, kontrastreiche Paletten.
 
 ## Look-System (Farbdarstellungen)
 - Looks verändern **nur die Darstellung, nie die Simulation**. Jeder Look ist ein Eintrag in der Liste `LOOKS`
-  (`index.html`): `{ name, usesPalette?, params?, smoothCurl?, glsl }`. `glsl` enthält genau eine Funktion
+  (`index.html`): `{ name, usesPalette?, params?, smoothCurl?, surface?, surfaceBlur?, glsl }`. `glsl` enthält genau eine Funktion
   `vec3 look(LookInput L)` (darf eigene Hilfsfunktionen davor definieren).
 - `LookInput`: `L.uv` (Bildposition 0..1), `L.density` (Farbmenge), `L.t` (Palettenposition 0..1), `L.dye` (Rohdaten).
   Gemeinsame Hilfen im `lookHeader`: `palette(t)`, `hsv2rgb(hsv)`, `brightness(density)`, `dyeColor(L)` (eingemalte
@@ -137,6 +139,44 @@ dunkler Hintergrund, kontrastreiche Paletten.
   **Hitze** 0,2–3× (Standard 1×), **Flackern** 0–100 % (Standard 50 %, 0 = aus), **Glutfarbe** 0–1 (Standard 0,5;
   Anzeige Glut/Mitte/Feuer; skaliert die Hitze mit 0,65…1,4 → rötliche Glut ↔ gelbweißes Feuer). Nutzt die Palette nicht.
   Gemessen: Auto-Play-Schlieren Dichte ≈ 0,2–0,6 (→ Rot bis Gelb), frisch gemalte Striche ≈ 1+ (→ Weiß/HDR).
-- Geplant (nacheinander einbauen): Metallic, Glas/Kristall, Wasser, Seifenblase/Ölfilm, Tinte & Aquarell,
-  Marmorpapier (Ebru), Galaxie/Nebel/Aurora.
+- **Metallic** (Taste `6`, `surface: true`, `surfaceBlur: 0.02`): Spiegelung einer im Code erzeugten Studio-Umgebung
+  (`studio(r, soft)`): Horizont hell (≈ 0,4 – bewusst knapp unter der Bloom-Schwelle, damit mit Bloom nur die
+  Lichtflächen glühen, nicht der ganze Metallkörper), nach oben dunkel, Boden dunkel, Horizont um 0,15 rad abgesenkt
+  (flache Stellen spiegeln den hellen Bereich darüber); drei weiche, längliche Softboxen (Helligkeit 2–3, also > 1 → Bloom).
+  Reflexionsrichtung `reflect(-v, n)` mit `n = surfaceNormal(uv, Wölbung · 0,5)` (halbe Wölbung, sonst glitzern kleine Wellen),
+  Fresnel nach Schlick (`f0 = Metallfarbe`, an steilen Flanken heller/farbneutraler), scharfes Glanzlicht (Blinn-Phong,
+  Lampe oben links). Maske `smoothstep(0,02; 0,15; Höhe)`: ohne Farbe dunkel, zum Rand weich auslaufend.
+  Umgebung dreht sich um die senkrechte Achse (`envAngle` wird in `render()` aufsummiert → weich bei Reglerwechsel).
+  Look-Regler (`params: ['metal', 'bump', 'gloss', 'envSpin']`): **Metall-Typ** (Chrom/Gold/Kupfer/Rosé, rastet ein, Farbe
+  blendet weich über; Standard Chrom), **Wölbung** (geteilter Regler `bump`, auch im Test-Look), **Glanz** 0–100 %
+  (Standard 60 %: Kantenweichheit der Softboxen + Schärfe/Stärke des Glanzlichts), **Umgebung drehen** 0–100 %
+  (Standard 20 %, 0 = aus). Nutzt die Palette nicht. Gemessen: Baustein ≈ 0,1 ms + Look ≈ 0,13 ms (Stufe Maximum) →
+  läuft auf jeder Qualitätsstufe; keine besondere Stufe nötig.
+- **Oberfläche (Test)** (Taste `7`): Prüf-Look für den Oberflächen-Baustein. Zeigt die Normale als Farben (Normal-Map-Stil:
+  Neigung nach rechts = Rot, nach oben = Grün, flach = Lila-Blau) mit leichter Schattierung durch ein festes Licht;
+  Bereiche ohne Farbe schwarz. Vorläufige Regler (`params: ['bump', 'saturation']`, später entfernen oder in Metallic
+  übernehmen): **Wölbung** 0–4× (`uBump`, Standard 1×) und **Sättigung** 0,3–6 (k in der Höhenformel, Standard 2).
+- Geplant (nacheinander einbauen): Glas/Kristall, Wasser, Seifenblase/Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru),
+  Galaxie/Nebel/Aurora.
+
+## Oberflächen-Baustein (Höhenfeld → Neigung)
+- Wiederverwendbar für alle Looks mit `surface: true` (Metallic, Glas, Wasser, Ölfilm …), kein Code-Kopieren nötig.
+- Eigener Render-Schritt `updateSurface()` (nur Darstellung, liest `dye.read`, schreibt nie in die Simulation), läuft nur,
+  wenn ein sichtbarer Look ihn braucht (auch während der Look-Überblendung):
+  1. `surfaceHeight`: Höhe = `1 − exp(−Dichte · Sättigung)` (weich gesättigt), 4 Messpunkte gemittelt. Die Dichte kommt aus
+     derselben GLSL-Funktion wie bei allen Looks: `densityFrom(dye)` (String `densityGLSL`, auch von `lookMain` benutzt).
+  2. `surfaceBlur`: trennbarer Gauß-Weichzeichner (9 Punkte, waagrecht + senkrecht). Radius = Glättung × Bildschirmhöhe
+     → auf jeder Qualitätsstufe gleich glatt. Glättung = `surfaceBlur` des aktiven Looks (optional, z. B. Metallic 0,02)
+     oder Standard `CONFIG.SURFACE_BLUR` (0,006). Ergebnis liegt in `surfaceA`.
+  - Bei starker Glättung wird das Höhenfeld automatisch kleiner gerechnet (`div = max(surfaceDiv, Schritt/1,5)`), damit die
+    9 Messpunkte höchstens ~1,5 Pixel auseinander liegen – sonst entsteht ein Rautenmuster. Spart zugleich Rechenzeit.
+- Puffer `surfaceA`/`surfaceB`: R32F (falls `OES_texture_float_linear` vorhanden, sonst R16F) – 32 Bit verhindern
+  Treppenstufen in der Neigung. Größe = Bildschirm / `QUALITY[].surfaceDiv` (Niedrig 4, Mittel/Hoch 2, ab Ultra 1);
+  werden bei Fenster- oder Qualitätsänderung automatisch neu angelegt. `createFBO` hat dafür einen optionalen `type`-Parameter.
+- Shader-Hilfen im `lookHeader`: `heightAt(uv)` (0..1) und `surfaceNormal(uv, strength)` – zentrale Differenzen zu den
+  Nachbarpunkten im Abstand 1,5 × Blur-Schritt (`uSurfaceStep`), seitenverhältnis-korrigiert (`uAspect`),
+  `normalize(vec3(−Steigung · strength · 0,12, 1))`. `strength` ist Parameter, damit jeder Look seine eigene Wölbung nutzt.
+- Gemessen (674×1322 px, Höhenfeld in voller Auflösung, Stufe Maximum): Baustein ≈ 0,46 ms GPU-Zeit pro Frame, Test-Look
+  ≈ 0,1 ms. Grob hochgerechnet ≈ 2 ms bei 2560×1440 auf Ultra+. Wird es zu teuer: Stufe „Hoch“ rechnet das Höhenfeld in
+  halber Auflösung (≈ ¼ der Kosten) und sieht durch die Glättung fast gleich aus.
   Hinweis: Mehr als 9 Looks → Tasten reichen nur bis 9, die Knöpfe im Panel funktionieren für alle.
