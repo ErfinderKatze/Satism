@@ -97,7 +97,9 @@ dunkler Hintergrund, kontrastreiche Paletten.
 - **Neuen Look hinzufügen = nur einen Eintrag in `LOOKS` ergänzen.**
 - Fertig: **Palette** (bisherige Darstellung), **Regenbogen** (Farbton aus √Dichte, Verlauf wandert langsam mit der Zeit),
   **Geschwindigkeit** (Tempo → dunkles Blau → Violett → Pink → Gelb → Weiß), **Wirbel** (geglättete Drehung: eine
-  Richtung Blau→Cyan, andere Magenta→Orange, ruhig = dunkel). Beide mit Look-Reglern Empfindlichkeit/Farbstoff-Anteil.
+  Richtung Blau→Cyan, andere Magenta→Orange, ruhig = dunkel). Geschwindigkeit hat die Look-Regler Empfindlichkeit und
+  Farbstoff-Anteil; Wirbel nur Empfindlichkeit – dort ist die Flüssigkeit selbst bewusst unsichtbar (schwarz), nur die
+  Wirbel leuchten (Nutzerwunsch: eingemalte Farbe wirkte im Wirbel-Look verwirrend).
 - Geplant (nacheinander einbauen): Metallic, Glas/Kristall, Wasser, Seifenblase/Ölfilm, Feuer/Glut, Tinte & Aquarell,
   Marmorpapier (Ebru), Galaxie/Nebel/Aurora.
   Hinweis: Mehr als 9 Looks → Tasten reichen nur bis 9, die Knöpfe im Panel funktionieren für alle.

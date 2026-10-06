@@ -597,8 +597,7 @@ const LOOKS = [
   },
   {
     name: 'Wirbel',
-    usesPalette: true,   // nur über den Farbstoff-Anteil
-    params: ['sensitivity', 'dyeMix'],
+    params: ['sensitivity'],   // ohne Farbstoff-Anteil: die Flüssigkeit selbst bleibt unsichtbar (schwarz)
     smoothCurl: true,    // braucht die geglättete Wirbel-Textur
     glsl: `
       vec3 look (LookInput L) {
@@ -611,7 +610,7 @@ const LOOKS = [
                            : mix(vec3(0.9, 0.1, 0.6), vec3(1.0, 0.6, 0.15), a);
         col *= a;
         col = mix(col, vec3(1.0), smoothstep(0.85, 1.0, a) * 0.4);   // sehr starke Wirbel glühen weißlich
-        return col + dyeColor(L) * uDyeMix;
+        return col;   // nur die Wirbel sind sichtbar, die eingemalte Farbe nicht
       }`,
   },
 ];
