@@ -48,8 +48,8 @@ dunkler Hintergrund, kontrastreiche Paletten.
 - Farbe wird als „Dichte + Position auf der Palette“ gespeichert (R = Dichte, G/B = Dichte·cos/sin des Palettenwinkels);
   erst beim Anzeigen wird eingefärbt – durch den aktiven **Look** (siehe unten). Dadurch blendet ein Palettenwechsel
   das ganze Bild sanft um.
-- Looks (Farbdarstellungen): **Palette**, **Regenbogen**, **Geschwindigkeit**, **Wirbel** – wählbar im Panel-Abschnitt
-  „Look“ oder mit `1`–`9` (Details im Abschnitt „Look-System“ unten).
+- Looks (Farbdarstellungen): **Palette**, **Regenbogen**, **Geschwindigkeit**, **Wirbel**, **Feuer / Glut** – wählbar im
+  Panel-Abschnitt „Look“ oder mit `1`–`9` (Details im Abschnitt „Look-System“ unten).
 - **Bloom (Glow)** als Nachbearbeitungs-Schritt nach dem Look – funktioniert mit allen Looks (Details im Abschnitt
   „Bloom“ unten). Panel-Abschnitt „Bloom“: Schalter „Glow“, Regler Bloom-Intensität/-Schwelle/-Weichheit.
 - Ausblendbares Einstellungs-Panel (Zahnrad oben rechts bzw. Taste `H`): Regler für Pinselgröße (30–300 %, wirkt nur auf
@@ -107,9 +107,13 @@ dunkler Hintergrund, kontrastreiche Paletten.
 - Werte sind auf die Bezugsgröße (`REF_RESOLUTION`) normiert (`uSimScale`), damit Looks auf jeder Qualitätsstufe gleich
   aussehen. Gemessene Größenordnungen: Tempo typisch ≈ 25, schnell ≈ 150; geglättete Drehung ruhig ≈ 1–4,
   Auto-Play ≈ 4–37, gemalter Strich bis ≈ 30–75.
-- `params: ['sensitivity', 'dyeMix']` → Panel zeigt unter den Look-Knöpfen die Look-Regler „Empfindlichkeit“
-  (`uSensitivity`, 0,2–5×) und „Farbstoff-Anteil“ (`uDyeMix`, 0–100 %, 0 = nur Bewegung). Sie klappen weich auf/zu und
-  gelten gemeinsam für alle Looks, die sie nutzen.
+- `params: [...]` → Panel zeigt unter den Look-Knöpfen nur die genannten Look-Regler (Zeilen mit `class="look-param"
+  data-param="…"`; sie klappen weich auf/zu und gelten gemeinsam für alle Looks, die sie nutzen). Vorhanden:
+  `sensitivity` „Empfindlichkeit“ (`uSensitivity`, 0,2–5×), `dyeMix` „Farbstoff-Anteil“ (`uDyeMix`, 0–100 %),
+  `heat` „Hitze“ (`uHeat`), `flicker` „Flackern“ (`uFlicker`), `ember` „Glutfarbe“ (`uEmber`).
+  Neuer Look-Regler = Zeile im HTML + Eintrag in `PARAMS` + Uniform im `lookHeader` + Übergabe in `drawLook` + `bindSlider`.
+- Looks dürfen Werte > 1,0 ausgeben: Bei aktivem Bloom landen sie unbegrenzt in der Szenen-Textur und erzeugen stärkeren
+  Glow; ohne Bloom werden sie am Bildschirm zu Weiß begrenzt.
 - `smoothCurl: true` → vor dem Zeichnen wird die Wirbel-Textur der Simulation (nur gelesen!) per `curlDownsample` auf
   ein kleines Bild (48 px kurze Seite) heruntergerechnet und dabei gemittelt (`curlSmooth`). Entfernt das kleinteilige
   Pixelrauschen der Wirbelverstärkung; läuft nur, wenn ein sichtbarer Look es braucht.
@@ -124,6 +128,15 @@ dunkler Hintergrund, kontrastreiche Paletten.
   Richtung Blau→Cyan, andere Magenta→Orange, ruhig = dunkel). Geschwindigkeit hat die Look-Regler Empfindlichkeit und
   Farbstoff-Anteil; Wirbel nur Empfindlichkeit – dort ist die Flüssigkeit selbst bewusst unsichtbar (schwarz), nur die
   Wirbel leuchten (Nutzerwunsch: eingemalte Farbe wirkte im Wirbel-Look verwirrend).
-- Geplant (nacheinander einbauen): Metallic, Glas/Kristall, Wasser, Seifenblase/Ölfilm, Feuer/Glut, Tinte & Aquarell,
+- **Feuer / Glut** (Taste `5`): Hitze = `(1 − exp(−Dichte·2,5)) · (1 + 0,8·Tempo-Anteil) · Hitze-Regler` – Tempo macht nur
+  vorhandene Glut heißer (ohne Farbe bleibt es schwarz). Verlauf Schwarz → dunkles Rot → Rot → Orange → Gelb → Weiß mit
+  weichen Übergängen; über Hitze 1 werden Werte > 1,0 ausgegeben (bis ≈ 1,8 gemessen), die der Bloom kräftig leuchten
+  lässt (Szenen-Textur ist RGBA16F; ohne Bloom werden sie am Bildschirm einfach weiß). Kalte Bereiche per
+  `smoothstep(0,02; 0,1)` komplett schwarz. Flackern: zwei Lagen weiches Rauschen („Value Noise“), die langsam nach oben
+  ziehen – moduliert die Hitze um ±45 %·Flackern, kein Blinken. Look-Regler (`params: ['heat', 'flicker', 'ember']`):
+  **Hitze** 0,2–3× (Standard 1×), **Flackern** 0–100 % (Standard 50 %, 0 = aus), **Glutfarbe** 0–1 (Standard 0,5;
+  Anzeige Glut/Mitte/Feuer; skaliert die Hitze mit 0,65…1,4 → rötliche Glut ↔ gelbweißes Feuer). Nutzt die Palette nicht.
+  Gemessen: Auto-Play-Schlieren Dichte ≈ 0,2–0,6 (→ Rot bis Gelb), frisch gemalte Striche ≈ 1+ (→ Weiß/HDR).
+- Geplant (nacheinander einbauen): Metallic, Glas/Kristall, Wasser, Seifenblase/Ölfilm, Tinte & Aquarell,
   Marmorpapier (Ebru), Galaxie/Nebel/Aurora.
   Hinweis: Mehr als 9 Looks → Tasten reichen nur bis 9, die Knöpfe im Panel funktionieren für alle.
