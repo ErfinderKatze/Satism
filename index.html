@@ -299,6 +299,30 @@
       <label for="bgBright">Hintergrund-Helligkeit <output id="bgBrightOut"></output></label>
       <input id="bgBright" type="range" min="0.1" max="1.5" step="0.01">
     </div>
+    <div class="row look-param" data-param="depthTone">
+      <label for="depthTone">Tiefenfarbe <output id="depthToneOut"></output></label>
+      <input id="depthTone" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="waves">
+      <label for="waves">Wellen <output id="wavesOut"></output></label>
+      <input id="waves" type="range" min="0" max="3" step="0.05">
+    </div>
+    <div class="row look-param" data-param="foam">
+      <label for="foam">Schaum <output id="foamOut"></output></label>
+      <input id="foam" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="foamLife">
+      <label for="foamLife">Schaum-Haltbarkeit <output id="foamLifeOut"></output></label>
+      <input id="foamLife" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="foamGrain">
+      <label for="foamGrain">Schaum-Körnung <output id="foamGrainOut"></output></label>
+      <input id="foamGrain" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="caustics">
+      <label for="caustics">Lichtmuster <output id="causticsOut"></output></label>
+      <input id="caustics" type="range" min="0" max="1" step="0.01">
+    </div>
     <div class="row look-param" data-param="envSpin">
       <label for="envSpin">Umgebung drehen <output id="envSpinOut"></output></label>
       <input id="envSpin" type="range" min="0" max="1" step="0.01">
@@ -376,13 +400,14 @@ const CONFIG = {
 // (über 1 = "Supersampling": Farbe bleibt länger gestochen scharf, kostet aber viel Leistung)
 // bloomDiv = Bloom startet bei Bildschirmauflösung / bloomDiv, bloomLevels = Anzahl der Weichzeichnungs-Stufen
 // surfaceDiv = Höhenfeld des Oberflächen-Bausteins bei Bildschirmauflösung / surfaceDiv
+// foamDiv = Schaum-Puffer (Look "Wasser") bei Bildschirmauflösung / foamDiv
 const QUALITY = [
-  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4 },
-  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2 },
-  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2 },
-  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1 },
-  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, heavy: true },
-  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, heavy: true },
+  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4 },
+  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2 },
+  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2 },
+  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2 },
+  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, heavy: true },
+  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, heavy: true },
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
@@ -409,6 +434,12 @@ const PARAMS = {
   tint:        { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Glas): wie stark die gemalte Farbe das Glas tönt
   bgType:      { target: 0,    current: 0,    def: 0    },  // Look-Regler (Glas): 0 Gitter, 1 Streifen, 2 Punkte, 3 Farbverlauf
   bgBright:    { target: 0.7,  current: 0.7,  def: 0.7  },  // Look-Regler (Glas): Hintergrund-Helligkeit
+  depthTone:   { target: 0.4,  current: 0.4,  def: 0.4  },  // Look-Regler (Wasser): 0 = karibisch-türkis, 1 = tiefes Ozeanblau
+  waves:       { target: 1,    current: 1,    def: 1    },  // Look-Regler (Wasser): Stärke der Wellen (Oberflächenneigung)
+  foam:        { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Wasser): Schaummenge, 0 = aus
+  caustics:    { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Wasser): Lichtmuster am Grund, 0 = aus
+  foamLife:    { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Wasser): Schaum-Haltbarkeit (0 = löst sich schnell auf)
+  foamGrain:   { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Wasser): Schaum-Körnung (0 = feine, 1 = große Bläschen)
   bloomIntensity: { target: 1,    current: 1,    def: 1    },  // Bloom: Stärke des Glows (0 = aus)
   bloomThreshold: { target: 0.4,  current: 0.4,  def: 0.4  },  // Bloom: ab welcher Helligkeit (0..1) etwas leuchtet
   bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
@@ -459,6 +490,39 @@ const header = `#version 300 es
 const densityGLSL = `
   // wie viel Farbe an dieser Stelle ist (Rot-Kanal der Farb-Textur, nie negativ)
   float densityFrom (vec3 dye) { return max(dye.r, 0.0); }
+`;
+
+// Gemeinsames weiches Rauschen ("Value Noise"): von Looks (Feuer, Wasser …) UND vom Schaum-Schritt genutzt
+const noiseGLSL = `
+  // zufällige Werte auf einem Gitter, weich ineinander übergeblendet (0..1)
+  float hash (vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise (vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+  }
+`;
+
+// Gemeinsame Oberflächen-Hilfen: von Looks mit surface: true UND vom Schaum-Schritt genutzt.
+// Die Dichte wird als Höhenfeld behandelt (Berg = viel Farbe). Ein eigener Render-Schritt (updateSurface)
+// rechnet daraus vorab ein geglättetes Höhenfeld; hier wird es nur noch gelesen. Uniforms setzt bindSurface().
+const surfaceGLSL = `
+  uniform sampler2D uSurface;   // geglättetes Höhenfeld (0 = flach/leer, 1 = volle Höhe)
+  uniform vec2 uSurfaceStep;    // Abstand der Messpunkte für die Neigung (in Bildschirm-Koordinaten 0..1)
+  uniform float uAspect;        // Breite / Höhe des Bildschirms
+  // Höhe an dieser Stelle (0..1)
+  float heightAt (vec2 uv) { return texture(uSurface, uv).r; }
+  // Oberflächenneigung ("Normale"): aus den Höhenunterschieden zu den Nachbarpunkten links/rechts und oben/unten.
+  // strength = wie stark die Höhe die Oberfläche wölbt. Ergebnis: Einheitsvektor, z zeigt zum Betrachter.
+  vec3 surfaceNormal (vec2 uv, float strength) {
+    vec2 e = uSurfaceStep;
+    float dx = heightAt(uv + vec2(e.x, 0.0)) - heightAt(uv - vec2(e.x, 0.0));
+    float dy = heightAt(uv + vec2(0.0, e.y)) - heightAt(uv - vec2(0.0, e.y));
+    // Steigung pro Bildschirmhöhe (x-Abstand ist wegen des Seitenverhältnisses anders lang als y)
+    vec2 slope = vec2(dx / (2.0 * e.x * uAspect), dy / (2.0 * e.y));
+    return normalize(vec3(-slope * strength * 0.12, 1.0));
+  }
 `;
 
 const shaders = {
@@ -666,6 +730,36 @@ const shaders = {
       fragColor = vec4(s * 0.25, 0.0, 0.0, 1.0);
     }`,
 
+  // ----- Schaum (nur Darstellung, für den Look "Wasser") -----
+  // Neuer Schaum entsteht, wo die Strömung schnell oder stark verwirbelt ist oder die Oberfläche stark gewölbt.
+  // Die Quelle wird mit feinem Rauschen multipliziert: So wird die Körnung beim Entstehen in den Schaum "eingebrannt"
+  // und wandert danach mit ihm (Mitführen übernimmt der vorhandene Shader "advection").
+  // Nur wo Flüssigkeit ist (Maske über die Dichte); Wert nach oben begrenzt.
+  foamSource: header + densityGLSL + noiseGLSL + surfaceGLSL + `
+    uniform sampler2D uFoam;      // Schaum nach dem Mitführen
+    uniform sampler2D uDye;
+    uniform sampler2D uVelocity;
+    uniform sampler2D uCurl;
+    uniform float uSimScale;
+    uniform float uAmount;        // Regler "Schaum"
+    uniform float uGrain;         // Bläschen pro Bildschirmhöhe (aus Regler "Schaum-Körnung")
+    uniform float uTime;
+    uniform float uDt;
+    void main () {
+      float foam = texture(uFoam, vUv).r;
+      float mask = smoothstep(0.02, 0.15, densityFrom(texture(uDye, vUv).rgb));
+      float fast  = 1.0 - exp(-length(texture(uVelocity, vUv).xy) / 120.0);
+      float vort  = 1.0 - exp(-abs(texture(uCurl, vUv).x * uSimScale) / 60.0);
+      float steep = clamp((1.0 - surfaceNormal(vUv, 1.0).z) * 6.0, 0.0, 1.0);
+      // ruhiges Wasser schäumt nicht: erst oberhalb einer Schwelle entsteht Schaum
+      float source = max(fast * 0.9 + vort * 0.4 + steep * 0.4 - 0.45, 0.0);
+      // Bläschen-Körnung (driftet nur sehr langsam, damit sie nicht zu einem glatten Brei verschwimmt)
+      vec2 g = vec2(vUv.x * uAspect, vUv.y) * uGrain + vec2(uTime * 0.3, -uTime * 0.2);
+      float bubbles = smoothstep(0.45, 0.75, noise(g) * 0.6 + noise(g * 2.3) * 0.4);
+      foam += source * bubbles * uAmount * uDt * 14.0;
+      fragColor = vec4(clamp(foam * mask, 0.0, 1.5), 0.0, 0.0, 1.0);   // 1,5 = Maximalwert
+    }`,
+
   // 2) Glätten: Gauß-Weichzeichner aus 9 Punkten, einmal waagrecht und einmal senkrecht ("trennbar" = viel
   //    günstiger als 9×9 Punkte). Entfernt Treppenstufen, damit die Neigung später glatt und rauschfrei ist.
   surfaceBlur: header + `
@@ -701,6 +795,7 @@ const shaders = {
 //   heightAt(uv) (geglättete Höhe 0..1), surfaceNormal(uv, strength) (Oberflächenneigung, z zum Betrachter)
 // Spiegelnde Oberflächen (Metallic, Glas …):
 //   studio(r, soft) (Studio-Umgebung), fresnelSchlick(f0, cosT), studioSpecular(n, gloss) (Glanzlicht)
+// Rauschen (Feuer, Wasser …): hash(p), noise(p) (weiches "Value Noise", 0..1)
 // Neuer Look = neuer Eintrag in LOOKS. Sonst muss nichts angefasst werden.
 // Mit params: ['sensitivity', 'dyeMix'] zeigt das Panel die passenden Look-Regler an.
 const lookHeader = header + `
@@ -719,25 +814,7 @@ const lookHeader = header + `
   uniform float uEmber;         // Look-Regler "Glutfarbe" (0 = rötliche Glut, 1 = gelbweißes Feuer)
 
   struct LookInput { vec2 uv; float density; float t; vec3 dye; };
-` + densityGLSL + `
-  // ----- Oberflächen-Baustein (nur für Looks mit surface: true) -----
-  // Die Dichte wird als Höhenfeld behandelt (Berg = viel Farbe). Ein eigener Render-Schritt (updateSurface)
-  // rechnet daraus vorab ein geglättetes Höhenfeld; hier wird es nur noch gelesen.
-  uniform sampler2D uSurface;   // geglättetes Höhenfeld (0 = flach/leer, 1 = volle Höhe)
-  uniform vec2 uSurfaceStep;    // Abstand der Messpunkte für die Neigung (in Bildschirm-Koordinaten 0..1)
-  uniform float uAspect;        // Breite / Höhe des Bildschirms
-  // Höhe an dieser Stelle (0..1)
-  float heightAt (vec2 uv) { return texture(uSurface, uv).r; }
-  // Oberflächenneigung ("Normale"): aus den Höhenunterschieden zu den Nachbarpunkten links/rechts und oben/unten.
-  // strength = wie stark die Höhe die Oberfläche wölbt. Ergebnis: Einheitsvektor, z zeigt zum Betrachter.
-  vec3 surfaceNormal (vec2 uv, float strength) {
-    vec2 e = uSurfaceStep;
-    float dx = heightAt(uv + vec2(e.x, 0.0)) - heightAt(uv - vec2(e.x, 0.0));
-    float dy = heightAt(uv + vec2(0.0, e.y)) - heightAt(uv - vec2(0.0, e.y));
-    // Steigung pro Bildschirmhöhe (x-Abstand ist wegen des Seitenverhältnisses anders lang als y)
-    vec2 slope = vec2(dx / (2.0 * e.x * uAspect), dy / (2.0 * e.y));
-    return normalize(vec3(-slope * strength * 0.12, 1.0));
-  }
+` + densityGLSL + surfaceGLSL + noiseGLSL + `
   uniform float uBump;          // Look-Regler "Wölbung"
   uniform float uMetal;         // Look-Regler "Metall-Typ" (0 Chrom, 1 Gold, 2 Kupfer, 3 Rosé – Zwischenwerte beim Überblenden)
   uniform float uGloss;         // Look-Regler "Glanz" (0 = weich/matt, 1 = scharf spiegelnd)
@@ -747,6 +824,10 @@ const lookHeader = header + `
   uniform float uTint;          // Look-Regler "Tönung" (Glas)
   uniform float uBgType;        // Look-Regler "Hintergrund" (0 Gitter, 1 Streifen, 2 Punkte, 3 Farbverlauf)
   uniform float uBgBright;      // Look-Regler "Hintergrund-Helligkeit"
+  uniform float uDepthTone;     // Look-Regler "Tiefenfarbe" (Wasser: 0 = karibisch-türkis, 1 = tiefes Ozeanblau)
+  uniform float uWaves;         // Look-Regler "Wellen" (Wasser: Stärke der Oberflächenneigung)
+  uniform float uCaustics;      // Look-Regler "Lichtmuster" (Wasser, 0 = aus)
+  uniform sampler2D uFoamTex;   // mitgetragener Schaum (nur für Looks mit foam: true, siehe updateFoam)
 
   // ----- Spiegelnde Oberflächen (gemeinsam für Metallic, Glas … ) -----
   // weiches Rechteck (Softbox) in der Umgebung; p = (Richtung, Höhe), soft = Kantenweichheit
@@ -887,14 +968,6 @@ const LOOKS = [
     name: 'Feuer / Glut',
     params: ['heat', 'flicker', 'ember'],
     glsl: `
-      // Weiches Rauschen ("Value Noise"): zufällige Werte auf einem Gitter, weich ineinander übergeblendet
-      float hash (vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-      float noise (vec2 p) {
-        vec2 i = floor(p), f = fract(p);
-        f = f * f * (3.0 - 2.0 * f);
-        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
-                   mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
-      }
       // Hitze → Farbe: Schwarz → dunkles Rot → Rot → Orange → Gelb → Weiß, darüber heller als Weiß (für den Bloom)
       vec3 fireRamp (float h) {
         vec3 c0 = vec3(0.0), c1 = vec3(0.45, 0.02, 0.0), c2 = vec3(0.95, 0.12, 0.0),
@@ -1011,6 +1084,49 @@ const LOOKS = [
         vec3 col = mix(tinted, studio(r, 0.05), F) + studioSpecular(n, 0.85);
         // ohne Flüssigkeit: Hintergrund unverzerrt (off = 0), aber abgedunkelt – weich überblendet
         return mix(seen * 0.3, col, glass);
+      }`,
+  },
+  {
+    name: 'Wasser',
+    surface: true,
+    surfaceBlur: 0.012,   // ruhige Wellen statt Gekräusel
+    foam: true,           // braucht den mitgetragenen Schaum-Puffer (updateFoam)
+    usesPalette: true,    // die gemalte Farbe färbt das Wasser leicht ein
+    params: ['depthTone', 'waves', 'gloss', 'foam', 'foamLife', 'foamGrain', 'caustics'],
+    glsl: `
+      // Lichtmuster wie auf dem Boden eines Schwimmbeckens ("Caustics"): zwei langsam wandernde Lagen aus
+      // Rauschgraten (helle, verästelte Linien); ihr Produkt ergibt das typische Netz. Langsam, kein Flackern.
+      float caustic (vec2 q) {
+        float a = 1.0 - abs(noise(q + vec2(uTime * 0.12, uTime * 0.07)) * 2.0 - 1.0);
+        float b = 1.0 - abs(noise(q * 1.4 + vec2(-uTime * 0.09, uTime * 0.11)) * 2.0 - 1.0);
+        return pow(a * b, 2.5);
+      }
+      vec3 look (LookInput L) {
+        float h = heightAt(L.uv);
+        float water = smoothstep(0.01, 0.25, h);            // weicher, halbtransparenter Rand
+        vec3 n = surfaceNormal(L.uv, uWaves);
+        // Tiefenfarbe: dünn = helles Türkis → Blau → dick = tiefes Dunkelblau; Regler verschiebt Richtung Ozean
+        float depth = clamp(h * mix(0.7, 1.5, uDepthTone), 0.0, 1.0);
+        vec3 shallow = mix(vec3(0.20, 0.75, 0.72), vec3(0.10, 0.55, 0.70), uDepthTone);
+        vec3 deep    = mix(vec3(0.02, 0.12, 0.35), vec3(0.005, 0.03, 0.12), uDepthTone);
+        vec3 col = depth < 0.5 ? mix(shallow, vec3(0.04, 0.30, 0.62), depth * 2.0)
+                               : mix(vec3(0.04, 0.30, 0.62), deep, depth * 2.0 - 1.0);
+        // die gemalte Farbe färbt das Wasser leicht ein
+        col = mix(col, palette(L.t) * (0.3 + 0.5 * (1.0 - depth)), 0.2);
+        // Lichtmuster am Grund, durch die Wellen leicht verzerrt (Brechung); in flachem Wasser stärker
+        vec2 q = vec2(L.uv.x * uAspect, L.uv.y) * 7.0 + n.xy * 1.5;
+        col += vec3(0.6, 0.95, 1.0) * caustic(q) * uCaustics * (1.0 - depth * 0.75) * 0.9;
+        // Fresnel: flache Winkel und Ränder spiegeln den Himmel der Studio-Umgebung stärker
+        float F = fresnelSchlick(vec3(0.02), n.z).r;
+        col = mix(col, studio(reflect(vec3(0.0, 0.0, -1.0), n), 0.15), F);
+        // Sonnenreflexe auf den Wellen (scharfe Glanzpunkte, heller als Weiß → Bloom)
+        col += studioSpecular(n, uGloss) * mix(0.8, 2.0, uGloss);
+        // Schaum aus dem mitgetragenen Schaum-Puffer: Die Körnung steckt im Puffer selbst und schwimmt mit.
+        // Die weiche Schwelle macht daraus körnigen, weißen Schaum mit organischen Rändern (verschwimmt nicht).
+        float foam = smoothstep(0.15, 0.5, texture(uFoamTex, L.uv).r) * water;
+        col = mix(col, vec3(0.88, 0.93, 0.95), foam * 0.85);          // weiches Weiß, nicht hart
+        // Rand weich auslaufen lassen; Hintergrund bleibt dunkel, damit das Wasser leuchtet
+        return mix(vec3(0.0, 0.008, 0.02), col, water);
       }`,
   },
   {
@@ -1324,9 +1440,8 @@ function drawLook(i, alpha, time, target) {
   if (u.uHeat) gl.uniform1f(u.uHeat, PARAMS.heat.current);
   if (u.uFlicker) gl.uniform1f(u.uFlicker, PARAMS.flicker.current);
   if (u.uEmber) gl.uniform1f(u.uEmber, PARAMS.ember.current);
-  if (u.uSurface) gl.uniform1i(u.uSurface, surfaceA.attach(4));
-  if (u.uSurfaceStep) gl.uniform2f(u.uSurfaceStep, surfaceStepPx * 1.5 / gl.drawingBufferWidth, surfaceStepPx * 1.5 / gl.drawingBufferHeight);
-  if (u.uAspect) gl.uniform1f(u.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
+  bindSurface(u, 4);
+  if (u.uFoamTex) gl.uniform1i(u.uFoamTex, foamBuf.read.attach(5));
   if (u.uBump) gl.uniform1f(u.uBump, PARAMS.bump.current);
   if (u.uMetal) gl.uniform1f(u.uMetal, PARAMS.metal.current);
   if (u.uGloss) gl.uniform1f(u.uGloss, PARAMS.gloss.current);
@@ -1336,6 +1451,9 @@ function drawLook(i, alpha, time, target) {
   if (u.uTint) gl.uniform1f(u.uTint, PARAMS.tint.current);
   if (u.uBgType) gl.uniform1f(u.uBgType, PARAMS.bgType.current);
   if (u.uBgBright) gl.uniform1f(u.uBgBright, PARAMS.bgBright.current);
+  if (u.uDepthTone) gl.uniform1f(u.uDepthTone, PARAMS.depthTone.current);
+  if (u.uWaves) gl.uniform1f(u.uWaves, PARAMS.waves.current);
+  if (u.uCaustics) gl.uniform1f(u.uCaustics, PARAMS.caustics.current);
   gl.uniform1f(u.uAlpha, alpha);
   blit(target);   // null = direkt auf den Bildschirm, sonst in die Szenen-Textur für den Bloom
 }
@@ -1361,6 +1479,13 @@ function updateCurlSmooth() {
 // Läuft nur, wenn ein sichtbarer Look ihn braucht.
 let surfaceA = null, surfaceB = null, surfaceKey = '', surfaceStepPx = 1;
 let envAngle = 0;   // Drehwinkel der Studio-Umgebung im Look "Metallic"
+
+// Setzt die Uniforms der gemeinsamen Oberflächen-Hilfen (surfaceGLSL) – für Looks und den Schaum-Schritt
+function bindSurface(u, unit) {
+  if (u.uSurface) gl.uniform1i(u.uSurface, surfaceA.attach(unit));
+  if (u.uSurfaceStep) gl.uniform2f(u.uSurfaceStep, surfaceStepPx * 1.5 / gl.drawingBufferWidth, surfaceStepPx * 1.5 / gl.drawingBufferHeight);
+  if (u.uAspect) gl.uniform1f(u.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
+}
 function updateSurface() {
   const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
   // Glättungsradius: jeder Look kann mit surfaceBlur angeben, wie glatt seine Oberfläche sein soll (sonst Standardwert)
@@ -1395,6 +1520,53 @@ function updateSurface() {
   gl.uniform1i(u.uTexture, surfaceB.attach(0));
   gl.uniform2f(u.uStep, 0, surfaceStepPx / H);
   blit(surfaceA);
+}
+
+// ---------- Schaum (mitgetragen, nur Darstellung) ----------
+// Eigener Puffer, der mit der Strömung mitschwimmt. Liest Geschwindigkeit, Wirbel, Farbe und Höhenfeld,
+// schreibt aber NIE in die Simulation. Läuft nur, wenn ein sichtbarer Look foam: true hat.
+let foamBuf = null, foamKey = '', foamWasActive = false;
+function updateFoam(dt, time) {
+  const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, div = QUALITY[qualityLevel].foamDiv;
+  const w = Math.max(1, Math.floor(W / div)), h = Math.max(1, Math.floor(H / div));
+  const key = `${w}x${h}`;
+  if (key !== foamKey) {                       // Größe/Qualität geändert → sauber neu anlegen (createFBO leert)
+    if (foamBuf) foamBuf.free();
+    foamBuf = createDoubleFBO(w, h, gl.R16F, gl.RED);
+    foamKey = key;
+  } else if (!foamWasActive) {                 // Look gerade (wieder) sichtbar geworden → alten Schaum leeren
+    for (const f of [foamBuf.read, foamBuf.write]) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, f.fbo);
+      gl.clearColor(0, 0, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+  }
+  const s = QUALITY[qualityLevel].sim / CONFIG.REF_RESOLUTION;
+
+  // 1) Mitführen mit dem vorhandenen Advektions-Shader (derselbe wie für die Farbe); die Abklingrate ist der Zerfall
+  let u = use('advection');
+  gl.uniform2f(u.texelSize, velocity.texel[0] * s, velocity.texel[1] * s);
+  gl.uniform1i(u.uVelocity, velocity.read.attach(0));
+  gl.uniform1i(u.uSource, foamBuf.read.attach(1));
+  gl.uniform1f(u.dt, dt);
+  gl.uniform1f(u.dissipation, 3.0 + (0.05 - 3.0) * PARAMS.foamLife.current);  // Haltbarkeit 0 → schnell weg, 1 → bleibt lange
+  blit(foamBuf.write);
+  foamBuf.swap();
+
+  // 2) Neuen Schaum hinzufügen (mit eingebrannter Körnung), nur wo Flüssigkeit ist, nach oben begrenzt
+  u = use('foamSource');
+  gl.uniform1i(u.uFoam, foamBuf.read.attach(0));
+  gl.uniform1i(u.uDye, dye.read.attach(1));
+  gl.uniform1i(u.uVelocity, velocity.read.attach(2));
+  gl.uniform1i(u.uCurl, curl.attach(3));
+  bindSurface(u, 4);
+  gl.uniform1f(u.uSimScale, s);
+  gl.uniform1f(u.uAmount, PARAMS.foam.current);
+  gl.uniform1f(u.uGrain, 200 + (50 - 200) * PARAMS.foamGrain.current);    // Körnung 0 → feine, 1 → große Bläschen
+  gl.uniform1f(u.uTime, time);
+  gl.uniform1f(u.uDt, dt);
+  blit(foamBuf.write);
+  foamBuf.swap();
 }
 
 // ---------- Bloom (Nachbearbeitung) ----------
@@ -1468,6 +1640,10 @@ function applyBloom(intensity) {
 function render(time, dt) {
   if (LOOKS[lookIndex].smoothCurl || (lookFade < 1 && LOOKS[prevLook].smoothCurl)) updateCurlSmooth();
   if (LOOKS[lookIndex].surface || (lookFade < 1 && LOOKS[prevLook].surface)) updateSurface();
+  // Schaum nur, wenn ein sichtbarer Look ihn braucht (braucht das Höhenfeld, daher nach updateSurface)
+  const foamVisible = !!(LOOKS[lookIndex].foam || (lookFade < 1 && LOOKS[prevLook].foam));
+  if (foamVisible) updateFoam(dt, time);
+  foamWasActive = foamVisible;
   envAngle += PARAMS.envSpin.current * 0.3 * dt;   // Umgebung (Metallic) dreht sich langsam; aufsummiert = weich bei Reglerwechsel
 
   // Bloom nur, wenn er sichtbar etwas beiträgt – sonst zeichnet der Look direkt auf den Bildschirm (wie vorher)
@@ -1723,6 +1899,12 @@ bindSlider('tint',     PARAMS.tint,     v => Math.round(v * 100) + ' %');
 // Hintergrund: rastet auf ein Muster ein, Zwischenstellungen blenden beim Wechsel weich über
 bindSlider('bgType',   PARAMS.bgType,   v => ['Gitter', 'Streifen', 'Punkte', 'Farbverlauf'][v], { snap: v => Math.round(v) });
 bindSlider('bgBright', PARAMS.bgBright, v => Math.round(v * 100) + ' %');
+bindSlider('depthTone', PARAMS.depthTone, v => v < 0.35 ? 'Karibik' : v > 0.65 ? 'Ozean' : 'Mitte');
+bindSlider('waves',     PARAMS.waves,     v => v.toFixed(2) + '×');
+bindSlider('foam',      PARAMS.foam,      v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('caustics',  PARAMS.caustics,  v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('foamLife',  PARAMS.foamLife,  v => Math.round(v * 100) + ' %');
+bindSlider('foamGrain', PARAMS.foamGrain, v => v < 0.35 ? 'fein' : v > 0.65 ? 'grob' : 'mittel');
 bindSlider('dyeMix',      PARAMS.dyeMix,      v => Math.round(v * 100) + ' %');
 setLook(0);
 

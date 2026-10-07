@@ -49,10 +49,10 @@ dunkler Hintergrund, kontrastreiche Paletten.
   erst beim Anzeigen wird eingefärbt – durch den aktiven **Look** (siehe unten). Dadurch blendet ein Palettenwechsel
   das ganze Bild sanft um.
 - Looks (Farbdarstellungen): **Palette** (1), **Regenbogen** (2), **Geschwindigkeit** (3), **Wirbel** (4), **Feuer / Glut** (5),
-  **Metallic** (6), **Glas / Kristall** (7), **Oberfläche (Test)** (8) – wählbar im Panel-Abschnitt „Look“ oder mit den
-  Zifferntasten (Details im Abschnitt „Look-System“ unten).
-- **Oberflächen-Baustein** (Höhenfeld + Neigung) für Metallic/Glas/Wasser/Ölfilm ist fertig, darauf aufbauend Metallic
-  und Glas / Kristall.
+  **Metallic** (6), **Glas / Kristall** (7), **Wasser** (8), **Oberfläche (Test)** (9) – wählbar im Panel-Abschnitt „Look“
+  oder mit den Zifferntasten (Details im Abschnitt „Look-System“ unten). Alle 9 Tasten sind damit belegt.
+- **Oberflächen-Baustein** (Höhenfeld + Neigung) für Metallic/Glas/Wasser/Ölfilm ist fertig, darauf aufbauend Metallic,
+  Glas / Kristall und Wasser.
 - **Bloom (Glow)** als Nachbearbeitungs-Schritt nach dem Look – funktioniert mit allen Looks (Details im Abschnitt
   „Bloom“ unten). Panel-Abschnitt „Bloom“: Schalter „Glow“, Regler Bloom-Intensität/-Schwelle/-Weichheit.
 - Ausblendbares Einstellungs-Panel (Zahnrad oben rechts bzw. Taste `H`): Regler für Pinselgröße (30–300 %, wirkt nur auf
@@ -101,7 +101,7 @@ dunkler Hintergrund, kontrastreiche Paletten.
 
 ## Look-System (Farbdarstellungen)
 - Looks verändern **nur die Darstellung, nie die Simulation**. Jeder Look ist ein Eintrag in der Liste `LOOKS`
-  (`index.html`): `{ name, usesPalette?, params?, smoothCurl?, surface?, surfaceBlur?, glsl }`. `glsl` enthält genau eine Funktion
+  (`index.html`): `{ name, usesPalette?, params?, smoothCurl?, surface?, surfaceBlur?, foam?, glsl }`. `glsl` enthält genau eine Funktion
   `vec3 look(LookInput L)` (darf eigene Hilfsfunktionen davor definieren).
 - `LookInput`: `L.uv` (Bildposition 0..1), `L.density` (Farbmenge), `L.t` (Palettenposition 0..1), `L.dye` (Rohdaten).
   Gemeinsame Hilfen im `lookHeader`: `palette(t)`, `hsv2rgb(hsv)`, `brightness(density)`, `dyeColor(L)` (eingemalte
@@ -143,6 +143,8 @@ dunkler Hintergrund, kontrastreiche Paletten.
 - **Spiegelnde Oberflächen – gemeinsame Hilfen im `lookHeader`** (von Metallic und Glas genutzt, nicht kopieren):
   `softbox(...)`, `studio(r, soft)` (Studio-Umgebung, dreht mit `uEnvAngle`), `fresnelSchlick(f0, cosT)`,
   `studioSpecular(n, gloss)` (Glanzlicht Lampe oben links).
+- **Weiches Rauschen – gemeinsamer Baustein `noiseGLSL`** (im `lookHeader` und im Schaum-Shader eingebunden): `hash(p)`,
+  `noise(p)` („Value Noise“, 0..1). Genutzt von Feuer, Wasser und dem Schaum-Puffer.
 - **Metallic** (Taste `6`, `surface: true`, `surfaceBlur: 0.02`): Spiegelung einer im Code erzeugten Studio-Umgebung
   (`studio(r, soft)`): Horizont hell (≈ 0,4 – bewusst knapp unter der Bloom-Schwelle, damit mit Bloom nur die
   Lichtflächen glühen, nicht der ganze Metallkörper), nach oben und unten dunkler, aber nie schwarz (Himmel oben ≈ 0,14,
@@ -171,12 +173,49 @@ dunkler Hintergrund, kontrastreiche Paletten.
   **Hintergrund** Gitter/Streifen/Punkte/Farbverlauf (rastet ein, blendet weich über; Standard Gitter),
   **Hintergrund-Helligkeit** 10–150 % (Standard 70 %). Umgebung dreht mit dem Metallic-Regler „Umgebung drehen“ mit.
   Gemessen (Stufe Maximum, 674×1322): Baustein ≈ 0,26 ms + Look ≈ 0,31 ms; alle Stufen fehlerfrei, 60 FPS.
-- **Oberfläche (Test)** (Taste `8`): Prüf-Look für den Oberflächen-Baustein. Zeigt die Normale als Farben (Normal-Map-Stil:
+- **Wasser** (Taste `8`, `surface: true`, `surfaceBlur: 0.012`, `usesPalette: true`): Tiefe = Höhe × (0,7…1,5 je nach
+  Tiefenfarbe); Verlauf helles Türkis → Blau (0,04; 0,30; 0,62) → tiefes Dunkelblau, Regler verschiebt Flach- und Tieffarbe
+  Richtung Ozean. Gemalte Farbe färbt mit 20 % ein. **Lichtmuster** („Caustics“): Produkt zweier langsam wandernder
+  Rauschgraten-Lagen (`caustic(q)`, 7 Zellen pro Bildschirmhöhe, durch `n.xy · 1,5` leicht verzerrt), in flachem Wasser
+  stärker. Fresnel (`f0 = 0,02`) spiegelt die Studio-Umgebung an flachen Winkeln; Sonnenreflexe =
+  `studioSpecular(n, Glanz) · (0,8…2)` (> 1 → Bloom). **Schaum** kommt aus dem mitgetragenen Schaum-Puffer (siehe
+  Abschnitt „Schaum-Puffer“): `smoothstep(0,15; 0,5; Schaumwert)` → weiches Weiß (0,88; 0,93; 0,95) mit max. 85 % Deckkraft;
+  die Körnung steckt im Puffer selbst (kein festes Bildschirm-Rauschen mehr). Rand:
+  `smoothstep(0,01; 0,25; Höhe)` gegen dunklen Hintergrund (0; 0,008; 0,02). Look-Regler
+  (`params: ['depthTone', 'waves', 'gloss', 'foam', 'foamLife', 'foamGrain', 'caustics']`): **Tiefenfarbe** 0–1 (Standard
+  0,4; Anzeige Karibik/Mitte/Ozean), **Wellen** 0–3× (Standard 1×, = Stärke von `surfaceNormal`), **Glanz** (geteilter
+  Regler `gloss` aus Metallic), **Schaum** 0–100 % (Menge, Standard 50 %, 0 = aus), **Schaum-Haltbarkeit** 0–100 %
+  (Standard 50 %), **Schaum-Körnung** fein/mittel/grob (Standard mittel), **Lichtmuster** 0–100 % (Standard 60 %, 0 = aus).
+  Gemessen (Stufe Maximum, 674×1274): Baustein ≈ 0,22 ms + Look ≈ 0,36 ms; alle Stufen fehlerfrei, 60 FPS.
+- **Oberfläche (Test)** (Taste `9`): Prüf-Look für den Oberflächen-Baustein. Zeigt die Normale als Farben (Normal-Map-Stil:
   Neigung nach rechts = Rot, nach oben = Grün, flach = Lila-Blau) mit leichter Schattierung durch ein festes Licht;
   Bereiche ohne Farbe schwarz. Vorläufige Regler (`params: ['bump', 'saturation']`, später entfernen oder in Metallic
   übernehmen): **Wölbung** 0–4× (`uBump`, Standard 1×) und **Sättigung** 0,3–6 (k in der Höhenformel, Standard 2).
-- Geplant (nacheinander einbauen): Wasser, Seifenblase/Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru),
-  Galaxie/Nebel/Aurora.
+- Geplant (nacheinander einbauen): Seifenblase/Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie/Nebel/Aurora.
+  Achtung: Die Zifferntasten `1`–`9` sind jetzt alle belegt – weitere Looks sind nur noch über die Knöpfe im Panel wählbar
+  (oder der Test-Look wird entfernt/ans Ende geschoben).
+
+## Schaum-Puffer (Look „Wasser“, mitgetragen)
+- Eigener Doppelpuffer `foamBuf` (R16F, 1 Kanal), Größe = Bildschirm / `QUALITY[].foamDiv` (Niedrig 4, Mittel/Hoch/Ultra 2,
+  Extrem/Maximum 1). Funktion `updateFoam(dt, time)`, aufgerufen in `render()` direkt nach `updateSurface()` – **nur**,
+  wenn ein sichtbarer Look `foam: true` hat (auch während der Look-Überblendung), sonst null Kosten.
+- Pro Frame: 1) **Mitführen** mit dem vorhandenen Shader `advection` (derselbe wie für die Farbe, keine Kopie) und
+  denselben Strömungs-Einheiten (`velocity.texel · sim/REF`); die Abklingrate ist der Zerfall:
+  `dissipation = 3 + (0,05 − 3) · Haltbarkeit`. 2) **Neuer Schaum** per Shader `foamSource`: Quelle =
+  `max(0,9·Tempo + 0,4·Wirbel + 0,4·Steilheit − 0,45, 0)` (Tempo `1 − exp(−v/120)`, Wirbel `1 − exp(−|curl|/60)`,
+  Steilheit aus `surfaceNormal`) × Bläschen-Rauschen (2 Lagen, `uGrain` = 200…50 Bläschen pro Bildschirmhöhe, driftet nur
+  langsam) × Menge × dt × 14 → Körnung wird beim Entstehen „eingebrannt“ und schwimmt mit. Nur wo Flüssigkeit ist
+  (Maske `smoothstep(0,02; 0,15; Dichte)`), begrenzt auf max. 1,5.
+- Puffer wird bei Größen-/Qualitätsänderung neu angelegt (leer) und beim (Wieder-)Sichtbarwerden des Looks geleert
+  (`foamWasActive`).
+- Gemeinsame GLSL-Bausteine dafür (keine Kopien): `densityGLSL`, `noiseGLSL` (hash/noise), `surfaceGLSL`
+  (heightAt/surfaceNormal + Uniforms) – werden von `lookHeader` UND `foamSource` eingebunden; Uniforms setzt `bindSurface(u, unit)`.
+- **Simulation unverändert, geprüft:** 1) Alle 9 Simulations-Puffer (Farbe A/B, Geschwindigkeit A/B, Druck A/B, Wirbel,
+  Divergenz, Geschwindigkeit-vorher) sind nach 10× Schaum-Schritt bitgenau gleich. 2) A/B-Test mit 30 gleichen
+  Pinsel-Schritten: mittlere Abweichung „mit vs. ohne Schaum“ (6,13–6,22) = „ohne vs. ohne“ (6,08–6,20). Hinweis: Die
+  Simulation ist auf der GPU nicht bitgenau reproduzierbar (Rundungen von 16-Bit-Zahlen, z. B. 0,016 nach einem Pinselstrich);
+  die Wirbelverstärkung schaukelt das chaotisch auf – daher kein bitgenauer A/B-Vergleich möglich.
+- Gemessen: Schaum-Schritt ≈ 0,04–0,36 ms GPU-Zeit je nach Stufe; alle Stufen und Fenstergrößen fehlerfrei, 60 FPS.
 
 ## Oberflächen-Baustein (Höhenfeld → Neigung)
 - Wiederverwendbar für alle Looks mit `surface: true` (Metallic, Glas, Wasser, Ölfilm …), kein Code-Kopieren nötig.
@@ -192,7 +231,8 @@ dunkler Hintergrund, kontrastreiche Paletten.
 - Puffer `surfaceA`/`surfaceB`: R32F (falls `OES_texture_float_linear` vorhanden, sonst R16F) – 32 Bit verhindern
   Treppenstufen in der Neigung. Größe = Bildschirm / `QUALITY[].surfaceDiv` (Niedrig 4, Mittel/Hoch 2, ab Ultra 1);
   werden bei Fenster- oder Qualitätsänderung automatisch neu angelegt. `createFBO` hat dafür einen optionalen `type`-Parameter.
-- Shader-Hilfen im `lookHeader`: `heightAt(uv)` (0..1) und `surfaceNormal(uv, strength)` – zentrale Differenzen zu den
+- Shader-Hilfen im gemeinsamen Baustein `surfaceGLSL` (eingebunden in `lookHeader` und `foamSource`, Uniforms über
+  `bindSurface(u, unit)`): `heightAt(uv)` (0..1) und `surfaceNormal(uv, strength)` – zentrale Differenzen zu den
   Nachbarpunkten im Abstand 1,5 × Blur-Schritt (`uSurfaceStep`), seitenverhältnis-korrigiert (`uAspect`),
   `normalize(vec3(−Steigung · strength · 0,12, 1))`. `strength` ist Parameter, damit jeder Look seine eigene Wölbung nutzt.
 - Gemessen (674×1322 px, Höhenfeld in voller Auflösung, Stufe Maximum): Baustein ≈ 0,46 ms GPU-Zeit pro Frame, Test-Look
