@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fluid-Simulation</title>
+<title>Satisim</title>
 <style>
   :root {
     --a1: #ff00d4;            /* Akzentfarben – folgen der aktiven Palette */
@@ -88,6 +88,14 @@
   #panel .sec:nth-child(9) { transition-delay: .32s; }
   #panel .sec:nth-child(10) { transition-delay: .36s; }
   #panel .sec:nth-child(11) { transition-delay: .4s; }
+  #panel .sec:nth-child(12) { transition-delay: .44s; }
+  #panel .sec:nth-child(13) { transition-delay: .48s; }
+  /* ---------- Modi ---------- */
+  /* Abschnitte und Tastenkürzel mit data-mode="…" gehören zu einem Modus und sind nur dort zu sehen */
+  /* (die Regel dafür wird im Skript aus der Modus-Liste erzeugt, siehe Abschnitt "Modi") */
+  .sec[data-mode] { animation: secIn .5s var(--smooth); }    /* gleiten beim Moduswechsel weich herein */
+  @keyframes secIn { from { opacity: 0; transform: translateY(8px); } }
+  #modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   /* Bloom-Regler treten zurück, wenn der Glow ausgeschaltet ist */
   #bloomControls { transition: opacity .4s var(--smooth); }
   #bloomControls.unused { opacity: .35; }
@@ -219,7 +227,7 @@
   @media (max-width: 520px) { #hint { white-space: normal; } }
 </style>
 </head>
-<body>
+<body class="mode-fluid">
 <canvas id="c"></canvas>
 <div id="cursor"></div>
 <div id="brushPreview"></div>
@@ -232,6 +240,10 @@
 
 <div id="panel" class="glass ui">
   <div class="sec">
+    <h3>Modus</h3>
+    <div id="modes"></div>
+  </div>
+  <div class="sec" data-mode="fluid">
     <h3>Flüssigkeit</h3>
     <div class="row">
       <label for="brush">Pinselgröße <output id="brushOut"></output></label>
@@ -259,7 +271,7 @@
     </div>
     <div class="hint-reset">Doppelklick auf einen Regler = Standardwert</div>
   </div>
-  <div class="sec">
+  <div class="sec" data-mode="fluid">
     <h3>Hindernisse</h3>
     <div id="tools">
       <button class="btn" data-tool="paint"><span>Farbe</span></button>
@@ -269,7 +281,7 @@
     <button class="btn" id="clearObstacles"><span>Alle Hindernisse löschen</span><kbd>X</kbd></button>
     <div class="sub">Hindernis oder Radierer wählen und mit gedrückter Maustaste ziehen. Schnell zwischendurch: rechte Maustaste ziehen = Hindernis, mit Umschalt-Taste = radieren.</div>
   </div>
-  <div class="sec">
+  <div class="sec" data-mode="fluid">
     <h3>Look</h3>
     <div id="looks"></div>
     <!-- Look-Regler: erscheinen nur bei Looks, die sie in "params" angeben -->
@@ -469,7 +481,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>H</kbd>Panel</span><span><kbd>Leertaste</kbd>Leeren</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span><kbd>W</kbd>Hindernis</span><span><kbd>E</kbd>Radierer</span><span><kbd>X</kbd>Hindernisse weg</span><span><kbd>1</kbd>–<kbd>0</kbd>Look</span><span><kbd>←</kbd><kbd>→</kbd>Look wechseln</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span>
   </div>
 </div>
 
@@ -490,6 +502,7 @@ const CONFIG = {
   OBSTACLE_RES: 384,        // Auflösung der Hindernis-Textur (kurze Bildschirmseite)
   EASING: 6,                // wie schnell Regler/Paletten ihrem Zielwert folgen (größer = schneller)
   IDLE_SECONDS: 30,         // so lange ohne Eingabe, bis Auto-Play startet
+  MODE_FADE: 0.8,           // Dauer der weichen Überblendung beim Moduswechsel (Sekunden)
   AUTOPLAY_PALETTE_SECONDS: 25,  // im Auto-Play alle X Sekunden zur nächsten Palette überblenden
   REF_RESOLUTION: 128,      // Bezugsgröße, damit sich die Strömung bei jeder Qualität gleich anfühlt
   SURFACE_BLUR: 0.006,      // Oberflächen-Baustein: Glättungsradius als Anteil der Bildschirmhöhe
@@ -518,6 +531,12 @@ const QUALITY = [
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
+
+// Modi (Fluid, Mandelbrot, später Partikel). Die Liste wird weiter unten gefüllt – siehe Abschnitt "Modi".
+const MODES = [];
+let modeIndex = 0;          // aktiver Modus (Index in MODES)
+let prevMode = 0;           // Modus, von dem gerade weggeblendet wird
+let modeFade = 1;           // 0..1, Fortschritt der Überblendung (1 = fertig)
 
 // Werte, die über das Panel verändert werden. "target" = Reglerstellung,
 // "current" = Wert, mit dem gerade simuliert wird (läuft weich hinterher).
@@ -633,6 +652,18 @@ const noiseGLSL = `
     float s = 0.0, a = 0.5;
     for (int i = 0; i < 4; i++) { s += a * noise(p); p = p * 2.03 + vec2(17.3, 9.1); a *= 0.5; }
     return s / 0.9375;
+  }
+`;
+
+// Gemeinsame Farbpalette: von den Looks des Fluid-Modus UND von den anderen Modi (Mandelbrot …) genutzt
+const paletteGLSL = `
+  uniform vec3 uPalette[5];
+  // Farbe an Position t der aktiven Palette (5 Farben, ringförmig)
+  vec3 palette (float t) {
+    t = fract(t) * 5.0;
+    int i = int(floor(t));
+    float f = smoothstep(0.0, 1.0, fract(t));
+    return mix(uPalette[i], uPalette[(i + 1) % 5], f);
   }
 `;
 
@@ -809,6 +840,12 @@ const shaders = {
     uniform sampler2D uTexture;
     uniform float value;
     void main () { fragColor = value * texture(uTexture, vUv); }`,
+
+  // Bild mit einstellbarer Deckkraft zeichnen – legt beim Moduswechsel das neue Bild weich über das alte
+  fade: header + `
+    uniform sampler2D uTexture;
+    uniform float uAlpha;
+    void main () { fragColor = vec4(texture(uTexture, vUv).rgb, uAlpha); }`,
 
   // Schwerkraft: Farbe ist "schwer". Wo Farbe ist, wird die Strömung in Fallrichtung beschleunigt –
   // farbige Flüssigkeit sinkt durch klare hindurch (wie Tinte in Wasser). Läuft nur, wenn der Regler > 0 ist.
@@ -1029,7 +1066,6 @@ const lookHeader = header + `
   uniform sampler2D uDye;
   uniform sampler2D uVelocity;
   uniform sampler2D uCurl;
-  uniform vec3 uPalette[5];
   uniform float uTime;
   uniform float uAlpha;
   uniform float uSimScale;      // Umrechnung Strömungsraster → Bezugsgröße (gleiche Werte auf jeder Qualitätsstufe)
@@ -1042,7 +1078,7 @@ const lookHeader = header + `
   uniform float uCalm;          // Schalter "Flackern reduzieren" (0 = aus, 1 = an): Looks dämpfen damit ihr eigenes Flackern
 
   struct LookInput { vec2 uv; float density; float t; vec3 dye; };
-` + densityGLSL + surfaceGLSL + noiseGLSL + `
+` + densityGLSL + surfaceGLSL + noiseGLSL + paletteGLSL + `
   uniform float uBump;          // Look-Regler "Wölbung" (Metallic)
   uniform float uMetal;         // Look-Regler "Metall-Typ" (0 Chrom, 1 Gold, 2 Kupfer, 3 Rosé – Zwischenwerte beim Überblenden)
   uniform float uGloss;         // Look-Regler "Glanz" (0 = weich/matt, 1 = scharf spiegelnd)
@@ -1118,13 +1154,6 @@ const lookHeader = header + `
     return vec3(0.955, 0.94, 0.905) * (1.0 - grain * 0.10 * (1.0 - fibers)) * (0.965 + 0.035 * fbm(q * 5.0));
   }
 
-  // Farbe an Position t der aktiven Palette (5 Farben, ringförmig)
-  vec3 palette (float t) {
-    t = fract(t) * 5.0;
-    int i = int(floor(t));
-    float f = smoothstep(0.0, 1.0, fract(t));
-    return mix(uPalette[i], uPalette[(i + 1) % 5], f);
-  }
   // Farbton/Sättigung/Helligkeit (je 0..1) → RGB
   vec3 hsv2rgb (vec3 c) {
     vec3 p = abs(fract(c.xxx + vec3(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
@@ -2168,11 +2197,17 @@ function applyCalm(dt, calm) {
   return calmBuf.read;
 }
 
-let lookTime = 0;   // Uhr für die Animationen der Looks (läuft bei "Flackern reduzieren" langsamer)
-function render(dt) {
-  const calm = PARAMS.calm.current;
-  lookTime += dt * (1 - 0.6 * calm);
-  const time = lookTime;
+// ---------- Bild des Fluid-Modus ----------
+// Wie stark der Glow beim Fluid wirkt: Looks können mit bloom: 0..1 angeben, wie stark er bei ihnen ist
+// (z. B. 0 bei hellem Papier); beim Look-Wechsel wird weich zwischen beiden Werten überblendet
+function fluidBloomShare() {
+  const lookBloom = i => LOOKS[i].bloom === undefined ? 1 : LOOKS[i].bloom;
+  const fadeK = lookFade * lookFade * (3 - 2 * lookFade);
+  return lookBloom(prevLook) + (lookBloom(lookIndex) - lookBloom(prevLook)) * fadeK;
+}
+// Zeichnet das Bild des Fluid-Modus (aktiver Look, darüber die Hindernisse) in target:
+// die Szenen-Textur, wenn Bloom, Flacker-Reduktion oder eine Modus-Überblendung laufen, sonst null = Bildschirm
+function drawFluid(target, dt, time) {
   if (LOOKS[lookIndex].smoothCurl || (lookFade < 1 && LOOKS[prevLook].smoothCurl)) updateCurlSmooth();
   if (LOOKS[lookIndex].surface || (lookFade < 1 && LOOKS[prevLook].surface)) updateSurface();
   // Schaum nur, wenn ein sichtbarer Look ihn braucht (braucht das Höhenfeld, daher nach updateSurface)
@@ -2181,20 +2216,6 @@ function render(dt) {
   foamWasActive = foamVisible;
   envAngle += PARAMS.envSpin.current * 0.3 * dt;   // Umgebung (Metallic) dreht sich langsam; aufsummiert = weich bei Reglerwechsel
   filmPhase += PARAMS.filmFlow.current * 0.25 * dt; // Schlieren (Ölfilm) wandern; aufsummiert = weich bei Reglerwechsel
-
-  // Bloom nur, wenn er sichtbar etwas beiträgt – sonst zeichnet der Look direkt auf den Bildschirm (wie vorher)
-  // Looks können mit bloom: 0..1 angeben, wie stark der Glow bei ihnen wirkt (z. B. 0 bei hellem Papier);
-  // beim Look-Wechsel wird weich zwischen beiden Werten überblendet
-  const lookBloom = i => LOOKS[i].bloom === undefined ? 1 : LOOKS[i].bloom;
-  const fadeK = lookFade * lookFade * (3 - 2 * lookFade);
-  // ("Flackern reduzieren" nimmt den Glow etwas zurück – pulsierender Schein ist auch eine Art Flackern)
-  const bloomAmount = PARAMS.bloomIntensity.current * PARAMS.bloomOn.current * (1 - 0.35 * calm) *
-    (lookBloom(prevLook) + (lookBloom(lookIndex) - lookBloom(prevLook)) * fadeK);
-  const useCalm = calm > 0.02;
-  if (bloomAmount > 0.002 || useCalm) ensureBloomBuffers();
-  const useBloom = bloomAmount > 0.002 && bloomLevels.length > 0;
-  // Bloom und Flacker-Reduktion arbeiten mit dem fertigen Bild des Looks → dann zeichnet er in die Szenen-Textur
-  const target = useBloom || useCalm ? scene : null;
 
   if (lookFade >= 1) {
     drawLook(lookIndex, 1, time, target);
@@ -2210,12 +2231,61 @@ function render(dt) {
   }
 
   if (obstaclesExist) drawObstacles(target);
+}
+
+// ---------- Bild zusammensetzen (für alle Modi gleich) ----------
+// Reihenfolge: Bild des Modus → Helligkeits-Bremse (falls an) → Bloom (falls an) → Bildschirm.
+// Beim Moduswechsel werden kurz beide Modi gezeichnet und weich überblendet.
+let lookTime = 0;   // Uhr für alle Animationen (Looks, Farbwanderung …); läuft bei "Flackern reduzieren" langsamer
+let sceneB = null;  // zweite Szenen-Textur: Bild des neuen Modus während der Überblendung
+function render(dt) {
+  const calm = PARAMS.calm.current;
+  lookTime += dt * (1 - 0.6 * calm);
+  const time = lookTime;
+  const mode = MODES[modeIndex], fading = modeFade < 1;
+
+  // Bloom nur, wenn er sichtbar etwas beiträgt – sonst zeichnet der Modus direkt auf den Bildschirm.
+  // Jeder Modus gibt an, wie stark der Glow bei ihm wirkt; beim Moduswechsel wird weich überblendet.
+  let share = mode.bloomShare(), mk = 1;
+  if (fading) {
+    modeFade = Math.min(1, modeFade + dt / CONFIG.MODE_FADE);
+    mk = modeFade * modeFade * (3 - 2 * modeFade);
+    const old = MODES[prevMode].bloomShare();
+    share = old + (share - old) * mk;
+  }
+  // ("Flackern reduzieren" nimmt den Glow etwas zurück – pulsierender Schein ist auch eine Art Flackern)
+  const bloomAmount = PARAMS.bloomIntensity.current * PARAMS.bloomOn.current * (1 - 0.35 * calm) * share;
+  const useCalm = calm > 0.02;
+  if (bloomAmount > 0.002 || useCalm || fading) ensureBloomBuffers();
+  const useBloom = bloomAmount > 0.002 && bloomLevels.length > 0;
+  // Bloom, Flacker-Reduktion und Überblendung arbeiten mit dem fertigen Bild → dann wird in die Szenen-Textur gezeichnet
+  const target = useBloom || useCalm || fading ? scene : null;
+
+  if (!fading) {
+    mode.draw(target, dt, time);
+    if (sceneB) { sceneB.free(); sceneB = null; }      // wird nur während einer Überblendung gebraucht
+  } else {
+    // alter Modus in die Szenen-Textur, neuer Modus in eine zweite, dann den neuen weich darüberlegen
+    if (!sceneB || sceneB.w !== scene.w || sceneB.h !== scene.h) {
+      if (sceneB) sceneB.free();
+      sceneB = createFBO(scene.w, scene.h, gl.RGBA16F, gl.RGBA);
+    }
+    MODES[prevMode].draw(scene, dt, time);
+    mode.draw(sceneB, dt, time);
+    const u = use('fade');
+    gl.uniform1i(u.uTexture, sceneB.attach(0));
+    gl.uniform1f(u.uAlpha, mk);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    blit(scene);
+    gl.disable(gl.BLEND);
+  }
 
   // Nachbearbeitung: erst die Helligkeits-Bremse (falls an), dann der Bloom (falls an), dann auf den Bildschirm
   const src = useCalm ? applyCalm(dt, calm) : scene;
   calmWasActive = useCalm;
   if (useBloom) applyBloom(bloomAmount, src);
-  else if (useCalm) {
+  else if (useCalm || fading) {
     const u = use('scale');
     gl.uniform1i(u.uTexture, src.attach(0));
     gl.uniform1f(u.value, 1);
@@ -2297,7 +2367,29 @@ function movePointer(clientX, clientY) {
   hideHint();
 }
 
-canvas.addEventListener('pointermove', e => { if (!autoplay.active) movePointer(e.clientX, e.clientY); });
+// Cursor-Ring an die Mausposition setzen (für Modi, in denen die Maus nicht malt)
+function showCursor(clientX, clientY) {
+  pointer.cx = clientX; pointer.cy = clientY;
+  cursorEl.style.transform = `translate3d(${clientX}px, ${clientY}px, 0) scale(${cursorScale.toFixed(3)})`;
+  cursorEl.classList.add('on');
+}
+
+// Alle Eingaben auf der Zeichenfläche gehen an den aktiven Modus (siehe Abschnitt "Modi")
+canvas.addEventListener('pointermove', e => { if (!autoplay.active) MODES[modeIndex].pointerMove(e); });
+canvas.addEventListener('pointerdown', e => MODES[modeIndex].pointerDown(e));
+canvas.addEventListener('wheel', e => {
+  const mode = MODES[modeIndex];
+  if (mode.wheel) { mode.wheel(e); e.preventDefault(); }
+}, { passive: false });
+canvas.addEventListener('pointerleave', () => {
+  MODES[modeIndex].pointerLeave();
+  cursorEl.classList.remove('on');
+  lastPaint = -1e9;                     // Oberfläche sofort wieder voll sichtbar
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());   // rechte Maustaste gehört dem Modus → kein Menü
+for (const type of ['pointerup', 'pointercancel', 'blur']) window.addEventListener(type, e => MODES[modeIndex].pointerUp(e));
+
+// ----- Eingaben des Fluid-Modus -----
 // Welcher Stift gilt gerade? Rechte Maustaste = Hindernis (mit Umschalt-Taste = Radierer), sonst das gewählte Werkzeug
 function updateToolCursor() {
   const mode = obstaclePen.active ? (obstaclePen.erase ? 'erase' : 'wall') : tool;
@@ -2310,12 +2402,8 @@ function endObstacleStroke() {
   obstaclePen.last = null;
   updateToolCursor();
 }
-canvas.addEventListener('contextmenu', e => e.preventDefault());   // rechte Maustaste zeichnet Hindernisse → kein Menü
-window.addEventListener('pointerup', endObstacleStroke);
-window.addEventListener('pointercancel', endObstacleStroke);
-window.addEventListener('blur', endObstacleStroke);
 
-canvas.addEventListener('pointerdown', e => {
+function fluidPointerDown(e) {
   const right = e.button === 2;
   if (right || tool !== 'paint') {                 // Hindernis zeichnen oder radieren
     obstaclePen.active = true;
@@ -2332,12 +2420,7 @@ canvas.addEventListener('pointerdown', e => {
   splat(pointer.x, pointer.y, 0, 0, dyeColor(Math.random(), 1.5 * (1 - 0.6 * PARAMS.calm.current)), PARAMS.brush.current);
   audioClick(pointer.x, pointer.y);
   cursorScale = 1.8 - 0.6 * PARAMS.calm.current;   // kleiner "Puls" beim Klicken
-});
-canvas.addEventListener('pointerleave', () => {
-  pointer.init = false;
-  cursorEl.classList.remove('on');
-  lastPaint = -1e9;                     // Oberfläche sofort wieder voll sichtbar
-});
+}
 
 function clearCanvas() {
   clearTimer = 0.7;
@@ -2345,12 +2428,24 @@ function clearCanvas() {
   toast('Geleert');
 }
 
+// Tasten: zuerst die, die in jedem Modus gelten – alle anderen gehen an den aktiven Modus
 window.addEventListener('keydown', e => {
+  if (e.code === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey) e.preventDefault();   // Tab wechselt den Modus, nicht den Fokus
   // [ und ] brauchen auf deutschen Tastaturen AltGr (zählt als Strg+Alt) – deshalb vor der Sperre für Tastenkombinationen prüfen
   const bracket = e.key === '[' ? -1 : e.key === ']' ? 1 : 0;
   if (e.repeat || e.metaKey || (!bracket && (e.ctrlKey || e.altKey))) return;
   if (e.code === 'KeyA') { autoplay.active ? stopAutoplay() : startAutoplay(true); return; }
   userActive();
+  // Modus wechseln: Tab = nächster, Umschalt + Tab = voriger
+  if (e.code === 'Tab') { setMode((modeIndex + (e.shiftKey ? MODES.length - 1 : 1)) % MODES.length); return; }
+  if (e.code === 'KeyH') togglePanel();
+  if (e.code === 'KeyF') setFpsVisible(!fpsVisible);
+  if (e.code === 'KeyQ') cycleQuality();
+  if (e.code === 'KeyM') setMuted(!audio.muted);
+  MODES[modeIndex].key(e, bracket);
+});
+// Tasten des Fluid-Modus
+function fluidKey(e, bracket) {
   // Look wählen: 1–9 und 0 direkt (die ersten zehn), Pfeiltasten ← → bzw. , und . bzw. [ und ] schalten durch alle
   const digit = /^Digit([0-9])$/.exec(e.code);
   if (digit) setLook((Number(digit[1]) + 9) % 10);
@@ -2359,14 +2454,10 @@ window.addEventListener('keydown', e => {
   else if ((e.code === 'ArrowRight' && !onSlider) || e.code === 'Period') cycleLook(1);
   else if ((e.code === 'ArrowLeft' && !onSlider) || e.code === 'Comma') cycleLook(-1);
   if (e.code === 'Space') { clearCanvas(); e.preventDefault(); }
-  if (e.code === 'KeyH') togglePanel();
-  if (e.code === 'KeyF') setFpsVisible(!fpsVisible);
-  if (e.code === 'KeyQ') cycleQuality();
-  if (e.code === 'KeyM') setMuted(!audio.muted);
   if (e.code === 'KeyW') setTool(tool === 'wall' ? 'paint' : 'wall');
   if (e.code === 'KeyE') setTool(tool === 'erase' ? 'paint' : 'erase');
   if (e.code === 'KeyX') clearObstacles();
-});
+}
 
 // ---------- Hinweise & Meldungen ----------
 let hintTimer = null;
@@ -2374,11 +2465,13 @@ function hideHint() {
   if (hintTimer) return;
   hintTimer = setTimeout(() => $('hint').classList.add('gone'), 1500);
 }
-function showHint(html) {
+// seconds angegeben → der Hinweis blendet nach dieser Zeit von selbst wieder aus
+function showHint(html, seconds) {
   clearTimeout(hintTimer);
   hintTimer = null;
   $('hint').innerHTML = html;
   $('hint').classList.remove('gone');
+  if (seconds) hintTimer = setTimeout(() => $('hint').classList.add('gone'), seconds * 1000);
 }
 
 let toastTimer = null;
@@ -2575,8 +2668,7 @@ function updateQualityInfo() {
   $('qualityOut').classList.toggle('heavy', !!q.heavy);
   [...qualityTicks.children].forEach((t, i) => t.classList.toggle('on', i === qualityLevel));
   $('qualityInfo').innerHTML =
-    `Bild ${canvas.width}×${canvas.height} · Farbe ${dye.w}×${dye.h}<br>` +
-    `Strömung ${velocity.w}×${velocity.h} · ${q.pressure} Druck-Durchgänge` +
+    `Bild ${canvas.width}×${canvas.height} · ` + MODES[modeIndex].qualityInfo(q) +
     (q.heavy ? '<br><span class="heavy">Sehr anspruchsvoll – nur für starke Grafikkarten</span>' : '');
   document.querySelector('#fps .q').textContent = (qualityMode === 'auto' ? 'Auto · ' : '') + q.name;
 }
@@ -2699,8 +2791,10 @@ function easeParams(dt) {
 }
 
 // ---------- Auto-Play ----------
-// Drei unsichtbare "Pinsel" fahren auf weichen Schleifenbahnen (überlagerte Sinuskurven) durchs Bild.
-// Ab und zu kommt ein sanfter Farbstoß dazu, und die Palette wechselt langsam.
+// Gemeinsamer Rahmen für alle Modi: Start nach Inaktivität (Bildschirmschoner), Ende bei jeder Eingabe, weiches
+// Ein- und Ausblenden (level), langsamer Palettenwechsel. WAS dabei passiert, bestimmt der aktive Modus (autoplay).
+// Fluid: Drei unsichtbare "Pinsel" fahren auf weichen Schleifenbahnen (überlagerte Sinuskurven) durchs Bild.
+// Ab und zu kommt ein sanfter Farbstoß dazu.
 const rand = (a, b) => a + Math.random() * (b - a);
 const autoplay = {
   enabled: true,          // Schalter im Panel
@@ -2733,15 +2827,15 @@ function startAutoplay(screensaver) {
   autoplay.screensaver = screensaver;
   autoplay.wake = null;
   autoplay.paletteTimer = 0;
-  for (const b of autoplay.brushes) b.prev = null;
+  MODES[modeIndex].autoplayStart();
   document.body.classList.toggle('screensaver', screensaver);
-  if (screensaver) showHint('Auto-Play · Bewege die Maus, um selbst zu malen');
+  if (screensaver) showHint(MODES[modeIndex].autoplayHint);
 }
 
 function stopAutoplay() {
   autoplay.active = false;
   autoplay.lastInput = performance.now();
-  pointer.init = false;                 // sonst gäbe es einen Sprung von der alten Mausposition
+  MODES[modeIndex].autoplayStop();
   document.body.classList.remove('screensaver');
   if (autoplay.screensaver) hideHint();
 }
@@ -2774,7 +2868,20 @@ function updateAutoplay(dt, now) {
   autoplay.level += ((autoplay.active ? 1 : 0) - autoplay.level) * (1 - Math.exp(-1.5 * dt));
   if (autoplay.level < 0.005) return;
   autoplay.time += dt;
+  MODES[modeIndex].autoplay(dt);        // Inhalt des Auto-Play: Sache des aktiven Modus
 
+  if (!autoplay.active) return;
+  // langsam durch die Paletten wandern
+  autoplay.paletteTimer += dt;
+  if (autoplay.paletteTimer > CONFIG.AUTOPLAY_PALETTE_SECONDS) {
+    autoplay.paletteTimer = 0;
+    const names = Object.keys(PALETTES);
+    setPalette(names[(names.indexOf(activePalette) + 1) % names.length]);
+  }
+}
+
+// Auto-Play des Fluid-Modus: die drei Pinsel und die Farbstöße
+function fluidAutoplay(dt) {
   const aspect = canvas.width / canvas.height;
   for (const b of autoplay.brushes) {
     const [x, y] = brushPos(b, autoplay.time);
@@ -2800,13 +2907,6 @@ function updateAutoplay(dt, now) {
     const a = rand(0, 6.28), force = rand(600, 1000) * soft;
     splat(rand(0.2, 0.8), rand(0.2, 0.8), Math.cos(a) * force, Math.sin(a) * force, dyeColor(Math.random(), 0.8 * soft));
     audioBurst();
-  }
-  // langsam durch die Paletten wandern
-  autoplay.paletteTimer += dt;
-  if (autoplay.paletteTimer > CONFIG.AUTOPLAY_PALETTE_SECONDS) {
-    autoplay.paletteTimer = 0;
-    const names = Object.keys(PALETTES);
-    setPalette(names[(names.indexOf(activePalette) + 1) % names.length]);
   }
 }
 
@@ -3087,6 +3187,152 @@ $('musicSwitchRow').addEventListener('click', e => { e.preventDefault(); setMusi
 bindSlider('volume', PARAMS.volume, v => v === 0 ? 'still' : Math.round(v * 100) + ' %');
 updateAudioInfo();
 
+// ---------- Modi ----------
+// Ein Modus ist ein Objekt mit fester Schnittstelle. Alles andere – Panel, Paletten, Bloom, Flacker-Reduktion,
+// Qualität, FPS, Ton, Auto-Play, Hauptschleife – gibt es nur einmal und fragt jeweils den aktiven Modus:
+//   id, name               Kennung (für data-mode="…" im Panel und die CSS-Klasse mode-…) und Anzeigename
+//   hint, autoplayHint     Hinweis unten beim Wechsel in den Modus bzw. im Bildschirmschoner
+//   enter(), leave()       beim Wechsel in den Modus bzw. aus ihm heraus
+//   update(dt, now)        einmal pro Bild, solange der Modus zu sehen ist: Eingaben verarbeiten, rechnen
+//   draw(target, dt, time) Bild zeichnen (target = Szenen-Textur oder null = Bildschirm)
+//   bloomShare()           wie stark der Glow in diesem Modus wirkt (0..1)
+//   autoplayStart(), autoplayStop(), autoplay(dt)    Inhalt des Auto-Play
+//   pointerMove(e), pointerDown(e), pointerUp(e), pointerLeave(), key(e, bracket), wheel(e) (optional)   Eingaben
+//   qualityInfo(q)         Text für die Info-Zeile unter dem Qualitäts-Regler
+// Neuer Modus = ein Objekt in MODES + Panel-Abschnitte mit data-mode="id". Ein Modus, der nicht zu sehen ist,
+// kostet nichts (er wird weder gerechnet noch gezeichnet) und behält seinen Zustand.
+
+// Fluid: einmal pro Bild – Mausbewegung in Farbe und Strömung umsetzen, Pinsel-Ring anpassen, Simulation rechnen
+function updateFluid(dt) {
+  if (pointer.moved) {
+    pointer.moved = false;
+    splat(pointer.x, pointer.y, pointer.dx * CONFIG.SPLAT_FORCE, pointer.dy * CONFIG.SPLAT_FORCE, nextColor(), PARAMS.brush.current);
+    // Pinsel-Cursor: wird bei schneller Bewegung etwas größer
+    const speed = Math.hypot(pointer.dx, pointer.dy) / dt;
+    audioPaint(speed, Math.hypot(pointer.dx, pointer.dy), pointer.x);
+    cursorScale = Math.max(cursorScale, 1 + Math.min(speed * 0.35, 0.6));
+    pointer.dx = pointer.dy = 0;
+  }
+  // Ring und Vorschau zeigen die echte Pinselgröße und die aktuelle Malfarbe
+  const brushColor = paletteColor(paletteT);
+  const brushSize = Math.max(14, brushDiameterPx(PARAMS.brush.current)).toFixed(1) + 'px';
+  for (const el of [cursorEl, brushPreview]) {
+    el.style.setProperty('--brush', brushColor);
+    el.style.setProperty('--size', brushSize);
+  }
+  $('gravityDirRow').classList.toggle('unused', PARAMS.gravity.target === 0);
+  step(dt);
+}
+
+MODES.push({
+  id: 'fluid', name: 'Fluid',
+  hint: 'Maus bewegen = malen · Klick = Farbklecks · <b>Tab</b> = Modus wechseln',
+  autoplayHint: 'Auto-Play · Bewege die Maus, um selbst zu malen',
+  enter() { setLook(lookIndex); },                           // Panel wieder auf den aktiven Look einstellen
+  leave() { endObstacleStroke(); pointer.init = false; },
+  update: updateFluid,
+  draw: drawFluid,
+  bloomShare: fluidBloomShare,
+  autoplayStart() { for (const b of autoplay.brushes) b.prev = null; },
+  autoplayStop() { pointer.init = false; },                  // sonst gäbe es einen Sprung von der alten Mausposition
+  autoplay: fluidAutoplay,
+  pointerMove(e) { movePointer(e.clientX, e.clientY); },
+  pointerDown: fluidPointerDown,
+  pointerUp: endObstacleStroke,
+  pointerLeave() { pointer.init = false; },
+  key: fluidKey,
+  qualityInfo: q => `Farbe ${dye.w}×${dye.h}<br>Strömung ${velocity.w}×${velocity.h} · ${q.pressure} Druck-Durchgänge`,
+});
+
+// ---------- Mandelbrot-Modus (Grundgerüst) ----------
+// Zeigt vorerst nur das ganze "Apfelmännchen" in den Farben der aktiven Palette, die langsam wandern.
+// Zoom, Julia-Sets und Zoom-Fahrt kommen im nächsten Schritt.
+programs.mandel = makeProgram(header + paletteGLSL + `
+  uniform vec2 uCenter;       // Bildmitte in der Zahlenebene
+  uniform vec2 uSpan;         // Breite und Höhe des Bildausschnitts in der Zahlenebene
+  uniform float uPhase;       // wandernde Farbverschiebung
+  void main () {
+    vec2 c = uCenter + (vUv - 0.5) * uSpan, z = vec2(0.0);
+    float zz = 0.0;
+    int i = 0;
+    for (; i < 200; i++) {
+      z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+      zz = dot(z, z);
+      if (zz > 256.0) break;
+    }
+    vec3 col = vec3(0.0);                                   // Punkte in der Menge bleiben schwarz
+    if (i < 200) {
+      float s = float(i) + 1.0 - log2(0.5 * log2(zz));    // "glatter" Zähler: keine Stufen zwischen den Farbbändern
+      col = palette(log2(s + 4.0) * 0.45 + uPhase) * (1.0 - exp(-s * 0.12));
+    }
+    fragColor = vec4(col, 1.0);
+  }`);
+
+MODES.push({
+  id: 'mandel', name: 'Mandelbrot',
+  hint: 'Mandelbrot · <b>Tab</b> = Modus wechseln',
+  autoplayHint: 'Auto-Play · Bewege die Maus, um zu übernehmen',
+  enter() {
+    $('paletteSection').classList.remove('unused');          // Palette und Bloom wirken hier immer
+    $('bloomSection').classList.remove('unused');
+  },
+  leave() {},
+  update() {
+    cursorEl.style.setProperty('--brush', paletteColor(lookTime * 0.02));
+    cursorEl.style.setProperty('--size', '22px');
+  },
+  draw(target, dt, time) {
+    const u = use('mandel');
+    const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+    const h = Math.max(2.6, 3.4 / aspect);                   // das ganze Apfelmännchen passt in jedes Fensterformat
+    gl.uniform2f(u.uCenter, -0.6, 0);
+    gl.uniform2f(u.uSpan, h * aspect, h);
+    gl.uniform1f(u.uPhase, time * 0.02);
+    gl.uniform3fv(u['uPalette[0]'], currentPalette);
+    blit(target);
+  },
+  bloomShare: () => 1,
+  autoplayStart() {}, autoplayStop() {}, autoplay() {},
+  pointerMove(e) { showCursor(e.clientX, e.clientY); },
+  pointerDown() {}, pointerUp() {}, pointerLeave() {}, key() {},
+  qualityInfo: () => 'Mandelbrot (Grundgerüst)',
+});
+
+// ----- Moduswechsel -----
+// Knöpfe im Panel-Abschnitt "Modus" und die Regel, die Panel-Teile fremder Modi versteckt, entstehen aus der Liste
+const modeBox = $('modes');
+const modeStyle = document.head.appendChild(document.createElement('style'));
+MODES.forEach((m, i) => {
+  modeStyle.textContent += `body:not(.mode-${m.id}) [data-mode="${m.id}"] { display: none; }\n`;
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.innerHTML = `<span>${m.name}</span>`;
+  btn.addEventListener('click', () => { setMode(i); btn.blur(); });
+  modeBox.appendChild(btn);
+});
+function updateModeUi() {
+  MODES.forEach((m, i) => {
+    document.body.classList.toggle('mode-' + m.id, i === modeIndex);
+    modeBox.children[i].classList.toggle('active', i === modeIndex);
+  });
+}
+function setMode(i) {
+  if (i === modeIndex || !MODES[i]) return;
+  MODES[modeIndex].leave();
+  // Wechsel zurück, während noch überblendet wird → die Überblendung läuft von der aktuellen Stelle rückwärts
+  modeFade = modeFade < 1 && i === prevMode ? 1 - modeFade : 0;
+  prevMode = modeIndex;
+  modeIndex = i;
+  updateModeUi();
+  MODES[i].enter();
+  // Auto-Qualität neu einpendeln lassen: der neue Modus kostet anders
+  if (qualityMode === 'auto') Object.assign(autoQ, { low: 0, high: 0, cooldown: 2, ceiling: QUALITY.length - 1 });
+  updateQualityInfo();
+  showHint(MODES[i].hint, 6);
+  toast('Modus: ' + MODES[i].name);
+}
+updateModeUi();
+
 // ---------- Hauptschleife ----------
 let last = performance.now();
 function frame(now) {
@@ -3100,32 +3346,17 @@ function frame(now) {
   updateAutoplay(dt, now);
   updateAudio(dt);
 
-  if (pointer.moved) {
-    pointer.moved = false;
-    splat(pointer.x, pointer.y, pointer.dx * CONFIG.SPLAT_FORCE, pointer.dy * CONFIG.SPLAT_FORCE, nextColor(), PARAMS.brush.current);
-    // Pinsel-Cursor: wird bei schneller Bewegung etwas größer
-    const speed = Math.hypot(pointer.dx, pointer.dy) / dt;
-    audioPaint(speed, Math.hypot(pointer.dx, pointer.dy), pointer.x);
-    cursorScale = Math.max(cursorScale, 1 + Math.min(speed * 0.35, 0.6));
-    pointer.dx = pointer.dy = 0;
-  }
+  // Eingaben und Simulation: nur für den sichtbaren Modus (während einer Überblendung auch für den alten)
+  if (modeFade < 1) MODES[prevMode].update(dt, now);
+  MODES[modeIndex].update(dt, now);
+
   cursorScale += (1 - cursorScale) * (1 - Math.exp(-8 * dt));
   if (pointer.cx !== undefined) {
     cursorEl.style.transform = `translate3d(${pointer.cx}px, ${pointer.cy}px, 0) scale(${cursorScale.toFixed(3)})`;
   }
-  // Ring und Vorschau zeigen die echte Pinselgröße und die aktuelle Malfarbe
-  const brushColor = paletteColor(paletteT);
-  const brushSize = Math.max(14, brushDiameterPx(PARAMS.brush.current)).toFixed(1) + 'px';
-  for (const el of [cursorEl, brushPreview]) {
-    el.style.setProperty('--brush', brushColor);
-    el.style.setProperty('--size', brushSize);
-  }
-
-  // Beim Malen tritt die Oberfläche in den Hintergrund
+  // Solange gemalt (oder gezoomt …) wird, tritt die Oberfläche in den Hintergrund
   document.body.classList.toggle('immersed', now - lastPaint < 1200);
-  $('gravityDirRow').classList.toggle('unused', PARAMS.gravity.target === 0);
 
-  step(dt);
   render(dt);
   requestAnimationFrame(frame);
 }
