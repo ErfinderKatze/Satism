@@ -367,6 +367,26 @@
       <label for="paperGrain">Papierstruktur <output id="paperGrainOut"></output></label>
       <input id="paperGrain" type="range" min="0" max="1" step="0.01">
     </div>
+    <div class="row look-param" data-param="spaceMode">
+      <label for="spaceMode">Stil <output id="spaceModeOut"></output></label>
+      <input id="spaceMode" type="range" min="0" max="2" step="any">
+    </div>
+    <div class="row look-param" data-param="spaceGlow">
+      <label for="spaceGlow">Leuchtkraft <output id="spaceGlowOut"></output></label>
+      <input id="spaceGlow" type="range" min="0.2" max="3" step="0.05">
+    </div>
+    <div class="row look-param" data-param="nebula">
+      <label for="nebula">Struktur <output id="nebulaOut"></output></label>
+      <input id="nebula" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="stars">
+      <label for="stars">Sterne <output id="starsOut"></output></label>
+      <input id="stars" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="stardust">
+      <label for="stardust">Sternenstaub <output id="stardustOut"></output></label>
+      <input id="stardust" type="range" min="0" max="1" step="0.01">
+    </div>
     <div class="row look-param" data-param="envSpin">
       <label for="envSpin">Umgebung drehen <output id="envSpinOut"></output></label>
       <input id="envSpin" type="range" min="0" max="1" step="0.01">
@@ -495,6 +515,11 @@ const PARAMS = {
   marbleBands: { target: 7,    current: 7,    def: 7    },  // Look-Regler (Marmorpapier): Anzahl der Farbbänder
   marbleVeins: { target: 0.7,  current: 0.7,  def: 0.7  },  // Look-Regler (Marmorpapier): Stärke der hellen Adern zwischen den Bändern (0 = aus)
   marbleSharp: { target: 0.85, current: 0.85, def: 0.85 },  // Look-Regler (Marmorpapier): 0 = weiche Übergänge, 1 = gestochen scharfe Kanten
+  spaceMode:   { target: 0,    current: 0,    def: 0    },  // Look-Regler (Galaxie): 0 Galaxie, 1 Nebel, 2 Aurora
+  spaceGlow:   { target: 1,    current: 1,    def: 1    },  // Look-Regler (Galaxie): Leuchtkraft des Gases
+  nebula:      { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Galaxie): Struktur (Wolken, Staubbänder, Strahlen), 0 = glatt
+  stars:       { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Galaxie): Sternenhimmel im Hintergrund, 0 = aus
+  stardust:    { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Galaxie): mitschwimmender Sternenstaub, 0 = aus
   bloomIntensity: { target: 1,    current: 1,    def: 1    },  // Bloom: Stärke des Glows (0 = aus)
   bloomThreshold: { target: 0.4,  current: 0.4,  def: 0.4  },  // Bloom: ab welcher Helligkeit (0..1) etwas leuchtet
   bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
@@ -903,6 +928,10 @@ const lookHeader = header + `
   uniform float uMarbleBands;   // Look-Regler "Bänder" (Marmorpapier)
   uniform float uMarbleVeins;   // Look-Regler "Adern" (Marmorpapier, 0 = aus)
   uniform float uMarbleSharp;   // Look-Regler "Kantenschärfe" (Marmorpapier)
+  uniform float uSpaceMode;     // Look-Regler "Stil" (Galaxie: 0 Galaxie, 1 Nebel, 2 Aurora – Zwischenwerte beim Überblenden)
+  uniform float uSpaceGlow;     // Look-Regler "Leuchtkraft" (Galaxie)
+  uniform float uNebula;        // Look-Regler "Struktur" (Galaxie)
+  uniform float uStars;         // Look-Regler "Sterne" (Galaxie, 0 = aus)
 
   // ----- Spiegelnde Oberflächen (gemeinsam für Metallic, Glas … ) -----
   // weiches Rechteck (Softbox) in der Umgebung; p = (Richtung, Höhe), soft = Kantenweichheit
@@ -1319,6 +1348,76 @@ const LOOKS = [
       }`,
   },
   {
+    name: 'Galaxie / Nebel / Aurora',
+    surface: true,        // weiches Höhenfeld für den sanften Schein; außerdem braucht es der Schaum-Schritt
+    surfaceBlur: 0.02,
+    // Sternenstaub = der mitgetragene Schaum-Puffer mit eigenen Einstellungen: Menge vom Regler "Sternenstaub",
+    // lange haltbar, feinste Körnung → winzige Lichtpunkte, die mit der Strömung treiben
+    foam: { amount: 'stardust', life: 0.85, grain: 0 },
+    usesPalette: true,    // das Gas leuchtet in den gemalten Palettenfarben
+    params: ['spaceMode', 'spaceGlow', 'nebula', 'stars', 'stardust'],
+    glsl: `
+      // Sternenhimmel: In jeder Gitterzelle sitzt höchstens ein Stern an zufälliger Stelle, zufällig groß und hell.
+      // Die Sterne stehen still und funkeln nur ganz langsam (kein Blinken).
+      float starLayer (vec2 q, float cells, float amount) {
+        vec2 g = q * cells, id = floor(g);
+        float r = hash(id);
+        if (r > amount) return 0.0;                                       // nicht jede Zelle hat einen Stern
+        vec2 pos = (vec2(hash(id + 3.1), hash(id + 7.7)) - 0.5) * 0.7;
+        float size = mix(0.035, 0.11, pow(hash(id + 11.3), 6.0));         // wenige große, viele kleine
+        float twinkle = 0.78 + 0.22 * sin(uTime * (0.5 + 1.1 * hash(id + 5.5)) + r * 60.0);
+        return smoothstep(size, 0.0, length(fract(g) - 0.5 - pos)) * twinkle * (0.35 + 0.65 * hash(id + 2.2));
+      }
+      // Galaxie: leuchtendes Gas in Palettenfarben, dunkle Staubbänder, weißglühender Kern an dichten Stellen
+      vec3 galaxy (LookInput L, vec2 q, float gas, float cloud) {
+        vec3 c = palette(L.t + (cloud - 0.5) * 0.25) * gas * mix(1.0, 0.45 + 1.1 * cloud, uNebula);
+        c *= 1.0 - uNebula * 0.65 * smoothstep(0.48, 0.72, fbm(q * 9.0 + 5.0)) * (1.0 - gas * 0.6);
+        return c + vec3(1.0, 0.92, 0.8) * pow(gas, 4.0) * 1.4;           // Kern heller als Weiß → Bloom
+      }
+      // Nebel: zwei Gasfarben, die in Wolken ineinander übergehen, dazu feine leuchtende Fäden
+      vec3 nebulaGas (LookInput L, vec2 q, float gas, float cloud, float halo) {
+        vec3 c1 = palette(L.t), c2 = palette(L.t + 0.3 + 0.2 * cloud);
+        vec3 c = mix(c1, c2, smoothstep(0.35, 0.65, fbm(q * 4.0 + 20.0))) * gas * mix(1.0, 0.4 + 1.2 * cloud, uNebula);
+        float thread = 1.0 - abs(noise(q * 14.0 + cloud * 3.0) * 2.0 - 1.0);   // Rauschgrate = Fäden
+        c += c1 * pow(thread, 5.0) * gas * uNebula * 0.9;
+        return c + c2 * halo * 0.22;                                      // weicher Schein um das Gas
+      }
+      // Aurora: Polarlicht-Vorhänge – senkrechte Strahlen, unten grün, nach oben türkis bis violett
+      vec3 aurora (LookInput L, vec2 q) {
+        // Farbe senkrecht verschmieren (6 Messpunkte nach unten), damit Vorhänge statt Wolken entstehen.
+        // Der Startpunkt wird pro Bildpunkt leicht verschoben, sonst sähe man die 6 Kopien als Stufen.
+        float gas = 0.0, jitter = hash(gl_FragCoord.xy);
+        for (int i = 0; i < 6; i++) gas += densityFrom(texture(uDye, L.uv - vec2(0.0, 0.013 * (float(i) + jitter))).rgb) * (1.0 - 0.14 * float(i));
+        gas = 1.0 - exp(-gas * 0.6);
+        float rays = noise(vec2(q.x * 40.0 + uTime * 0.12, q.y * 1.5)) * 0.6 + noise(vec2(q.x * 95.0 - uTime * 0.08, q.y * 3.0)) * 0.4;
+        float lit = gas * mix(1.0, 0.3 + 1.4 * rays, uNebula);
+        // dünn = grün, dichter = türkis, am dichtesten = violett (wie die Höhenschichten eines Polarlichts)
+        vec3 c = gas < 0.35 ? mix(vec3(0.08, 1.0, 0.42), vec3(0.1, 0.85, 0.9), gas / 0.35)
+                            : mix(vec3(0.1, 0.85, 0.9), vec3(0.75, 0.3, 1.0), clamp((gas - 0.35) / 0.4, 0.0, 1.0));
+        return mix(c, palette(L.t) * 1.2, 0.25) * lit * 1.7;
+      }
+      vec3 look (LookInput L) {
+        vec2 q = vec2(L.uv.x * uAspect, L.uv.y);
+        float gas = 1.0 - exp(-L.density * 2.2);                          // Gasmenge 0..1
+        float cloud = fbm(q * 3.0 + vec2(uTime * 0.008, 0.0));            // große Wolkenformen, fast stillstehend
+        // Stil-Regler: nur die sichtbaren Stile werden berechnet, Zwischenwerte blenden weich über
+        float wG = 1.0 - clamp(uSpaceMode, 0.0, 1.0), wA = clamp(uSpaceMode - 1.0, 0.0, 1.0), wN = 1.0 - wG - wA;
+        vec3 col = vec3(0.0);
+        if (wG > 0.001) col += wG * galaxy(L, q, gas, cloud);
+        if (wN > 0.001) col += wN * nebulaGas(L, q, gas, cloud, heightAt(L.uv));
+        if (wA > 0.001) col += wA * aurora(L, q);
+        col *= uSpaceGlow;
+        // Sternenstaub: winzige Lichtpunkte aus dem mitgetragenen Schaum-Puffer, treiben mit dem Gas
+        float dust = smoothstep(0.3, 1.0, texture(uFoamTex, L.uv).r);
+        col += mix(vec3(1.0, 0.95, 0.85), palette(L.t + 0.5), 0.3) * dust * 1.6;
+        // Sternenhimmel dahinter: scheint durch dünnes Gas, dichtes Gas verdeckt ihn
+        float star = starLayer(q, 55.0, 0.30) + starLayer(q + 13.7, 21.0, 0.16) * 1.6;
+        col += vec3(0.85, 0.92, 1.0) * star * uStars * 1.5 * (1.0 - gas * 0.85);
+        // Hintergrund: fast schwarzes Blau mit einem Hauch Wolken
+        return col + vec3(0.004, 0.006, 0.016) * (0.6 + 0.8 * cloud);
+      }`,
+  },
+  {
     // Prüf-Look für den Oberflächen-Baustein: zeigt die Neigung als Farben (wie eine "Normal Map").
     // Neigung nach rechts = mehr Rot, nach oben = mehr Grün, flach = Lila-Blau. Bereiche ohne Farbe = schwarz.
     name: 'Oberfläche (Test)',
@@ -1654,6 +1753,10 @@ function drawLook(i, alpha, time, target) {
   if (u.uMarbleBands) gl.uniform1f(u.uMarbleBands, PARAMS.marbleBands.current);
   if (u.uMarbleVeins) gl.uniform1f(u.uMarbleVeins, PARAMS.marbleVeins.current);
   if (u.uMarbleSharp) gl.uniform1f(u.uMarbleSharp, PARAMS.marbleSharp.current);
+  if (u.uSpaceMode) gl.uniform1f(u.uSpaceMode, PARAMS.spaceMode.current);
+  if (u.uSpaceGlow) gl.uniform1f(u.uSpaceGlow, PARAMS.spaceGlow.current);
+  if (u.uNebula) gl.uniform1f(u.uNebula, PARAMS.nebula.current);
+  if (u.uStars) gl.uniform1f(u.uStars, PARAMS.stars.current);
   gl.uniform1f(u.uAlpha, alpha);
   blit(target);   // null = direkt auf den Bildschirm, sonst in die Szenen-Textur für den Bloom
 }
@@ -1727,8 +1830,18 @@ function updateSurface() {
 // ---------- Schaum (mitgetragen, nur Darstellung) ----------
 // Eigener Puffer, der mit der Strömung mitschwimmt. Liest Geschwindigkeit, Wirbel, Farbe und Höhenfeld,
 // schreibt aber NIE in die Simulation. Läuft nur, wenn ein sichtbarer Look foam: true hat.
-let foamBuf = null, foamKey = '', foamWasActive = false;
+let foamBuf = null, foamKey = '', foamWasActive = false, foamOwner = -1;
+// Einstellungen des Schaum-Puffers für den sichtbaren Look. foam: true → die Schaum-Regler (Look "Wasser");
+// foam: { amount, life, grain } → eigene Werte: eine Zahl (0..1) oder der Name eines Reglers in PARAMS
+function foamSettings(i) {
+  const f = LOOKS[i].foam === true ? { amount: 'foam', life: 'foamLife', grain: 'foamGrain' } : LOOKS[i].foam;
+  const v = x => typeof x === 'string' ? PARAMS[x].current : x;
+  return { amount: v(f.amount), life: v(f.life), grain: v(f.grain) };
+}
 function updateFoam(dt, time) {
+  // welcher Look benutzt den Puffer gerade? (der aktive, sonst der, von dem gerade weggeblendet wird)
+  const owner = LOOKS[lookIndex].foam ? lookIndex : prevLook;
+  const set = foamSettings(owner);
   const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, div = QUALITY[qualityLevel].foamDiv;
   const w = Math.max(1, Math.floor(W / div)), h = Math.max(1, Math.floor(H / div));
   const key = `${w}x${h}`;
@@ -1736,13 +1849,14 @@ function updateFoam(dt, time) {
     if (foamBuf) foamBuf.free();
     foamBuf = createDoubleFBO(w, h, gl.R16F, gl.RED);
     foamKey = key;
-  } else if (!foamWasActive) {                 // Look gerade (wieder) sichtbar geworden → alten Schaum leeren
+  } else if (!foamWasActive || owner !== foamOwner) {   // Look gerade (wieder) sichtbar geworden oder gewechselt → alten Schaum leeren
     for (const f of [foamBuf.read, foamBuf.write]) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, f.fbo);
       gl.clearColor(0, 0, 0, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
     }
   }
+  foamOwner = owner;
   const s = QUALITY[qualityLevel].sim / CONFIG.REF_RESOLUTION;
 
   // 1) Mitführen mit dem vorhandenen Advektions-Shader (derselbe wie für die Farbe); die Abklingrate ist der Zerfall
@@ -1751,7 +1865,7 @@ function updateFoam(dt, time) {
   gl.uniform1i(u.uVelocity, velocity.read.attach(0));
   gl.uniform1i(u.uSource, foamBuf.read.attach(1));
   gl.uniform1f(u.dt, dt);
-  gl.uniform1f(u.dissipation, 3.0 + (0.05 - 3.0) * PARAMS.foamLife.current);  // Haltbarkeit 0 → schnell weg, 1 → bleibt lange
+  gl.uniform1f(u.dissipation, 3.0 + (0.05 - 3.0) * set.life);  // Haltbarkeit 0 → schnell weg, 1 → bleibt lange
   blit(foamBuf.write);
   foamBuf.swap();
 
@@ -1763,8 +1877,8 @@ function updateFoam(dt, time) {
   gl.uniform1i(u.uCurl, curl.attach(3));
   bindSurface(u, 4);
   gl.uniform1f(u.uSimScale, s);
-  gl.uniform1f(u.uAmount, PARAMS.foam.current);
-  gl.uniform1f(u.uGrain, 200 + (50 - 200) * PARAMS.foamGrain.current);    // Körnung 0 → feine, 1 → große Bläschen
+  gl.uniform1f(u.uAmount, set.amount);
+  gl.uniform1f(u.uGrain, 200 + (50 - 200) * set.grain);    // Körnung 0 → feine, 1 → große Bläschen
   gl.uniform1f(u.uTime, time);
   gl.uniform1f(u.uDt, dt);
   blit(foamBuf.write);
@@ -2126,6 +2240,12 @@ bindSlider('paperGrain',  PARAMS.paperGrain,  v => v === 0 ? 'glatt' : Math.roun
 bindSlider('marbleBands', PARAMS.marbleBands, v => v.toFixed(0));
 bindSlider('marbleVeins', PARAMS.marbleVeins, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('marbleSharp', PARAMS.marbleSharp, v => Math.round(v * 100) + ' %');
+// Stil: rastet auf Galaxie/Nebel/Aurora ein, Zwischenstellungen blenden beim Wechsel weich über
+bindSlider('spaceMode',   PARAMS.spaceMode,   v => ['Galaxie', 'Nebel', 'Aurora'][v], { snap: v => Math.round(v) });
+bindSlider('spaceGlow',   PARAMS.spaceGlow,   v => v.toFixed(2) + '×');
+bindSlider('nebula',      PARAMS.nebula,      v => v === 0 ? 'glatt' : Math.round(v * 100) + ' %');
+bindSlider('stars',       PARAMS.stars,       v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('stardust',    PARAMS.stardust,    v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 setLook(0);
 
 function setPalette(name) {
