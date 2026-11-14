@@ -351,6 +351,18 @@
       <label for="inkBleed">Verlaufen <output id="inkBleedOut"></output></label>
       <input id="inkBleed" type="range" min="0" max="1" step="0.01">
     </div>
+    <div class="row look-param" data-param="marbleBands">
+      <label for="marbleBands">Bänder <output id="marbleBandsOut"></output></label>
+      <input id="marbleBands" type="range" min="2" max="16" step="1">
+    </div>
+    <div class="row look-param" data-param="marbleVeins">
+      <label for="marbleVeins">Adern <output id="marbleVeinsOut"></output></label>
+      <input id="marbleVeins" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="marbleSharp">
+      <label for="marbleSharp">Kantenschärfe <output id="marbleSharpOut"></output></label>
+      <input id="marbleSharp" type="range" min="0" max="1" step="0.01">
+    </div>
     <div class="row look-param" data-param="paperGrain">
       <label for="paperGrain">Papierstruktur <output id="paperGrainOut"></output></label>
       <input id="paperGrain" type="range" min="0" max="1" step="0.01">
@@ -480,6 +492,9 @@ const PARAMS = {
   inkEdge:     { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Tinte & Aquarell): dunkle Trocknungsränder (0 = aus)
   inkBleed:    { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Tinte & Aquarell): wie weich die Farbe ins Papier verläuft
   paperGrain:  { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Papier-Looks): Stärke der Papierstruktur (0 = glatt)
+  marbleBands: { target: 7,    current: 7,    def: 7    },  // Look-Regler (Marmorpapier): Anzahl der Farbbänder
+  marbleVeins: { target: 0.7,  current: 0.7,  def: 0.7  },  // Look-Regler (Marmorpapier): Stärke der hellen Adern zwischen den Bändern (0 = aus)
+  marbleSharp: { target: 0.85, current: 0.85, def: 0.85 },  // Look-Regler (Marmorpapier): 0 = weiche Übergänge, 1 = gestochen scharfe Kanten
   bloomIntensity: { target: 1,    current: 1,    def: 1    },  // Bloom: Stärke des Glows (0 = aus)
   bloomThreshold: { target: 0.4,  current: 0.4,  def: 0.4  },  // Bloom: ab welcher Helligkeit (0..1) etwas leuchtet
   bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
@@ -885,6 +900,9 @@ const lookHeader = header + `
   uniform float uInkEdge;       // Look-Regler "Ränder" (Tinte & Aquarell)
   uniform float uInkBleed;      // Look-Regler "Verlaufen" (Tinte & Aquarell)
   uniform float uPaperGrain;    // Look-Regler "Papierstruktur" (Papier-Looks)
+  uniform float uMarbleBands;   // Look-Regler "Bänder" (Marmorpapier)
+  uniform float uMarbleVeins;   // Look-Regler "Adern" (Marmorpapier, 0 = aus)
+  uniform float uMarbleSharp;   // Look-Regler "Kantenschärfe" (Marmorpapier)
 
   // ----- Spiegelnde Oberflächen (gemeinsam für Metallic, Glas … ) -----
   // weiches Rechteck (Softbox) in der Umgebung; p = (Richtung, Höhe), soft = Kantenweichheit
@@ -1258,6 +1276,49 @@ const LOOKS = [
       }`,
   },
   {
+    name: 'Marmorpapier (Ebru)',
+    surface: true,
+    surfaceBlur: 0.008,
+    usesPalette: true,    // die Bänder nehmen ihre Farben aus der Palette
+    bloom: 0,             // Papier glüht nicht
+    params: ['marbleBands', 'marbleVeins', 'marbleSharp', 'paperGrain'],
+    glsl: `
+      // Farbe eines Bandes: Beim Marmorieren werden Farben nacheinander aufgetropft und schieben sich zu Ringen.
+      // Jedes Band nimmt die nächste Palettenfarbe, abwechselnd kräftig und gedeckt; Band 0 ist das blanke Papier.
+      vec3 bandColor (float t, float band, vec3 paper) {
+        if (band < 0.5) return paper;
+        vec3 c = palette(t + band * 0.2);
+        c = mix(c, vec3(dot(c, vec3(0.3, 0.5, 0.2))), 0.18) * 0.92;      // etwas gedeckter: Pigmentfarbe statt Leuchtfarbe
+        return mod(band, 2.0) < 0.5 ? c * 0.62 : mix(c, paper, 0.12);
+      }
+      vec3 look (LookInput L) {
+        vec2 q = vec2(L.uv.x * uAspect, L.uv.y);
+        float fibers = paperFibers(q);
+        vec3 paper = paperColor(q, fibers, uPaperGrain);
+        // Farbmenge 0..1 (halb scharf, halb geglättet: feine Schlieren bleiben, Pixelrauschen verschwindet)
+        float d = mix(heightFrom(L.density), heightAt(L.uv), 0.5);
+        // Höhenlinien der Farbmenge = Bänder. x zählt die Bänder durch, f = Position innerhalb eines Bandes
+        float x = d * uMarbleBands;
+        float aa = max(fwidth(x), 1e-4);                     // Breite eines Bildpunkts in Band-Einheiten (Kantenglättung)
+        float band = floor(x), f = x - band;
+        // Palettenposition in klare Farbflächen einteilen (bei hoher Kantenschärfe) statt weich zu verlaufen
+        float t5 = L.t * 5.0, ws = mix(0.5, 0.05, uMarbleSharp);
+        float t = (floor(t5) + smoothstep(0.5 - ws, 0.5 + ws, fract(t5))) / 5.0;
+        // Übergang zum Nachbarband: scharf = so schmal wie ein Bildpunkt, weich = halbe Bandbreite
+        float w = clamp(mix(1.0, aa * 1.5, uMarbleSharp), aa, 1.0);
+        vec3 c0 = bandColor(t, band, paper);
+        vec3 col = f < 0.5 ? mix(bandColor(t, band - 1.0, paper), c0, smoothstep(-0.5 * w, 0.5 * w, f))
+                           : mix(c0, bandColor(t, band + 1.0, paper), smoothstep(1.0 - 0.5 * w, 1.0 + 0.5 * w, f));
+        // Adern: feine helle Linien genau auf den Bandgrenzen (dort scheint beim echten Ebru der Grund durch)
+        float vein = 1.0 - smoothstep(aa * 0.6, aa * 1.8, min(f, 1.0 - f));
+        col = mix(col, vec3(0.95, 0.89, 0.74), vein * uMarbleVeins * smoothstep(0.3, 1.0, x));
+        // ganz leichtes Relief (Licht von links oben) und Papierkörnung auch auf der Farbe
+        vec3 n = surfaceNormal(L.uv, 1.0);
+        col *= 1.0 + (0.10 * clamp(0.5 + dot(n.xy, vec2(-0.6, 0.8)) * 1.5, 0.0, 1.0) - 0.05) * smoothstep(0.5, 1.5, x);
+        return col * (1.0 - uPaperGrain * 0.12 * (1.0 - fibers));
+      }`,
+  },
+  {
     // Prüf-Look für den Oberflächen-Baustein: zeigt die Neigung als Farben (wie eine "Normal Map").
     // Neigung nach rechts = mehr Rot, nach oben = mehr Grün, flach = Lila-Blau. Bereiche ohne Farbe = schwarz.
     name: 'Oberfläche (Test)',
@@ -1590,6 +1651,9 @@ function drawLook(i, alpha, time, target) {
   if (u.uInkEdge) gl.uniform1f(u.uInkEdge, PARAMS.inkEdge.current);
   if (u.uInkBleed) gl.uniform1f(u.uInkBleed, PARAMS.inkBleed.current);
   if (u.uPaperGrain) gl.uniform1f(u.uPaperGrain, PARAMS.paperGrain.current);
+  if (u.uMarbleBands) gl.uniform1f(u.uMarbleBands, PARAMS.marbleBands.current);
+  if (u.uMarbleVeins) gl.uniform1f(u.uMarbleVeins, PARAMS.marbleVeins.current);
+  if (u.uMarbleSharp) gl.uniform1f(u.uMarbleSharp, PARAMS.marbleSharp.current);
   gl.uniform1f(u.uAlpha, alpha);
   blit(target);   // null = direkt auf den Bildschirm, sonst in die Szenen-Textur für den Bloom
 }
@@ -2059,6 +2123,9 @@ bindSlider('inkOpacity',  PARAMS.inkOpacity,  v => v.toFixed(2) + '×');
 bindSlider('inkEdge',     PARAMS.inkEdge,     v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('inkBleed',    PARAMS.inkBleed,    v => Math.round(v * 100) + ' %');
 bindSlider('paperGrain',  PARAMS.paperGrain,  v => v === 0 ? 'glatt' : Math.round(v * 100) + ' %');
+bindSlider('marbleBands', PARAMS.marbleBands, v => v.toFixed(0));
+bindSlider('marbleVeins', PARAMS.marbleVeins, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('marbleSharp', PARAMS.marbleSharp, v => Math.round(v * 100) + ' %');
 setLook(0);
 
 function setPalette(name) {
