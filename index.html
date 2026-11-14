@@ -32,6 +32,9 @@
     transition: opacity .25s;
   }
   #cursor.on { opacity: .85; }
+  /* Hindernis-Stift und Radierer: eckiger bzw. gestrichelter Ring statt des leuchtenden Farb-Pinsels */
+  body.tool-wall #cursor { border-radius: 24%; border-color: #d5dbe8; box-shadow: 0 0 10px rgba(213,219,232,.55); }
+  body.tool-erase #cursor { border-radius: 24%; border-style: dashed; border-color: #ff9a9a; box-shadow: none; }
   @media (pointer: coarse) { #cursor { display: none; } }
   /* Vorschau in der Bildmitte, solange der Pinselgrößen-Regler bewegt wird */
   #brushPreview { left: 50%; top: 50%; transition: opacity .45s var(--smooth); }
@@ -84,6 +87,7 @@
   #panel .sec:nth-child(8) { transition-delay: .28s; }
   #panel .sec:nth-child(9) { transition-delay: .32s; }
   #panel .sec:nth-child(10) { transition-delay: .36s; }
+  #panel .sec:nth-child(11) { transition-delay: .4s; }
   /* Bloom-Regler treten zurück, wenn der Glow ausgeschaltet ist */
   #bloomControls { transition: opacity .4s var(--smooth); }
   #bloomControls.unused { opacity: .35; }
@@ -127,17 +131,22 @@
 
   /* Looks */
   #looks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  #looks button {
+  #tools { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  #clearObstacles { width: 100%; margin-top: 8px; }
+  #looks button, .btn {
     display: flex; justify-content: space-between; align-items: center; gap: 6px; text-align: left;
     border: none; border-radius: 10px; padding: 8px 10px; cursor: pointer;
     background: rgba(255,255,255,.05); color: var(--text); font: inherit; font-size: 12px;
     box-shadow: 0 0 0 1px var(--line);
     transition: transform .35s var(--spring), box-shadow .3s, background .3s;
   }
-  #looks button:hover { transform: translateY(-2px); background: rgba(255,255,255,.09); }
-  #looks button:active { transform: scale(.95); }
-  #looks button.active { box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 4px 18px -4px var(--a1); background: rgba(255,255,255,.1); }
-  #looks kbd { margin: 0; opacity: .7; }
+  #looks button:hover, .btn:hover { transform: translateY(-2px); background: rgba(255,255,255,.09); }
+  #looks button:active, .btn:active { transform: scale(.95); }
+  #looks button.active, .btn.active { box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 4px 18px -4px var(--a1); background: rgba(255,255,255,.1); }
+  #looks kbd, .btn kbd { margin: 0; opacity: .7; }
+  /* Fallrichtung tritt zurück, solange die Schwerkraft aus ist */
+  #gravityDirRow { transition: opacity .4s var(--smooth); }
+  #gravityDirRow.unused { opacity: .35; }
   /* Look-Regler klappen weich auf und zu */
   .look-param { overflow: hidden; max-height: 60px; margin: 12px 0 0;
                 transition: max-height .45s var(--smooth), opacity .35s var(--smooth), margin .45s var(--smooth); }
@@ -240,7 +249,25 @@
       <label for="fade">Verblassen <output id="fadeOut"></output></label>
       <input id="fade" type="range" min="0" max="3" step="0.05">
     </div>
+    <div class="row">
+      <label for="gravity">Schwerkraft <output id="gravityOut"></output></label>
+      <input id="gravity" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row" id="gravityDirRow">
+      <label for="gravityDir">Fallrichtung <output id="gravityDirOut"></output></label>
+      <input id="gravityDir" type="range" min="-180" max="180" step="5">
+    </div>
     <div class="hint-reset">Doppelklick auf einen Regler = Standardwert</div>
+  </div>
+  <div class="sec">
+    <h3>Hindernisse</h3>
+    <div id="tools">
+      <button class="btn" data-tool="paint"><span>Farbe</span></button>
+      <button class="btn" data-tool="wall"><span>Hindernis</span><kbd>W</kbd></button>
+      <button class="btn" data-tool="erase"><span>Radierer</span><kbd>E</kbd></button>
+    </div>
+    <button class="btn" id="clearObstacles"><span>Alle Hindernisse löschen</span><kbd>X</kbd></button>
+    <div class="sub">Hindernis oder Radierer wählen und mit gedrückter Maustaste ziehen. Schnell zwischendurch: rechte Maustaste ziehen = Hindernis, mit Umschalt-Taste = radieren.</div>
   </div>
   <div class="sec">
     <h3>Look</h3>
@@ -442,7 +469,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>H</kbd>Panel</span><span><kbd>Leertaste</kbd>Leeren</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span><kbd>1</kbd>–<kbd>0</kbd>Look</span><span><kbd>←</kbd><kbd>→</kbd>Look wechseln</span>
+    <span><kbd>H</kbd>Panel</span><span><kbd>Leertaste</kbd>Leeren</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span><kbd>W</kbd>Hindernis</span><span><kbd>E</kbd>Radierer</span><span><kbd>X</kbd>Hindernisse weg</span><span><kbd>1</kbd>–<kbd>0</kbd>Look</span><span><kbd>←</kbd><kbd>→</kbd>Look wechseln</span>
   </div>
 </div>
 
@@ -459,6 +486,8 @@ const CONFIG = {
   VISCOSITY_ITERATIONS: 20,
   SPLAT_RADIUS: 0.25,
   SPLAT_FORCE: 6000,
+  GRAVITY: 800,             // Schwerkraft bei 100 %: Beschleunigung pro Farbmenge (in Strömungs-Einheiten pro Sekunde²)
+  OBSTACLE_RES: 384,        // Auflösung der Hindernis-Textur (kurze Bildschirmseite)
   EASING: 6,                // wie schnell Regler/Paletten ihrem Zielwert folgen (größer = schneller)
   IDLE_SECONDS: 30,         // so lange ohne Eingabe, bis Auto-Play startet
   AUTOPLAY_PALETTE_SECONDS: 25,  // im Auto-Play alle X Sekunden zur nächsten Palette überblenden
@@ -497,6 +526,8 @@ const PARAMS = {
   curl:      { target: 30,  current: 30,  def: 30  },  // Stärke der Verwirbelung
   fade:      { target: 0.6, current: 0.6, def: 0.6 },  // wie schnell die Farbe verblasst
   brush:     { target: 1,   current: 1,   def: 1   },  // Pinselgröße (1 = Standard, als Faktor auf den Radius)
+  gravity:    { target: 0, current: 0, def: 0 },         // Schwerkraft 0..1 (0 = aus): Farbe ist "schwer" und sinkt
+  gravityDir: { target: 0, current: 0, def: 0 },         // Fallrichtung in Grad: 0 = unten, 90 = rechts, ±180 = oben, −90 = links
   sensitivity: { target: 1,    current: 1,    def: 1    },  // Look-Regler: wie stark Bewegung in Helligkeit umgesetzt wird
   dyeMix:      { target: 0.25, current: 0.25, def: 0.25 },  // Look-Regler: wie stark die eingemalte Farbe durchscheint
   heat:        { target: 1,    current: 1,    def: 1    },  // Look-Regler (Feuer): wie stark Dichte/Tempo in Hitze umgesetzt werden
@@ -629,6 +660,16 @@ const surfaceGLSL = `
   }
 `;
 
+// Hindernisse: Die Simulations-Shader divergence, pressure, gradientSubtract und advection gibt es zweimal –
+// einmal unverändert (ohne Hindernisse läuft exakt die bisherige Simulation) und einmal als Variante mit
+// "#define OBSTACLES" (Name + "Obs"), bei der die #ifdef-Abschnitte dazukommen. Gleicher Quelltext, kein Kopieren.
+const obstacleDefs = `
+  #define OBSTACLES
+  uniform sampler2D uObstacle;                                              // 1 = Hindernis, 0 = frei
+  bool solid (vec2 uv) { return texture(uObstacle, uv).r > 0.5; }           // liegt diese Stelle in einem Hindernis?
+  float freeAt (vec2 uv) { return 1.0 - smoothstep(0.3, 0.7, texture(uObstacle, uv).r); }   // 1 = frei, 0 = Hindernis (weiche Kante)
+`;
+
 const shaders = {
   splat: header + `
     uniform sampler2D uTarget;
@@ -652,6 +693,9 @@ const shaders = {
     void main () {
       vec2 coord = vUv - dt * texture(uVelocity, vUv).xy * texelSize;
       fragColor = texture(uSource, coord) / (1.0 + dissipation * dt);
+    #ifdef OBSTACLES
+      fragColor *= freeAt(vUv);          // Hindernisse sind leer: dort gibt es weder Farbe noch Strömung
+    #endif
     }`,
 
   divergence: header + `
@@ -666,6 +710,13 @@ const shaders = {
       if (vR.x > 1.0) R = -C.x;
       if (vT.y > 1.0) T = -C.y;
       if (vB.y < 0.0) B = -C.y;
+    #ifdef OBSTACLES
+      // Nachbar liegt in einem Hindernis → wie den Bildrand behandeln: die Strömung prallt ab
+      if (solid(vL)) L = -C.x;
+      if (solid(vR)) R = -C.x;
+      if (solid(vT)) T = -C.y;
+      if (solid(vB)) B = -C.y;
+    #endif
       fragColor = vec4(0.5 * (R - L + T - B), 0.0, 0.0, 1.0);
     }`,
 
@@ -721,6 +772,14 @@ const shaders = {
       float T = texture(uPressure, vT).x;
       float B = texture(uPressure, vB).x;
       float div = texture(uDivergence, vUv).x;
+    #ifdef OBSTACLES
+      // Hindernis-Nachbarn übernehmen den eigenen Druck → es entsteht kein Druckgefälle in die Wand hinein
+      float C = texture(uPressure, vUv).x;
+      if (solid(vL)) L = C;
+      if (solid(vR)) R = C;
+      if (solid(vT)) T = C;
+      if (solid(vB)) B = C;
+    #endif
       fragColor = vec4((L + R + B + T - div) * 0.25, 0.0, 0.0, 1.0);
     }`,
 
@@ -732,7 +791,17 @@ const shaders = {
       float R = texture(uPressure, vR).x;
       float T = texture(uPressure, vT).x;
       float B = texture(uPressure, vB).x;
+    #ifdef OBSTACLES
+      float C = texture(uPressure, vUv).x;
+      if (solid(vL)) L = C;
+      if (solid(vR)) R = C;
+      if (solid(vT)) T = C;
+      if (solid(vB)) B = C;
+    #endif
       vec2 vel = texture(uVelocity, vUv).xy - vec2(R - L, T - B);
+    #ifdef OBSTACLES
+      vel *= freeAt(vUv);                // im Hindernis steht alles still
+    #endif
       fragColor = vec4(vel, 0.0, 1.0);
     }`,
 
@@ -740,6 +809,45 @@ const shaders = {
     uniform sampler2D uTexture;
     uniform float value;
     void main () { fragColor = value * texture(uTexture, vUv); }`,
+
+  // Schwerkraft: Farbe ist "schwer". Wo Farbe ist, wird die Strömung in Fallrichtung beschleunigt –
+  // farbige Flüssigkeit sinkt durch klare hindurch (wie Tinte in Wasser). Läuft nur, wenn der Regler > 0 ist.
+  gravity: header + densityGLSL + `
+    uniform sampler2D uVelocity;
+    uniform sampler2D uDye;
+    uniform vec2 uGravity;      // Fallrichtung × Stärke × Zeitschritt
+    void main () {
+      float d = min(densityFrom(texture(uDye, vUv).rgb), 2.0);
+      fragColor = vec4(texture(uVelocity, vUv).xy + uGravity * d, 0.0, 1.0);
+    }`,
+
+  // Hindernis-Stift: zeichnet (oder radiert) eine dicke Linie von uA nach uB in die Hindernis-Textur
+  obstacleBrush: header + `
+    uniform sampler2D uTarget;
+    uniform vec2 uA, uB;        // Anfang und Ende des Strichs (Bildposition 0..1)
+    uniform float uRadius;      // halbe Strichbreite (Anteil der Bildschirmhöhe)
+    uniform float uAspect;
+    uniform float uErase;       // 0 = zeichnen, 1 = radieren
+    void main () {
+      vec2 p = vec2(vUv.x * uAspect, vUv.y), a = vec2(uA.x * uAspect, uA.y), ab = vec2(uB.x * uAspect, uB.y) - a;
+      float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-8), 0.0, 1.0);
+      float brush = 1.0 - smoothstep(uRadius * 0.8, uRadius, length(p - a - ab * t));   // runde Spitze, fast harte Kante
+      float old = texture(uTarget, vUv).r;
+      fragColor = vec4(mix(max(old, brush), min(old, 1.0 - brush), uErase), 0.0, 0.0, 1.0);
+    }`,
+
+  // Hindernisse sichtbar machen: wird nach dem Look über das Bild gelegt (sieht in jedem Look gleich aus).
+  // Dunkle, leicht erhabene Fläche mit hellem Rand – bewusst dunkler als die Bloom-Schwelle, damit sie nicht glüht.
+  obstacleDraw: header + `
+    uniform sampler2D uObstacle;
+    uniform vec2 uTexel;
+    void main () {
+      float m = texture(uObstacle, vUv).r;
+      float rim = 1.0 - abs(smoothstep(0.1, 0.9, m) - 0.5) * 2.0;                                 // Randlinie
+      float lit = clamp(m - texture(uObstacle, vUv + vec2(-2.0, 2.0) * uTexel).r, 0.0, 1.0);    // Licht von links oben
+      vec3 col = vec3(0.095, 0.10, 0.118) + vec3(0.13, 0.14, 0.16) * rim + vec3(0.12) * lit;
+      fragColor = vec4(col, smoothstep(0.25, 0.6, m));
+    }`,
 
   // Nur für die Darstellung: rechnet die Wirbel-Textur auf ein kleines Bild herunter und mittelt dabei
   // jeweils 4×4 Messpunkte. Das entfernt das feine Pixelrauschen, große Wirbel bleiben erhalten.
@@ -1476,6 +1584,10 @@ function makeProgram(src) {
 }
 const programs = {};
 for (const [name, src] of Object.entries(shaders)) programs[name] = makeProgram(src);
+// Varianten mit Hindernis-Behandlung (derselbe Quelltext plus "#define OBSTACLES")
+for (const name of ['divergence', 'pressure', 'gradientSubtract', 'advection']) {
+  programs[name + 'Obs'] = makeProgram(shaders[name].replace(header, header + obstacleDefs));
+}
 // Jeder Look wird beim Start einmal zu einem eigenen Shader-Programm übersetzt
 LOOKS.forEach((look, i) => { programs['look' + i] = makeProgram(lookHeader + look.glsl + lookMain); });
 
@@ -1526,9 +1638,9 @@ function createFBO(w, h, internalFormat, format, type = gl.HALF_FLOAT) {
   };
 }
 
-function createDoubleFBO(w, h, internalFormat, format) {
-  let a = createFBO(w, h, internalFormat, format);
-  let b = createFBO(w, h, internalFormat, format);
+function createDoubleFBO(w, h, internalFormat, format, type) {
+  let a = createFBO(w, h, internalFormat, format, type);
+  let b = createFBO(w, h, internalFormat, format, type);
   return {
     w, h, texel: a.texel,
     get read() { return a; },
@@ -1540,9 +1652,9 @@ function createDoubleFBO(w, h, internalFormat, format) {
 
 // Neues Framebuffer-Paar anlegen und den alten Inhalt hineinskalieren –
 // so bleibt das Bild beim Wechsel der Qualität oder Fenstergröße erhalten.
-function resizeDoubleFBO(old, w, h, internalFormat, format) {
+function resizeDoubleFBO(old, w, h, internalFormat, format, type) {
   if (old && old.w === w && old.h === h) return old;
-  const fresh = createDoubleFBO(w, h, internalFormat, format);
+  const fresh = createDoubleFBO(w, h, internalFormat, format, type);
   if (old) {
     const u = use('scale');
     gl.uniform1i(u.uTexture, old.read.attach(0));
@@ -1561,6 +1673,8 @@ function resolution(base) {
 }
 
 let dye, velocity, velocityPrev, divergence, curl, pressure;
+let obstacles;                 // Hindernis-Textur (1 = Hindernis); unabhängig von der Qualitätsstufe
+let obstaclesExist = false;    // false → die Simulation benutzt die unveränderten Original-Programme
 
 function initFramebuffers() {
   const q = QUALITY[qualityLevel];
@@ -1576,6 +1690,9 @@ function initFramebuffers() {
   divergence   = createFBO(sim.w, sim.h, gl.R16F, gl.RED);
   curl         = createFBO(sim.w, sim.h, gl.R16F, gl.RED);
   pressure     = createDoubleFBO(sim.w, sim.h, gl.R16F, gl.RED);
+  // Hindernisse bleiben bei Qualitäts- und Größenwechsel erhalten (werden nur umskaliert, wenn sich das Format ändert)
+  const obs = resolution(CONFIG.OBSTACLE_RES);
+  obstacles = resizeDoubleFBO(obstacles, obs.w, obs.h, gl.R8, gl.RED, gl.UNSIGNED_BYTE);
 }
 
 function resizeCanvas() {
@@ -1601,6 +1718,8 @@ function step(dt) {
   // Umrechnung, damit sich die Strömung bei jeder Qualitätsstufe gleich anfühlt
   const s = QUALITY[qualityLevel].sim / CONFIG.REF_RESOLUTION;
   const advTexel = [velocity.texel[0] * s, velocity.texel[1] * s];
+  // Hindernisse vorhanden? Dann die Shader-Varianten mit Hindernis-Behandlung benutzen (sonst alles wie immer)
+  const obs = obstaclesExist ? 'Obs' : '';
 
   // Wirbelstärke messen und verstärken (sorgt für die schönen Verwirbelungen)
   let u = use('curl');
@@ -1616,6 +1735,19 @@ function step(dt) {
   gl.uniform1f(u.dt, dt);
   blit(velocity.write);
   velocity.swap();
+
+  // Schwerkraft (nur wenn eingeschaltet): beschleunigt die Strömung dort, wo Farbe ist, in Fallrichtung
+  const g = PARAMS.gravity.current;
+  if (g > 0.001) {
+    const a = PARAMS.gravityDir.current * Math.PI / 180, k = g * g * CONFIG.GRAVITY * dt;
+    u = use('gravity');
+    gl.uniform2fv(u.texelSize, velocity.texel);
+    gl.uniform1i(u.uVelocity, velocity.read.attach(0));
+    gl.uniform1i(u.uDye, dye.read.attach(1));
+    gl.uniform2f(u.uGravity, Math.sin(a) * k, -Math.cos(a) * k);
+    blit(velocity.write);
+    velocity.swap();
+  }
 
   // Viskosität: zähe Flüssigkeit gleicht ihre Geschwindigkeit mit den Nachbarn aus
   const nu = PARAMS.viscosity.current * PARAMS.viscosity.current * 80;
@@ -1637,9 +1769,10 @@ function step(dt) {
   }
 
   // Flüssigkeit inkompressibel machen (Druck lösen)
-  u = use('divergence');
+  u = use('divergence' + obs);
   gl.uniform2fv(u.texelSize, velocity.texel);
   gl.uniform1i(u.uVelocity, velocity.read.attach(0));
+  if (obs) gl.uniform1i(u.uObstacle, obstacles.read.attach(2));
   blit(divergence);
 
   u = use('scale');
@@ -1648,25 +1781,28 @@ function step(dt) {
   blit(pressure.write);
   pressure.swap();
 
-  u = use('pressure');
+  u = use('pressure' + obs);
   gl.uniform2fv(u.texelSize, velocity.texel);
   gl.uniform1i(u.uDivergence, divergence.attach(0));
+  if (obs) gl.uniform1i(u.uObstacle, obstacles.read.attach(2));
   for (let i = 0; i < QUALITY[qualityLevel].pressure; i++) {
     gl.uniform1i(u.uPressure, pressure.read.attach(1));
     blit(pressure.write);
     pressure.swap();
   }
 
-  u = use('gradientSubtract');
+  u = use('gradientSubtract' + obs);
   gl.uniform2fv(u.texelSize, velocity.texel);
   gl.uniform1i(u.uPressure, pressure.read.attach(0));
   gl.uniform1i(u.uVelocity, velocity.read.attach(1));
+  if (obs) gl.uniform1i(u.uObstacle, obstacles.read.attach(2));
   blit(velocity.write);
   velocity.swap();
 
   // Geschwindigkeit und Farbe mit der Strömung mitbewegen
-  u = use('advection');
+  u = use('advection' + obs);
   gl.uniform2fv(u.texelSize, advTexel);
+  if (obs) gl.uniform1i(u.uObstacle, obstacles.read.attach(2));
   gl.uniform1i(u.uVelocity, velocity.read.attach(0));
   gl.uniform1i(u.uSource, velocity.read.attach(0));
   gl.uniform1f(u.dt, dt);
@@ -1721,6 +1857,50 @@ function splat(x, y, dx, dy, color, size = 1) {
   gl.uniform3f(u.color, color.r, color.g, color.b);
   blit(dye.write);
   dye.swap();
+}
+
+// ---------- Hindernisse ----------
+// Feste Flächen, um die die Flüssigkeit herumfließt. Sie liegen als Bild in der Textur "obstacles"
+// (1 = Hindernis). Gezeichnet wird mit dem Hindernis-Stift, gelöscht mit dem Radierer.
+let tool = 'paint';                                         // aktives Werkzeug: 'paint' (Farbe), 'wall' (Hindernis), 'erase' (Radierer)
+const obstaclePen = { active: false, erase: false, last: null };   // läuft gerade ein Hindernis-Strich?
+
+// Strich bis zur Bildposition (x, y) weiterzeichnen bzw. -radieren
+function obstacleStroke(x, y) {
+  const from = obstaclePen.last || [x, y];
+  const u = use('obstacleBrush');
+  gl.uniform2fv(u.texelSize, obstacles.texel);
+  gl.uniform1i(u.uTarget, obstacles.read.attach(0));
+  gl.uniform2f(u.uA, from[0], from[1]);
+  gl.uniform2f(u.uB, x, y);
+  // so breit wie der Pinsel-Ring, aber nie so dünn, dass die Strömung auf niedriger Qualitätsstufe hindurchsickert
+  gl.uniform1f(u.uRadius, Math.max(0.02, brushDiameterPx(PARAMS.brush.current) / 2 / canvas.clientHeight));
+  gl.uniform1f(u.uAspect, canvas.width / canvas.height);
+  gl.uniform1f(u.uErase, obstaclePen.erase ? 1 : 0);
+  blit(obstacles.write);
+  obstacles.swap();
+  obstaclePen.last = [x, y];
+  if (!obstaclePen.erase) obstaclesExist = true;
+}
+function clearObstacles() {
+  for (const f of [obstacles.read, obstacles.write]) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, f.fbo);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+  }
+  if (obstaclesExist) audioClear();
+  obstaclesExist = false;               // ab jetzt läuft wieder die unveränderte Simulation
+  toast('Hindernisse gelöscht');
+}
+// Hindernisse über das fertige Bild des Looks legen (target wie bei drawLook)
+function drawObstacles(target) {
+  const u = use('obstacleDraw');
+  gl.uniform1i(u.uObstacle, obstacles.read.attach(0));
+  gl.uniform2fv(u.uTexel, obstacles.texel);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  blit(target);
+  gl.disable(gl.BLEND);
 }
 
 // ---------- Darstellung ----------
@@ -2029,6 +2209,8 @@ function render(dt) {
     gl.disable(gl.BLEND);
   }
 
+  if (obstaclesExist) drawObstacles(target);
+
   // Nachbearbeitung: erst die Helligkeits-Bremse (falls an), dann der Bloom (falls an), dann auf den Bildschirm
   const src = useCalm ? applyCalm(dt, calm) : scene;
   calmWasActive = useCalm;
@@ -2093,6 +2275,14 @@ function movePointer(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
   const x = (clientX - rect.left) / rect.width;
   const y = 1 - (clientY - rect.top) / rect.height;
+  // Hindernis-Stift / Radierer: Die Maus malt keine Farbe. Nur mit gedrückter Taste wird gezeichnet bzw. radiert.
+  if (obstaclePen.active || tool !== 'paint') {
+    if (obstaclePen.active) { obstacleStroke(x, y); lastPaint = performance.now(); }
+    pointer.x = x; pointer.y = y; pointer.init = true;
+    pointer.cx = clientX; pointer.cy = clientY;
+    hideHint();
+    return;
+  }
   if (!pointer.init) {
     pointer.x = x; pointer.y = y; pointer.init = true;
     return;
@@ -2108,7 +2298,34 @@ function movePointer(clientX, clientY) {
 }
 
 canvas.addEventListener('pointermove', e => { if (!autoplay.active) movePointer(e.clientX, e.clientY); });
+// Welcher Stift gilt gerade? Rechte Maustaste = Hindernis (mit Umschalt-Taste = Radierer), sonst das gewählte Werkzeug
+function updateToolCursor() {
+  const mode = obstaclePen.active ? (obstaclePen.erase ? 'erase' : 'wall') : tool;
+  document.body.classList.toggle('tool-wall', mode === 'wall');
+  document.body.classList.toggle('tool-erase', mode === 'erase');
+}
+function endObstacleStroke() {
+  if (!obstaclePen.active) return;
+  obstaclePen.active = false;
+  obstaclePen.last = null;
+  updateToolCursor();
+}
+canvas.addEventListener('contextmenu', e => e.preventDefault());   // rechte Maustaste zeichnet Hindernisse → kein Menü
+window.addEventListener('pointerup', endObstacleStroke);
+window.addEventListener('pointercancel', endObstacleStroke);
+window.addEventListener('blur', endObstacleStroke);
+
 canvas.addEventListener('pointerdown', e => {
+  const right = e.button === 2;
+  if (right || tool !== 'paint') {                 // Hindernis zeichnen oder radieren
+    obstaclePen.active = true;
+    obstaclePen.erase = right ? e.shiftKey : tool === 'erase';
+    obstaclePen.last = null;
+    updateToolCursor();
+    movePointer(e.clientX, e.clientY);             // setzt gleich den ersten Punkt
+    audioTock(obstaclePen.erase);
+    return;
+  }
   pointer.init = false;
   movePointer(e.clientX, e.clientY);
   // "Flackern reduzieren": der Klecks ist weniger grell und der Cursor pulsiert kaum
@@ -2146,6 +2363,9 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyF') setFpsVisible(!fpsVisible);
   if (e.code === 'KeyQ') cycleQuality();
   if (e.code === 'KeyM') setMuted(!audio.muted);
+  if (e.code === 'KeyW') setTool(tool === 'wall' ? 'paint' : 'wall');
+  if (e.code === 'KeyE') setTool(tool === 'erase' ? 'paint' : 'erase');
+  if (e.code === 'KeyX') clearObstacles();
 });
 
 // ---------- Hinweise & Meldungen ----------
@@ -2224,6 +2444,23 @@ $('brush').addEventListener('dblclick', flashBrushPreview);
 bindSlider('viscosity', PARAMS.viscosity, v => Math.round(v * 100) + ' %');
 bindSlider('curl',      PARAMS.curl,      v => v.toFixed(0));
 bindSlider('fade',      PARAMS.fade,      v => v === 0 ? 'nie' : v.toFixed(2));
+bindSlider('gravity',   PARAMS.gravity,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+// Fallrichtung: 0° = unten (Mitte des Reglers), nach rechts gedreht = rechts herum bis oben, nach links entsprechend
+bindSlider('gravityDir', PARAMS.gravityDir, v => ['unten ↓', 'unten rechts ↘', 'rechts →', 'oben rechts ↗', 'oben ↑', 'oben links ↖', 'links ←', 'unten links ↙'][Math.round((v + 360) % 360 / 45) % 8]);
+
+// Werkzeug-Auswahl (Farbe / Hindernis / Radierer)
+const toolBox = $('tools');
+function setTool(t) {
+  tool = t;
+  for (const b of toolBox.children) b.classList.toggle('active', b.dataset.tool === t);
+  updateToolCursor();
+  toast({ paint: 'Werkzeug: Farbe', wall: 'Hindernis-Stift – mit gedrückter Maustaste zeichnen', erase: 'Radierer – mit gedrückter Maustaste Hindernisse entfernen' }[t]);
+}
+for (const b of toolBox.children) {
+  b.classList.toggle('active', b.dataset.tool === tool);
+  b.addEventListener('click', () => { setTool(b.dataset.tool); b.blur(); });
+}
+$('clearObstacles').addEventListener('click', e => { clearObstacles(); e.currentTarget.blur(); });
 
 const paletteBox = $('palettes');
 for (const [name, colors] of Object.entries(PALETTES)) {
@@ -2296,7 +2533,7 @@ bindSlider('dyeMix',      PARAMS.dyeMix,      v => Math.round(v * 100) + ' %');
 bindSlider('filmThick',   PARAMS.filmThick,   v => v.toFixed(2) + '×');
 bindSlider('iridescence', PARAMS.iridescence, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('filmFlow',    PARAMS.filmFlow,    v => v === 0 ? 'still' : Math.round(v * 100) + ' %');
-bindSlider('inkStyle',    PARAMS.inkStyle,    v => v < 0.25 ? 'Tinte' : v > 0.75 ? 'Aquarell' : 'Mischung');
+bindSlider('inkStyle',    PARAMS.inkStyle,    v => v < 0.25 ? 'Tinte' : v >= 0.75 ? 'Aquarell' : 'Mischung');
 bindSlider('inkOpacity',  PARAMS.inkOpacity,  v => v.toFixed(2) + '×');
 bindSlider('inkEdge',     PARAMS.inkEdge,     v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('inkBleed',    PARAMS.inkBleed,    v => Math.round(v * 100) + ' %');
@@ -2745,6 +2982,13 @@ function audioClear() {
   const f = noiseHit(t, { type: 'bandpass', freq: 2600, q: 0.8, peak: 0.16, decay: 0.7 });
   f.frequency.exponentialRampToValueAtTime(220, t + 0.6);
 }
+// Hindernis-Stift setzt auf: kurzes, trockenes "Tock" (Radierer etwas höher)
+function audioTock(erase) {
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  const t = audio.ctx.currentTime;
+  tone(erase ? 330 : 165, t, { type: 'triangle', peak: 0.18, attack: 0.002, decay: 0.09 });
+  noiseHit(t, { type: 'bandpass', freq: erase ? 2400 : 900, q: 1.2, peak: 0.08, decay: 0.05 });
+}
 // Farbstoß im Auto-Play: ein leiser, tiefer Ton
 function audioBurst() {
   audio.energy = Math.min(1, audio.energy + 0.08);
@@ -2879,6 +3123,7 @@ function frame(now) {
 
   // Beim Malen tritt die Oberfläche in den Hintergrund
   document.body.classList.toggle('immersed', now - lastPaint < 1200);
+  $('gravityDirRow').classList.toggle('unused', PARAMS.gravity.target === 0);
 
   step(dt);
   render(dt);
