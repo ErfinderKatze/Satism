@@ -90,12 +90,18 @@
   #panel .sec:nth-child(11) { transition-delay: .4s; }
   #panel .sec:nth-child(12) { transition-delay: .44s; }
   #panel .sec:nth-child(13) { transition-delay: .48s; }
+  #panel .sec:nth-child(14) { transition-delay: .52s; }
+  #panel .sec:nth-child(15) { transition-delay: .56s; }
   /* ---------- Modi ---------- */
   /* Abschnitte und Tastenkürzel mit data-mode="…" gehören zu einem Modus und sind nur dort zu sehen */
   /* (die Regel dafür wird im Skript aus der Modus-Liste erzeugt, siehe Abschnitt "Modi") */
   .sec[data-mode] { animation: secIn .5s var(--smooth); }    /* gleiten beim Moduswechsel weich herein */
   @keyframes secIn { from { opacity: 0; transform: translateY(8px); } }
-  #modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #modes, .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #fracHome { width: 100%; margin-top: 8px; }
+  /* Mandelbrot-Modus: schmaler Ring als Cursor; gestrichelt, solange die Julia-Form festgehalten ist */
+  body.mode-mandel #cursor { border-width: 1.5px; box-shadow: 0 0 8px var(--brush, #fff); }
+  body.frac-frozen #cursor { border-style: dashed; box-shadow: none; }
   /* Bloom-Regler treten zurück, wenn der Glow ausgeschaltet ist */
   #bloomControls { transition: opacity .4s var(--smooth); }
   #bloomControls.unused { opacity: .35; }
@@ -430,6 +436,41 @@
       <input id="envSpin" type="range" min="0" max="1" step="0.01">
     </div>
   </div>
+  <div class="sec" data-mode="mandel">
+    <h3>Fraktal</h3>
+    <div id="fracKinds" class="grid2">
+      <button class="btn" data-kind="mandel"><span>Mandelbrot</span></button>
+      <button class="btn" data-kind="julia"><span>Julia-Set</span><kbd>J</kbd></button>
+    </div>
+    <div class="sub" id="fracHelp"></div>
+    <div class="row" style="margin-top:12px">
+      <label for="fracDensity">Farbdichte <output id="fracDensityOut"></output></label>
+      <input id="fracDensity" type="range" min="0.2" max="4" step="0.05">
+    </div>
+    <div class="row">
+      <label for="fracSpeed">Farb-Tempo <output id="fracSpeedOut"></output></label>
+      <input id="fracSpeed" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="fracGlow">Leuchten <output id="fracGlowOut"></output></label>
+      <input id="fracGlow" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="fracRelief">Relief <output id="fracReliefOut"></output></label>
+      <input id="fracRelief" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row" style="margin-bottom:0">
+      <label for="fracDetail">Details <output id="fracDetailOut"></output></label>
+      <input id="fracDetail" type="range" min="0.5" max="3" step="0.05">
+    </div>
+    <div class="sub" id="fracInfo"></div>
+  </div>
+  <div class="sec" data-mode="mandel">
+    <h3>Schöne Stellen</h3>
+    <div id="spots" class="grid2"></div>
+    <button class="btn" id="fracHome"><span>Zurück zur Übersicht</span><kbd>Leertaste</kbd></button>
+    <div class="sub">Ein Klick fliegt von selbst dorthin. Die Zoom-Fahrt (Taste <b>A</b> oder eine Weile nichts tun) besucht eine Stelle nach der anderen.</div>
+  </div>
   <div class="sec" id="paletteSection">
     <h3>Farbpalette</h3>
     <div id="palettes"></div>
@@ -481,7 +522,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span>
   </div>
 </div>
 
@@ -521,13 +562,15 @@ const CONFIG = {
 // bloomDiv = Bloom startet bei Bildschirmauflösung / bloomDiv, bloomLevels = Anzahl der Weichzeichnungs-Stufen
 // surfaceDiv = Höhenfeld des Oberflächen-Bausteins bei Bildschirmauflösung / surfaceDiv
 // foamDiv = Schaum-Puffer (Look "Wasser") bei Bildschirmauflösung / foamDiv
+// fscale = Mandelbrot-Modus: Auflösung des Fraktals als Vielfaches der Bildschirmauflösung (über 1 = Supersampling),
+// iter = Mandelbrot-Modus: Obergrenze für die Rechendurchgänge pro Bildpunkt
 const QUALITY = [
-  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4 },
-  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2 },
-  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2 },
-  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2 },
-  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, heavy: true },
-  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, heavy: true },
+  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4, fscale: 0.5, iter: 300 },
+  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2, fscale: 0.75, iter: 500 },
+  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2, fscale: 1, iter: 800 },
+  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 1200 },
+  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 2000, heavy: true },
+  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 3000, heavy: true },
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
@@ -583,6 +626,11 @@ const PARAMS = {
   nebula:      { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Galaxie): Struktur (Wolken, Staubbänder, Strahlen), 0 = glatt
   stars:       { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Galaxie): Sternenhimmel im Hintergrund, 0 = aus
   stardust:    { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Galaxie): mitschwimmender Sternenstaub, 0 = aus
+  fracDensity: { target: 1,    current: 1,    def: 1    },  // Mandelbrot: Farbdichte = wie eng die Farbbänder liegen
+  fracSpeed:   { target: 0.35, current: 0.35, def: 0.35 },  // Mandelbrot: wie schnell die Farben wandern (0 = still)
+  fracGlow:    { target: 0.6,  current: 0.6,  def: 0.6  },  // Mandelbrot: Leuchten der Ränder (0 = aus)
+  fracRelief:  { target: 0.5,  current: 0.5,  def: 0.5  },  // Mandelbrot: Relief = plastische Wirkung der Farbbänder (0 = aus)
+  fracDetail:  { target: 1,    current: 1,    def: 1    },  // Mandelbrot: Details = Faktor auf die Rechendurchgänge
   bloomIntensity: { target: 1,    current: 1,    def: 1    },  // Bloom: Stärke des Glows (0 = aus)
   bloomThreshold: { target: 0.4,  current: 0.4,  def: 0.4  },  // Bloom: ab welcher Helligkeit (0..1) etwas leuchtet
   bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
@@ -1644,12 +1692,12 @@ function blit(target) {
 }
 
 // ---------- Framebuffer ----------
-function createFBO(w, h, internalFormat, format, type = gl.HALF_FLOAT) {
+function createFBO(w, h, internalFormat, format, type = gl.HALF_FLOAT, filter = gl.LINEAR) {
   gl.activeTexture(gl.TEXTURE0);
   const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, null);
@@ -2705,7 +2753,9 @@ function autoQuality(dt, fps) {
   if (qualityMode !== 'auto') return;
   if (autoQ.cooldown > 0) { autoQ.cooldown -= dt; return; }
   autoQ.low  = fps < autoQ.refresh * 0.85 ? autoQ.low + dt : 0;
-  autoQ.high = fps > autoQ.refresh * 0.95 ? autoQ.high + dt : 0;
+  // (steht z. B. das Mandelbrot-Bild still, sagt die hohe Bildrate nichts darüber, ob eine höhere Stufe flüssig liefe)
+  const idle = MODES[modeIndex].idle && MODES[modeIndex].idle();
+  autoQ.high = fps > autoQ.refresh * 0.95 && !idle ? autoQ.high + dt : 0;
   if (autoQ.low > 2 && qualityLevel > 0) {
     autoQ.ceiling = qualityLevel - 1;      // diese Stufe war zu viel – nicht wieder hochschalten
     applyQualityLevel(qualityLevel - 1);
@@ -2944,7 +2994,7 @@ const audio = {
   sfxOn: true, musicOn: true, muted: false,
   energy: 0,          // 0..1: wie viel gerade gemalt wird (klingt über einige Sekunden ab) – die Musik reagiert darauf
   brushLevel: 0,      // 0..1: aktuelles Mal-Tempo für das Pinsel-Rauschen
-  travel: 0, lastNote: 0, lastIndex: -1,
+  travel: 0, lastNote: 0, lastIndex: -1, zoomStep: 0,
   step: 0, nextStep: 0, melodyIndex: 10,
 };
 const audioReady = () => !!audio.ctx && audio.ctx.state !== 'closed';
@@ -3096,6 +3146,31 @@ function audioBurst() {
   pluck(scaleFreq(Math.floor(rand(0, 6))), audio.ctx.currentTime, 0.07, rand(-0.6, 0.6), audio.sfxBus, 1.8);
 }
 
+// Zoomen (Mandelbrot-Modus): gezupfte Töne, deren Höhe der Zoomtiefe folgt – Übersicht = hoch, tief im Bild = tief.
+// Ein Ton pro Stück Zoom (alle 0,35 ≈ 1,4-fach); vier wechselnde Stufen machen aus der Tonleiter eine kleine Melodie.
+// depth = Zoomtiefe (natürlicher Logarithmus), rate = Zoom-Tempo pro Sekunde, byHand = vom Nutzer ausgelöst (nicht Zoom-Fahrt)
+function audioZoom(depth, rate, dt, byHand, pan) {
+  const v = Math.min(Math.abs(rate) / 2.5, 1);                       // Zoom-Tempo 0..1
+  audio.energy = Math.min(1, audio.energy + Math.abs(rate) * dt * (byHand ? 0.3 : 0.05));
+  if (byHand) audio.brushLevel = Math.max(audio.brushLevel, v * 0.6);   // leises Rauschen wie Fahrtwind
+  const step = Math.floor(depth / 0.35);
+  if (step === audio.zoomStep) return;
+  audio.zoomStep = step;
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  const t = audio.ctx.currentTime;
+  if (t - audio.lastNote < 0.09) return;                             // höchstens ~11 Töne pro Sekunde
+  audio.lastNote = t;
+  const i = Math.round(15 - depth * 0.22) + [0, 2, 1, 3][((step % 4) + 4) % 4];
+  pluck(scaleFreq(Math.max(0, Math.min(18, i))), t, 0.05 + 0.13 * v, pan, audio.sfxBus, 1.2);
+}
+// Ankunft an einer schönen Stelle: drei aufsteigende, leise Töne
+function audioArrive() {
+  audio.energy = Math.min(1, audio.energy + 0.15);
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  const t = audio.ctx.currentTime;
+  [5, 7, 9].forEach((i, n) => pluck(scaleFreq(i), t + n * 0.14, 0.11 - n * 0.02, (n - 1) * 0.4, audio.sfxBus, 1.8));
+}
+
 // ----- Lofi-Musik: wird Schritt für Schritt kurz im Voraus eingeplant -----
 function playChord(chord, t, level, dur) {
   for (const n of chord.notes) {
@@ -3244,58 +3319,564 @@ MODES.push({
   qualityInfo: q => `Farbe ${dye.w}×${dye.h}<br>Strömung ${velocity.w}×${velocity.h} · ${q.pressure} Druck-Durchgänge`,
 });
 
-// ---------- Mandelbrot-Modus (Grundgerüst) ----------
-// Zeigt vorerst nur das ganze "Apfelmännchen" in den Farben der aktiven Palette, die langsam wandern.
-// Zoom, Julia-Sets und Zoom-Fahrt kommen im nächsten Schritt.
-programs.mandel = makeProgram(header + paletteGLSL + `
-  uniform vec2 uCenter;       // Bildmitte in der Zahlenebene
-  uniform vec2 uSpan;         // Breite und Höhe des Bildausschnitts in der Zahlenebene
-  uniform float uPhase;       // wandernde Farbverschiebung
+// ---------- Mandelbrot-Modus ----------
+// Das "Apfelmännchen": Für jeden Bildpunkt wird die Rechnung z → z² + c immer wieder ausgeführt und gezählt, nach wie
+// vielen Durchgängen z "ausbricht" (sehr groß wird). Die Anzahl bestimmt die Farbe; Punkte, die nie ausbrechen,
+// gehören zur Menge und bleiben schwarz. Mandelbrot: c = Bildpunkt, Start z = 0. Julia: c ist fest, Start z = Bildpunkt.
+// Zwei Schritte pro Bild (beide auf der Grafikkarte):
+//   1) Zählen  (fracData):  teuer – läuft nur, wenn sich Ausschnitt, Julia-Form oder Detailgrad geändert haben
+//   2) Färben  (fracColor): billig – läuft immer, deshalb können die Farben wandern, auch wenn das Bild stillsteht
+const FRACTAL = {
+  LZ_MIN: -0.5,             // am weitesten herausgezoomt (Zoom als natürlicher Logarithmus, 0 = Übersicht)
+  LZ_MAX: Math.log(2e4),    // tiefster Zoom: darunter reichen die 32-Bit-Zahlen der Grafikkarte nicht mehr (Bild wird klötzchenhaft)
+  WHEEL: 0.0028,            // Zoom pro Scroll-Einheit (ein Mausrad-Raster ≈ 100 → ca. 1,3-fach)
+  CLICK_ZOOM: 0.9,          // Zoom pro Klick (ca. 2,5-fach)
+  ZOOM_EASE: 9,             // wie schnell der Zoom seinem Ziel folgt (größer = direkter)
+  FRICTION: 4.5,            // wie schnell das Nachlaufen nach dem Ziehen ausklingt
+  MORPH_SECONDS: 1.1,       // Dauer der Verwandlung Mandelbrot ↔ Julia
+  FLY_IN: 0.5,              // Zoom-Fahrt: Tempo hinein (pro Sekunde, natürlicher Logarithmus → ca. 1,65-fach pro Sekunde)
+  FLY_OUT: 1.2,             // Zoom-Fahrt: Tempo heraus
+  HOLD_SECONDS: 4,          // Zoom-Fahrt: so lange bleibt sie am Ziel, bevor es weitergeht
+  JULIA_RADIUS: 0.7885,     // Auto-Play im Julia-Bild: c wandert auf einem Kreis mit diesem Radius um den Ursprung
+};
+
+// Schöne Stellen: Punkte genau auf dem Rand der Menge (dort hört das Muster beim Hineinzoomen nie auf).
+// x, y = Position in der Zahlenebene, lz = wie tief die Zoom-Fahrt dort hineinfährt (natürlicher Logarithmus)
+const SPOTS = [
+  { name: 'Seepferdchen-Tal',  x: -0.7756837680090538,  y: 0.1364673682946901,  lz: 9.6 },
+  { name: 'Elefanten-Tal',     x: 0.3239958899199433,   y: 0.0435970999465609,  lz: 9.6 },
+  { name: 'Verzweigung',       x: -0.1010963638456222,  y: 0.9562865108091415,  lz: 9.6 },
+  { name: 'Dreifach-Spirale',  x: -0.06725900792385113, y: 0.6637217446205802,  lz: 9.6 },
+  { name: 'Vierfach-Spirale',  x: 0.30087554632329117,  y: 0.4858645541333637,  lz: 9.6 },
+  { name: 'Zepter',            x: -1.2555819767538616,  y: 0.4020388592658135,  lz: 9.6 },
+  { name: 'Mini-Mandelbrot',   x: -1.7548776662466927,  y: 0,                   lz: 3.5 },
+];
+
+const frac = {
+  M: { x: -0.6, y: 0, lz: 0, lzT: 0 },    // Mandelbrot-Ausschnitt: Bildmitte, Zoom (lz) und Zoom-Ziel (lzT)
+  J: { x: 0, y: 0, lz: 0, lzT: 0 },       // Julia-Ausschnitt
+  c: [-0.8, 0.156], cT: [-0.8, 0.156],    // Julia-Parameter c und sein Ziel (c läuft weich hinterher)
+  julia: false,                            // Julia-Bild gewählt?
+  frozen: false,                           // Julia: Form festgehalten (die Maus verändert c nicht)
+  k: 0,                                    // 0 = Mandelbrot, 1 = Julia; dazwischen läuft die Verwandlung
+  mouse: null,                             // letzte Mausposition als Abstand von der Bildmitte in Bildhöhen [x, y]
+  anchor: [0, 0],                          // Stelle, die beim Zoomen stehen bleibt (wie mouse)
+  drag: null, dragMove: [0, 0],            // läuft gerade ein Ziehen? + seit dem letzten Bild gezogene Strecke
+  vel: [0, 0],                             // Tempo des Ausschnitts (Bildhöhen pro Sekunde) fürs Nachlaufen
+  cMove: 0,                                // Strecke, die c seit dem letzten Bild gewandert ist (für den Ton)
+  flight: null,                            // laufender Flug zu einer Stelle
+  spot: -1, queue: [], hold: 0,            // zuletzt angeflogene Stelle, Reihenfolge und Wartezeit der Zoom-Fahrt
+  theta: 0,                                // Auto-Play im Julia-Bild: Winkel von c auf seiner Kreisbahn
+  phase: 0,                                // wandernde Farbverschiebung
+  dataKey: '', miniKey: '', busy: false,   // wurde in diesem Bild neu gezählt?
+  infoTimer: 0, lastLz: 0, limitToast: 0,
+};
+const clampNum = (v, a, b) => Math.max(a, Math.min(b, v));
+const smooth01 = x => x * x * (3 - 2 * x);
+const fracAspect = () => canvas.width / canvas.height;
+// Bildhöhe in der Zahlenebene bei Zoom 1: so gewählt, dass die ganze Menge in jedes Fensterformat passt
+const fracBaseHeight = () => Math.max(2.7, 3.5 / fracAspect());
+const fracHeight = V => fracBaseHeight() * Math.exp(-V.lz);
+const fracView = () => frac.julia ? frac.J : frac.M;
+// Punkt der Zahlenebene, der im Ausschnitt V an der Bildstelle a liegt (a = Abstand von der Bildmitte in Bildhöhen)
+const fracPoint = (V, a) => [V.x + a[0] * fracHeight(V), V.y + a[1] * fracHeight(V)];
+// Mausposition → Abstand von der Bildmitte in Bildhöhen (x nach rechts, y nach oben)
+function fracMouse(e) {
+  const r = canvas.getBoundingClientRect();
+  return [((e.clientX - r.left) / r.width - 0.5) * (r.width / r.height), 0.5 - (e.clientY - r.top) / r.height];
+}
+
+// ----- Shader -----
+// 1) Zählen: schreibt pro Bildpunkt den "glatten" Zähler (keine Stufen zwischen den Farbbändern), −1 = gehört zur Menge
+programs.fracData = makeProgram(header + `
+  uniform vec2 uCenterM, uSpanM;   // Mandelbrot-Ausschnitt: Bildmitte und Größe in der Zahlenebene
+  uniform vec2 uCenterJ, uSpanJ;   // Julia-Ausschnitt
+  uniform vec2 uC;                 // Julia-Parameter c
+  uniform float uK;                // 0 = Mandelbrot, 1 = Julia, dazwischen: beide Rechnungen gehen fließend ineinander über
+  uniform int uMaxIter;            // höchstens so viele Durchgänge
+  uniform float uBulb;             // 1 = Abkürzung für die beiden großen Flächen der Mandelbrot-Menge benutzen
   void main () {
-    vec2 c = uCenter + (vUv - 0.5) * uSpan, z = vec2(0.0);
-    float zz = 0.0;
-    int i = 0;
-    for (; i < 200; i++) {
-      z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
-      zz = dot(z, z);
-      if (zz > 256.0) break;
+    vec2 p = vUv - 0.5;
+    vec2 z = uK * (uCenterJ + p * uSpanJ);
+    vec2 c = mix(uCenterM + p * uSpanM, uC, uK);
+    float s = -1.0;
+    // Die große "Herzform" und der Kreis links daneben gehören sicher zur Menge → nicht erst lange rechnen
+    float q = (c.x - 0.25) * (c.x - 0.25) + c.y * c.y;
+    bool inside = uBulb > 0.5 && (q * (q + (c.x - 0.25)) < 0.25 * c.y * c.y || (c.x + 1.0) * (c.x + 1.0) + c.y * c.y < 0.0625);
+    if (!inside) {
+      float zz = 0.0;
+      int i = 0;
+      for (; i < uMaxIter; i++) {
+        z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+        zz = dot(z, z);
+        if (zz > 65536.0) break;
+      }
+      if (i < uMaxIter) s = max(float(i) + 1.0 - log2(log2(zz) / 16.0), 0.0);
     }
-    vec3 col = vec3(0.0);                                   // Punkte in der Menge bleiben schwarz
-    if (i < 200) {
-      float s = float(i) + 1.0 - log2(0.5 * log2(zz));    // "glatter" Zähler: keine Stufen zwischen den Farbbändern
-      col = palette(log2(s + 4.0) * 0.45 + uPhase) * (1.0 - exp(-s * 0.12));
-    }
+    fragColor = vec4(s, 0.0, 0.0, 1.0);
+  }`);
+
+// 2) Färben: Zähler → Palettenfarbe (wandert mit uPhase), dazu Relief (Licht von links oben) und leuchtende Ränder
+programs.fracColor = makeProgram(header + paletteGLSL + `
+  uniform sampler2D uData;     // Ergebnis von fracData
+  uniform sampler2D uStat;     // 1 Bildpunkt: kleinster Zähler im ganzen Ausschnitt (siehe fracMin)
+  uniform vec2 uTexel;         // Größe eines Bildpunkts von uData
+  uniform float uAspect;
+  uniform float uPhase;        // wandernde Farbverschiebung
+  uniform float uDensity;      // Regler "Farbdichte"
+  uniform float uGlow;         // Regler "Leuchten"
+  uniform float uRelief;       // Regler "Relief"
+  // Zähler → Stelle auf der Palette. Gezählt wird ab dem kleinsten Zähler im Ausschnitt (base): knapp darüber liegen
+  // die Farbbänder gleichmäßig, weit darüber (dicht am Rand der Menge) rücken sie immer enger zusammen (asinh wächst
+  // dort nur noch wie ein Logarithmus). So sieht das Muster in jeder Zoomtiefe ähnlich aus, und beim Hineinzoomen
+  // fließen die Farben von selbst weiter.
+  float base;
+  float bandAt (float s) { return 1.2 * asinh((s - base) / 30.0) * uDensity; }
+  // dasselbe für einen Nachbarpunkt; liegt er in der Menge, gilt der eigene Wert (keine Kante)
+  float neighbor (vec2 uv, float own) { float s = texture(uData, uv).r; return s < 0.0 ? own : bandAt(s); }
+  void main () {
+    float s = texture(uData, vUv).r;
+    if (s < 0.0) { fragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+    base = texelFetch(uStat, ivec2(0), 0).r;
+    float t = bandAt(s);
+    // Steigung der Farbbänder (pro Bildhöhe) aus den vier Nachbarn
+    vec2 g = vec2(neighbor(vUv + vec2(uTexel.x, 0.0), t) - neighbor(vUv - vec2(uTexel.x, 0.0), t),
+                  neighbor(vUv + vec2(0.0, uTexel.y), t) - neighbor(vUv - vec2(0.0, uTexel.y), t)) / (2.0 * uTexel.y);
+    float steep = length(g);
+    g /= 1.0 + steep * 0.05;                                   // sehr steile Stellen begrenzen (sonst flimmert es)
+    vec3 col = palette(t + uPhase);
+    // Helligkeit: weit weg vom Rand der Menge (flache Farbverläufe) dunkel, zum Rand hin hell – dunkler Hintergrund,
+    // leuchtende Strukturen. Dazu sanfte dunklere Bänder, damit das Bild Tiefe bekommt.
+    float near = 1.0 - exp(-steep * 0.07);
+    float lum = (0.22 + 0.78 * near) * (0.7 + 0.3 * sin(6.2832 * (t * 0.618 + uPhase * 0.5)));
+    // Relief: die Farbbänder wirken wie eine gewölbte Oberfläche, beleuchtet von links oben
+    vec3 n = normalize(vec3(-g * uRelief * 0.22, 1.0));
+    vec3 light = normalize(vec3(-0.5, 0.6, 0.62));
+    float shade = mix(1.0, clamp(dot(n, light) / light.z, 0.15, 1.7), min(uRelief * 2.0, 1.0));
+    float spec = pow(max(dot(n, normalize(light + vec3(0.0, 0.0, 1.0))), 0.0), 60.0) * uRelief;
+    col = col * lum * shade + vec3(1.0, 0.97, 0.92) * spec * 0.25 * near;
+    // Leuchten: ganz nah am Rand ändert sich der Zähler rasend schnell → dort glüht das Bild auf (heller als Weiß → Bloom)
+    float edge = 1.0 - exp(-steep * 0.005);
+    col = mix(col, mix(col, vec3(1.0), 0.22) * 1.7, edge * uGlow);
     fragColor = vec4(col, 1.0);
   }`);
 
+// Kleinster Zähler im Ausschnitt: liest eine winzige Fassung des Zähl-Bilds (16×16 Punkte) und schreibt das Minimum
+// in einen einzigen Bildpunkt. Bleibt komplett auf der Grafikkarte (kein Zurücklesen, das die Bildrate stören würde).
+programs.fracMin = makeProgram(header + `
+  uniform sampler2D uData;
+  void main () {
+    float m = 1e9;
+    for (int j = 0; j < 16; j++)
+      for (int i = 0; i < 16; i++) {
+        float s = texelFetch(uData, ivec2(i, j), 0).r;
+        if (s >= 0.0) m = min(m, s);
+      }
+    fragColor = vec4(m > 1e8 ? 0.0 : m, 0.0, 0.0, 1.0);
+  }`);
+
+// Kleine Karte im Julia-Bild: zeigt den Mandelbrot-Ausschnitt mit einem Ring an der Stelle von c
+programs.fracMini = makeProgram(header + `
+  uniform sampler2D uTexture;
+  uniform vec2 uMark;          // Stelle von c auf der Karte (0..1)
+  uniform float uAspect;
+  uniform float uAlpha;
+  void main () {
+    vec2 p = (vUv - 0.5) * vec2(uAspect, 1.0), size = vec2(uAspect, 1.0) * 0.5;
+    vec2 d = abs(p) - size + 0.07;                                              // abgerundetes Rechteck
+    float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - 0.07;
+    float inside = 1.0 - smoothstep(-0.012, 0.0, dist);
+    vec3 col = min(texture(uTexture, vUv).rgb, vec3(1.0)) * 0.8;
+    col = mix(col, vec3(0.8), smoothstep(-0.04, -0.025, dist) * 0.7);          // heller Rahmen
+    float m = length((vUv - uMark) * vec2(uAspect, 1.0));
+    col = mix(col, vec3(1.0), max(smoothstep(0.014, 0.004, abs(m - 0.05)), smoothstep(0.016, 0.008, m)));
+    fragColor = vec4(col, inside * uAlpha);
+  }`);
+
+// ----- Puffer -----
+// fracData: Zähler je Bildpunkt (32 Bit, eine Zahl). Größe = Bildschirm × QUALITY[].fscale (über 1 = feiner als der
+// Bildschirm gerechnet und beim Anzeigen gemittelt → glatte Kanten). fracColorBuf: gefärbtes Bild in dieser Größe –
+// nur nötig, wenn sie von der Bildschirmgröße abweicht. miniData/miniColor: dasselbe in klein für die Karte.
+// fracTiny (16×16) → fracStat/miniStat (1 Bildpunkt): kleinster Zähler im Ausschnitt, Bezugswert für die Farben.
+let fracData = null, fracColorBuf = null, fracBufKey = '', miniData = null, miniColor = null;
+const fracTiny = createFBO(16, 16, gl.R32F, gl.RED, gl.FLOAT, gl.NEAREST);
+const fracStat = createFBO(1, 1, gl.R32F, gl.RED, gl.FLOAT, gl.NEAREST);
+const miniStat = createFBO(1, 1, gl.R32F, gl.RED, gl.FLOAT, gl.NEAREST);
+const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+function ensureFracBuffers() {
+  const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+  const scale = Math.min(QUALITY[qualityLevel].fscale, maxTextureSize / Math.max(W, H));
+  const w = Math.max(1, Math.round(W * scale)), h = Math.max(1, Math.round(H * scale));
+  const key = `${w}x${h}:${W}x${H}`;
+  if (key === fracBufKey) return;
+  fracBufKey = key;
+  for (const b of [fracData, fracColorBuf, miniData, miniColor]) if (b) b.free();
+  fracData = createFBO(w, h, gl.R32F, gl.RED, gl.FLOAT, gl.NEAREST);
+  fracColorBuf = w === W && h === H ? null : createFBO(w, h, gl.RGBA16F, gl.RGBA);
+  const mh = Math.max(8, Math.round(Math.min(H * 0.5, 320))), mw = Math.max(8, Math.round(mh * W / H));
+  miniData = createFBO(mw, mh, gl.R32F, gl.RED, gl.FLOAT, gl.NEAREST);
+  miniColor = createFBO(mw, mh, gl.RGBA16F, gl.RGBA);
+  frac.dataKey = frac.miniKey = '';
+}
+
+// So viele Durchgänge braucht ein Ausschnitt ungefähr: je tiefer der Zoom, desto mehr. Die Qualitätsstufe setzt die
+// Obergrenze (QUALITY[].iter), der Regler "Details" multipliziert das Ergebnis.
+function fracIterations(lz, base) {
+  const need = base + 30 * Math.pow(Math.max(lz, 0) / Math.LN2, 1.25);
+  return Math.round(Math.min(need, QUALITY[qualityLevel].iter) * PARAMS.fracDetail.current);
+}
+
+// Schritt 1: zählen. k = 0 Mandelbrot … 1 Julia
+function fracRenderData(target, k, maxIter) {
+  const f = frac, aspect = fracAspect(), hM = fracHeight(f.M), hJ = fracHeight(f.J);
+  const u = use('fracData');
+  gl.uniform2f(u.uCenterM, f.M.x, f.M.y);
+  gl.uniform2f(u.uSpanM, hM * aspect, hM);
+  gl.uniform2f(u.uCenterJ, f.J.x, f.J.y);
+  gl.uniform2f(u.uSpanJ, hJ * aspect, hJ);
+  gl.uniform2f(u.uC, f.c[0], f.c[1]);
+  gl.uniform1f(u.uK, k);
+  gl.uniform1i(u.uMaxIter, maxIter);
+  gl.uniform1f(u.uBulb, k === 0 ? 1 : 0);
+  blit(target);
+}
+// kleinsten Zähler des Ausschnitts bestimmen (winziges Zähl-Bild → Minimum) und in stat ablegen
+function fracMeasure(stat, k, maxIter) {
+  fracRenderData(fracTiny, k, maxIter);
+  const u = use('fracMin');
+  gl.uniform1i(u.uData, fracTiny.attach(0));
+  blit(stat);
+}
+// Schritt 2: färben
+function fracColorize(data, stat, target) {
+  const u = use('fracColor');
+  gl.uniform1i(u.uData, data.attach(0));
+  gl.uniform1i(u.uStat, stat.attach(1));
+  gl.uniform2fv(u.uTexel, data.texel);
+  gl.uniform1f(u.uAspect, fracAspect());
+  gl.uniform1f(u.uPhase, frac.phase);
+  gl.uniform1f(u.uDensity, PARAMS.fracDensity.current);
+  gl.uniform1f(u.uGlow, PARAMS.fracGlow.current);
+  gl.uniform1f(u.uRelief, PARAMS.fracRelief.current);
+  gl.uniform3fv(u['uPalette[0]'], currentPalette);
+  blit(target);
+}
+
+function drawFractal(target) {
+  ensureFracBuffers();
+  gl.disable(gl.BLEND);
+  const f = frac, k = smooth01(f.k);
+  const iterM = fracIterations(f.M.lz, 100), iterJ = fracIterations(f.J.lz, 180);
+  const maxIter = Math.round(iterM + (iterJ - iterM) * k);
+  // Neu zählen nur, wenn sich etwas geändert hat – steht das Bild still, kostet es fast nichts
+  const key = [f.M.x, f.M.y, f.M.lz, f.J.x, f.J.y, f.J.lz, f.c[0], f.c[1], k, maxIter, fracAspect()].join();
+  f.busy = key !== f.dataKey;
+  if (f.busy) { f.dataKey = key; fracRenderData(fracData, k, maxIter); fracMeasure(fracStat, k, maxIter); }
+  fracColorize(fracData, fracStat, fracColorBuf || target);
+  if (fracColorBuf) {                       // andere Größe als der Bildschirm → weich hinein skalieren
+    const u = use('scale');
+    gl.uniform1i(u.uTexture, fracColorBuf.attach(0));
+    gl.uniform1f(u.value, 1);
+    blit(target);
+  }
+
+  // Julia-Bild: kleine Karte unten links mit dem Mandelbrot-Ausschnitt und der Stelle von c
+  if (k < 0.01) return;
+  const miniKey = [f.M.x, f.M.y, f.M.lz, iterM, fracAspect()].join();
+  if (miniKey !== f.miniKey) { f.miniKey = miniKey; fracRenderData(miniData, 0, iterM); fracMeasure(miniStat, 0, iterM); }
+  fracColorize(miniData, miniStat, miniColor);
+  const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, hM = fracHeight(f.M);
+  const w = Math.round(Math.min(H * 0.26 * W / H, W * 0.34)), h = Math.round(w * H / W), m = Math.round(H * 0.025);
+  const u = use('fracMini');
+  gl.uniform1i(u.uTexture, miniColor.attach(0));
+  gl.uniform2f(u.uMark, 0.5 + (f.c[0] - f.M.x) / (hM * W / H), 0.5 + (f.c[1] - f.M.y) / hM);
+  gl.uniform1f(u.uAspect, W / H);
+  gl.uniform1f(u.uAlpha, k);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.fbo : null);
+  gl.viewport(m, m, w, h);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  gl.disable(gl.BLEND);
+}
+
+// ----- Bedienung -----
+function fracZoomBy(amount, anchor) {
+  const V = fracView();
+  frac.flight = null;
+  frac.anchor = anchor || [0, 0];
+  V.lzT = clampNum(V.lzT + amount, FRACTAL.LZ_MIN, FRACTAL.LZ_MAX);
+  if (V.lzT >= FRACTAL.LZ_MAX && amount > 0 && performance.now() - frac.limitToast > 4000) {
+    frac.limitToast = performance.now();
+    toast('Tiefer geht es hier noch nicht');
+  }
+  lastPaint = performance.now();
+}
+function setJulia(on) {
+  const f = frac;
+  if (on === f.julia) return;
+  f.julia = on;
+  f.flight = null; f.vel = [0, 0]; f.dragMove = [0, 0];
+  if (on) {
+    // die Stelle unter der Maus wird zum Parameter c; das Julia-Bild beginnt wieder in der Übersicht
+    f.frozen = false;
+    if (f.mouse && !autoplay.active) f.cT = fracPoint(f.M, f.mouse);
+    f.c = [f.cT[0], f.cT[1]];
+    f.theta = Math.atan2(f.c[1], f.c[0]);
+    Object.assign(f.J, { x: 0, y: 0, lz: 0, lzT: 0 });
+  }
+  updateFracUi();
+  toast(on ? 'Julia-Set – die Maus wählt die Form' : 'Mandelbrot');
+}
+function setFrozen(on) {
+  frac.frozen = on;
+  audioTock(!on);
+  toast(on ? 'Form festgehalten – Klick löst sie wieder' : 'Die Maus wählt wieder die Form');
+}
+// Flug zu einer Stelle: erst so weit herauszoomen, bis das Ziel im Bild liegt, dann hinein
+function fracFlyTo(spot, V) {
+  frac.flight = { V, spot, phase: 'out', s: [0, 0], v: 0 };
+  frac.vel = [0, 0];
+}
+function fracGoToSpot(i) {
+  i = (i + SPOTS.length) % SPOTS.length;
+  setJulia(false);
+  frac.spot = i;
+  fracFlyTo(SPOTS[i], frac.M);
+  updateFracUi();
+  toast('Flug zu: ' + SPOTS[i].name);
+}
+function fracHome() {
+  const f = frac;
+  f.spot = -1;
+  fracFlyTo(f.julia ? { x: 0, y: 0, lz: 0 } : { x: -0.6, y: 0, lz: 0 }, fracView());
+  audioClear();
+  updateFracUi();
+  toast('Zurück zur Übersicht');
+}
+
+function fracPointerMove(e) {
+  const f = frac, a = fracMouse(e);
+  showCursor(e.clientX, e.clientY);
+  if (f.drag) {
+    f.dragMove[0] += a[0] - f.mouse[0];
+    f.dragMove[1] += a[1] - f.mouse[1];
+    f.drag.travel += Math.hypot(e.clientX - f.drag.x, e.clientY - f.drag.y);
+    f.drag.x = e.clientX; f.drag.y = e.clientY;
+    lastPaint = performance.now();
+  } else if (f.julia && !f.frozen) {
+    // Julia: der Punkt unter der Maus (im Mandelbrot-Ausschnitt, siehe kleine Karte) wird zum Parameter c
+    f.cT = fracPoint(f.M, a);
+    if (f.mouse) f.cMove += Math.hypot(a[0] - f.mouse[0], a[1] - f.mouse[1]);
+    lastPaint = performance.now();
+  }
+  f.mouse = a;
+  hideHint();
+}
+function fracPointerDown(e) {
+  const f = frac;
+  showCursor(e.clientX, e.clientY);
+  f.mouse = fracMouse(e);
+  f.flight = null;
+  f.vel = [0, 0]; f.dragMove = [0, 0];
+  f.drag = { button: e.button, travel: 0, x: e.clientX, y: e.clientY };
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* nicht schlimm: Ziehen endet dann am Fensterrand */ }
+}
+function fracPointerUp(e) {
+  const f = frac, d = f.drag;
+  if (!d) return;
+  f.drag = null;
+  if (d.travel >= 5 || e.type !== 'pointerup') return;       // das war ein Ziehen (oder ein Abbruch), kein Klick
+  // Klick: Rechtsklick zoomt heraus; Linksklick zoomt hinein (Mandelbrot) bzw. hält die Form fest (Julia)
+  f.vel = [0, 0];
+  if (d.button === 2) fracZoomBy(-FRACTAL.CLICK_ZOOM, f.mouse);
+  else if (f.julia) setFrozen(!f.frozen);
+  else { fracZoomBy(FRACTAL.CLICK_ZOOM, f.mouse); audioClick(f.mouse[0] / fracAspect() + 0.5, f.mouse[1] + 0.5); }
+  cursorScale = 1.6 - 0.4 * PARAMS.calm.current;
+}
+function fracWheel(e) {
+  const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;   // Zeilen/Seiten → Pixel
+  frac.mouse = fracMouse(e);
+  fracZoomBy(-clampNum(d, -300, 300) * FRACTAL.WHEEL, frac.mouse);
+  hideHint();
+}
+function fracKey(e, bracket) {
+  const onSlider = e.target instanceof HTMLInputElement;     // Pfeiltasten gehören dort dem Regler
+  const digit = /^Digit([1-9])$/.exec(e.code);
+  if (digit && Number(digit[1]) <= SPOTS.length) fracGoToSpot(Number(digit[1]) - 1);
+  if (bracket) fracGoToSpot(frac.spot + bracket);
+  else if ((e.code === 'ArrowRight' && !onSlider) || e.code === 'Period') fracGoToSpot(frac.spot + 1);
+  else if ((e.code === 'ArrowLeft' && !onSlider) || e.code === 'Comma') fracGoToSpot(frac.spot < 0 ? -1 : frac.spot - 1);
+  if (e.code === 'ArrowUp' && !onSlider) { fracZoomBy(0.5); e.preventDefault(); }
+  if (e.code === 'ArrowDown' && !onSlider) { fracZoomBy(-0.5); e.preventDefault(); }
+  if (e.code === 'KeyJ') setJulia(!frac.julia);
+  if (e.code === 'Space') { fracHome(); e.preventDefault(); }
+}
+
+// ----- einmal pro Bild -----
+function updateFractal(dt) {
+  const f = frac, V = fracView(), slow = 1 - 0.4 * PARAMS.calm.current;   // "Flackern reduzieren": alles etwas gemächlicher
+  let byHand = false;
+
+  // Ziehen verschiebt den Ausschnitt sofort; nach dem Loslassen läuft er mit Trägheit aus
+  if (f.drag) {
+    const h = fracHeight(V), mx = f.dragMove[0], my = f.dragMove[1], k = 1 - Math.exp(-25 * dt);
+    f.dragMove = [0, 0];
+    V.x -= mx * h; V.y -= my * h;
+    f.vel[0] += (mx / dt - f.vel[0]) * k;                    // Tempo der Hand, leicht geglättet
+    f.vel[1] += (my / dt - f.vel[1]) * k;
+    audio.brushLevel = Math.max(audio.brushLevel, Math.min(Math.hypot(mx, my) / dt / 3, 1) * 0.5);
+    audio.energy = Math.min(1, audio.energy + Math.hypot(mx, my) * 0.3);
+  } else if (Math.hypot(f.vel[0], f.vel[1]) > 0.002) {
+    const h = fracHeight(V), d = Math.exp(-FRACTAL.FRICTION * dt);
+    V.x -= f.vel[0] * h * dt; V.y -= f.vel[1] * h * dt;
+    f.vel[0] *= d; f.vel[1] *= d;
+  }
+  // der Ausschnitt bleibt in der Nähe der Menge (sonst verliert man sich im leeren Raum)
+  V.x = clampNum(V.x, f.julia ? -2.2 : -2.6, f.julia ? 2.2 : 1.4);
+  V.y = clampNum(V.y, f.julia ? -2.2 : -1.7, f.julia ? 2.2 : 1.7);
+
+  if (f.flight) updateFracFlight(dt, slow);
+  else if (Math.abs(V.lzT - V.lz) > 1e-5) {
+    // Zoom läuft weich auf sein Ziel zu; die Stelle unter der Maus (anchor) bleibt dabei stehen
+    const h0 = fracHeight(V);
+    V.lz += (V.lzT - V.lz) * (1 - Math.exp(-FRACTAL.ZOOM_EASE * dt));
+    const h1 = fracHeight(V);
+    V.x += f.anchor[0] * (h0 - h1); V.y += f.anchor[1] * (h0 - h1);
+    byHand = true;
+  }
+
+  // Verwandlung Mandelbrot ↔ Julia und weiches Nachlaufen von c
+  f.k = clampNum(f.k + (f.julia ? 1 : -1) * dt / FRACTAL.MORPH_SECONDS, 0, 1);
+  const ck = 1 - Math.exp(-14 * dt);
+  f.c[0] += (f.cT[0] - f.c[0]) * ck; f.c[1] += (f.cT[1] - f.c[1]) * ck;
+
+  // Ton: Zoomtiefe → Tonhöhe; Julia-Form verändern klingt wie Malen (je schneller, desto höher und lauter)
+  audioZoom(V.lz, (V.lz - f.lastLz) / dt, dt, byHand, f.anchor[0] / fracAspect() * 2);
+  f.lastLz = V.lz;
+  if (f.cMove > 0) {
+    audioPaint(f.cMove / dt, f.cMove, f.mouse ? f.mouse[0] / fracAspect() + 0.5 : 0.5);
+    f.cMove = 0;
+  }
+
+  f.phase += PARAMS.fracSpeed.current * 0.06 * dt * (1 - 0.6 * PARAMS.calm.current);   // Farben wandern
+  cursorEl.style.setProperty('--brush', paletteColor(f.phase));
+  cursorEl.style.setProperty('--size', '22px');
+  document.body.classList.toggle('frac-frozen', f.julia && f.frozen);
+  if (f.drag) cursorScale = Math.min(cursorScale, 0.8);
+
+  f.infoTimer -= dt;
+  if (f.infoTimer <= 0) {                                    // Info-Zeile nur 4× pro Sekunde aktualisieren
+    f.infoTimer = 0.25;
+    const iter = Math.round(fracIterations(f.M.lz, 100) + (fracIterations(f.J.lz, 180) - fracIterations(f.M.lz, 100)) * smooth01(f.k));
+    $('fracInfo').innerHTML = `Zoom ${fracZoomText(V.lz)} · ${iter} Durchgänge`;
+  }
+}
+// Zoom als Text: 12,5× … 3 400× … 1,2 · 10⁸×
+function fracZoomText(lz) {
+  const e = Math.floor(lz / Math.LN10);
+  if (e < 6) { const z = Math.exp(lz); return (z < 100 ? z.toFixed(1).replace('.', ',') : Math.round(z).toLocaleString('de-DE')) + '×'; }
+  return Math.exp(lz - e * Math.LN10).toFixed(1).replace('.', ',') + ' · 10<sup>' + e + '</sup>×';
+}
+
+// Flug: Phase "out" zoomt heraus, bis das Ziel nahe der Bildmitte liegt; Phase "in" zoomt hinein und schiebt das Ziel
+// dabei weich in die Mitte. s = Abstand des Ziels von der Bildmitte in Bildhöhen, v = aktuelles Zoom-Tempo
+function updateFracFlight(dt, slow) {
+  const f = frac, fl = f.flight, V = fl.V, S = fl.spot;
+  let want = 0;
+  if (fl.phase === 'out') {
+    const h = fracHeight(V), sx = (S.x - V.x) / h, sy = (S.y - V.y) / h;
+    const floor = Math.min(0, S.lz);                           // weiter heraus als bis zur Übersicht geht es nicht
+    if (Math.hypot(sx, sy) < 0.3 || V.lz <= floor + 0.02) { fl.phase = 'in'; fl.s = [sx, sy]; }
+    else want = -Math.min(FRACTAL.FLY_OUT, (V.lz - floor) * 1.5 + 0.1);   // kurz vor der Übersicht abbremsen
+  }
+  if (fl.phase === 'in') want = clampNum((S.lz - V.lz) * 1.5, -FRACTAL.FLY_OUT, FRACTAL.FLY_IN);
+  fl.v += (want * slow - fl.v) * (1 - Math.exp(-2.5 * dt));    // Tempo ändert sich weich (kein Ruck beim Umkehren)
+  V.lz += fl.v * dt;
+  V.lzT = V.lz;
+  if (fl.phase !== 'in') return;
+  const d = Math.exp(-1.3 * dt), h = fracHeight(V);
+  fl.s[0] *= d; fl.s[1] *= d;
+  V.x = S.x - fl.s[0] * h; V.y = S.y - fl.s[1] * h;
+  if (Math.abs(S.lz - V.lz) < 0.02 && Math.hypot(fl.s[0], fl.s[1]) < 0.01) {     // angekommen
+    f.flight = null;
+    f.hold = FRACTAL.HOLD_SECONDS;
+    if (S.name) audioArrive();
+  }
+}
+
+// Auto-Play: die Zoom-Fahrt besucht eine schöne Stelle nach der anderen (zufällige Reihenfolge, jede einmal pro Runde).
+// Im Julia-Bild wandert stattdessen c langsam auf einer Kreisbahn – das Bild verwandelt sich ständig.
+function fracAutoplay(dt) {
+  const f = frac;
+  if (!autoplay.active) return;
+  if (f.julia) {
+    f.theta += 0.1 * dt * (1 - 0.4 * PARAMS.calm.current);
+    f.cT = [FRACTAL.JULIA_RADIUS * Math.cos(f.theta), FRACTAL.JULIA_RADIUS * Math.sin(f.theta)];
+    return;
+  }
+  if (f.flight) return;
+  f.hold -= dt;
+  if (f.hold > 0) return;
+  if (!f.queue.length) {
+    f.queue = SPOTS.map((_, i) => i).sort(() => Math.random() - 0.5);
+    if (f.queue[0] === f.spot && f.queue.length > 1) f.queue.reverse();   // nicht zweimal dieselbe Stelle hintereinander
+  }
+  f.spot = f.queue.shift();
+  fracFlyTo(SPOTS[f.spot], f.M);
+  updateFracUi();
+  toast('Zoom-Fahrt: ' + SPOTS[f.spot].name);
+}
+
+// ----- Panel -----
+const fracKindBox = $('fracKinds'), spotBox = $('spots');
+for (const b of fracKindBox.children) b.addEventListener('click', () => { setJulia(b.dataset.kind === 'julia'); b.blur(); });
+SPOTS.forEach((s, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.innerHTML = `<span>${s.name}</span>` + (i < 9 ? `<kbd>${i + 1}</kbd>` : '');
+  btn.addEventListener('click', () => { fracGoToSpot(i); btn.blur(); });
+  spotBox.appendChild(btn);
+});
+$('fracHome').addEventListener('click', e => { fracHome(); e.currentTarget.blur(); });
+function updateFracUi() {
+  for (const b of fracKindBox.children) b.classList.toggle('active', (b.dataset.kind === 'julia') === frac.julia);
+  [...spotBox.children].forEach((b, i) => b.classList.toggle('active', i === frac.spot && !frac.julia));
+  $('fracHelp').textContent = frac.julia
+    ? 'Die Maus wählt die Form: Der Punkt unter ihr im Mandelbrot-Bild (kleine Karte unten links) bestimmt das Julia-Set. Klick = Form festhalten oder lösen, Scrollen = Zoom, Ziehen = Verschieben.'
+    : 'Scrollen = Zoom · Ziehen = Verschieben · Klick = hinein · Rechtsklick = heraus';
+}
+bindSlider('fracDensity', PARAMS.fracDensity, v => v.toFixed(2) + '×');
+bindSlider('fracSpeed',   PARAMS.fracSpeed,   v => v === 0 ? 'still' : Math.round(v * 100) + ' %');
+bindSlider('fracGlow',    PARAMS.fracGlow,    v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('fracRelief',  PARAMS.fracRelief,  v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('fracDetail',  PARAMS.fracDetail,  v => v.toFixed(2) + '×');
+updateFracUi();
+
 MODES.push({
   id: 'mandel', name: 'Mandelbrot',
-  hint: 'Mandelbrot · <b>Tab</b> = Modus wechseln',
-  autoplayHint: 'Auto-Play · Bewege die Maus, um zu übernehmen',
+  hint: 'Scrollen = Zoom · Ziehen = Verschieben · <b>J</b> = Julia-Set · <b>A</b> = Zoom-Fahrt',
+  autoplayHint: 'Zoom-Fahrt · Bewege die Maus, um selbst zu steuern',
   enter() {
     $('paletteSection').classList.remove('unused');          // Palette und Bloom wirken hier immer
     $('bloomSection').classList.remove('unused');
+    frac.lastLz = fracView().lz;
   },
-  leave() {},
-  update() {
-    cursorEl.style.setProperty('--brush', paletteColor(lookTime * 0.02));
-    cursorEl.style.setProperty('--size', '22px');
-  },
-  draw(target, dt, time) {
-    const u = use('mandel');
-    const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
-    const h = Math.max(2.6, 3.4 / aspect);                   // das ganze Apfelmännchen passt in jedes Fensterformat
-    gl.uniform2f(u.uCenter, -0.6, 0);
-    gl.uniform2f(u.uSpan, h * aspect, h);
-    gl.uniform1f(u.uPhase, time * 0.02);
-    gl.uniform3fv(u['uPalette[0]'], currentPalette);
-    blit(target);
-  },
+  leave() { frac.drag = null; frac.flight = null; document.body.classList.remove('frac-frozen'); },
+  update: updateFractal,
+  draw: drawFractal,
   bloomShare: () => 1,
-  autoplayStart() {}, autoplayStop() {}, autoplay() {},
-  pointerMove(e) { showCursor(e.clientX, e.clientY); },
-  pointerDown() {}, pointerUp() {}, pointerLeave() {}, key() {},
-  qualityInfo: () => 'Mandelbrot (Grundgerüst)',
+  idle: () => !frac.busy,                                    // Bild steht still → es wird gerade nichts Teures gerechnet
+  autoplayStart() { frac.hold = 0; frac.frozen = false; frac.theta = Math.atan2(frac.cT[1], frac.cT[0]); },
+  autoplayStop() { frac.flight = null; },
+  autoplay: fracAutoplay,
+  pointerMove: fracPointerMove,
+  pointerDown: fracPointerDown,
+  pointerUp: fracPointerUp,
+  pointerLeave() {},
+  wheel: fracWheel,
+  key: fracKey,
+  qualityInfo(q) { ensureFracBuffers(); return `Fraktal ${fracData.w}×${fracData.h} · bis ${q.iter} Durchgänge`; },
 });
 
 // ----- Moduswechsel -----
@@ -3329,6 +3910,7 @@ function setMode(i) {
   if (qualityMode === 'auto') Object.assign(autoQ, { low: 0, high: 0, cooldown: 2, ceiling: QUALITY.length - 1 });
   updateQualityInfo();
   showHint(MODES[i].hint, 6);
+  audioClear();                          // leises Wischen
   toast('Modus: ' + MODES[i].name);
 }
 updateModeUi();
