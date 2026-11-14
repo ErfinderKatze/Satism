@@ -81,6 +81,9 @@
   #panel .sec:nth-child(5) { transition-delay: .16s; }
   #panel .sec:nth-child(6) { transition-delay: .2s; }
   #panel .sec:nth-child(7) { transition-delay: .24s; }
+  #panel .sec:nth-child(8) { transition-delay: .28s; }
+  #panel .sec:nth-child(9) { transition-delay: .32s; }
+  #panel .sec:nth-child(10) { transition-delay: .36s; }
   /* Bloom-Regler treten zurück, wenn der Glow ausgeschaltet ist */
   #bloomControls { transition: opacity .4s var(--smooth); }
   #bloomControls.unused { opacity: .35; }
@@ -411,6 +414,16 @@
     </div>
   </div>
   <div class="sec">
+    <h3>Ton</h3>
+    <label class="switch-row" id="sfxSwitchRow" style="margin-top:0">Ton (Klänge beim Malen) <span class="switch on" id="sfxSwitch"></span></label>
+    <label class="switch-row" id="musicSwitchRow">Musik (Lofi) <span class="switch on" id="musicSwitch"></span></label>
+    <div class="row" style="margin:12px 0 0">
+      <label for="volume">Lautstärke <output id="volumeOut"></output></label>
+      <input id="volume" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="sub" id="audioInfo"></div>
+  </div>
+  <div class="sec">
     <h3>Qualität</h3>
     <div class="row" style="margin-bottom:0">
       <label for="quality">Stufe <output id="qualityOut"></output></label>
@@ -427,11 +440,11 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>H</kbd>Panel</span><span><kbd>Leertaste</kbd>Leeren</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>1</kbd>–<kbd>0</kbd>Look</span><span><kbd>←</kbd><kbd>→</kbd>Look wechseln</span>
+    <span><kbd>H</kbd>Panel</span><span><kbd>Leertaste</kbd>Leeren</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span><kbd>1</kbd>–<kbd>0</kbd>Look</span><span><kbd>←</kbd><kbd>→</kbd>Look wechseln</span>
   </div>
 </div>
 
-<div id="hint" class="glass">Fahre mit der Maus über das Fenster · <b>H</b> = Einstellungen</div>
+<div id="hint" class="glass">Fahre mit der Maus über das Fenster · Klick = Ton an · <b>H</b> = Einstellungen</div>
 <div id="toast" class="glass"></div>
 <div id="error">Dein Browser unterstützt leider kein WebGL2 mit Gleitkomma-Texturen.</div>
 
@@ -520,6 +533,7 @@ const PARAMS = {
   bloomThreshold: { target: 0.4,  current: 0.4,  def: 0.4  },  // Bloom: ab welcher Helligkeit (0..1) etwas leuchtet
   bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
   bloomOn:        { target: 1,    current: 1,    def: 1    },  // Bloom-Schalter (wird weich ein-/ausgeblendet)
+  volume:         { target: 0.6,  current: 0.6,  def: 0.6  },  // Ton: Gesamtlautstärke (0 = still)
 };
 
 // Farbpaletten: je 5 Farben, die ringförmig ineinander übergehen
@@ -2040,6 +2054,7 @@ canvas.addEventListener('pointerdown', e => {
   pointer.init = false;
   movePointer(e.clientX, e.clientY);
   splat(pointer.x, pointer.y, 0, 0, dyeColor(Math.random(), 1.5), PARAMS.brush.current);
+  audioClick(pointer.x, pointer.y);
   cursorScale = 1.8;                    // kleiner "Puls" beim Klicken
 });
 canvas.addEventListener('pointerleave', () => {
@@ -2050,6 +2065,7 @@ canvas.addEventListener('pointerleave', () => {
 
 function clearCanvas() {
   clearTimer = 0.7;
+  audioClear();
   toast('Geleert');
 }
 
@@ -2070,6 +2086,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyH') togglePanel();
   if (e.code === 'KeyF') setFpsVisible(!fpsVisible);
   if (e.code === 'KeyQ') cycleQuality();
+  if (e.code === 'KeyM') setMuted(!audio.muted);
 });
 
 // ---------- Hinweise & Meldungen ----------
@@ -2474,6 +2491,7 @@ function updateAutoplay(dt, now) {
     autoplay.nextBurst = rand(3, 7);
     const a = rand(0, 6.28), force = rand(600, 1000);
     splat(rand(0.2, 0.8), rand(0.2, 0.8), Math.cos(a) * force, Math.sin(a) * force, dyeColor(Math.random(), 0.8));
+    audioBurst();
   }
   // langsam durch die Paletten wandern
   autoplay.paletteTimer += dt;
@@ -2483,6 +2501,276 @@ function updateAutoplay(dt, now) {
     setPalette(names[(names.indexOf(activePalette) + 1) % names.length]);
   }
 }
+
+// ---------- Ton & Musik ----------
+// Alles wird im Code erzeugt (Web Audio API) – es gibt keine Audiodateien.
+// Browser erlauben Ton erst nach einer echten Eingabe (Klick, Taste, Berührung). Deshalb wird die ganze
+// Ton-Anlage erst dann aufgebaut (initAudio); vorher tun alle Ton-Funktionen einfach nichts.
+// Signalweg:  Klänge → sfxBus ──────────────────────────────┐
+//             Musik  → musicBus → musicFilter → musicOut ───┼→ master (Lautstärke, Stumm) → Kompressor → Lautsprecher
+//             Knistern ───────────────────────→ musicOut    │
+//             Echo (für Klänge und Melodie) ────────────────┘
+const SCALE = [0, 2, 4, 7, 9];   // Dur-Pentatonik (C D E G A): fünf Töne, die in jeder Kombination gut zusammen klingen
+const noteFreq = semis => 130.81 * Math.pow(2, semis / 12);                           // Halbtöne über dem C3 → Hertz
+const scaleFreq = i => noteFreq(SCALE[((i % 5) + 5) % 5] + 12 * Math.floor(i / 5));   // i-ter Ton der Pentatonik ab C3
+
+// Lofi-Musik: 74 Schläge pro Minute, ein Takt = 16 Schritte. Akkorde als Halbtöne über C3 (weiche Jazz-Akkorde in C-Dur)
+const MUSIC = {
+  stepDur: 60 / 74 / 4,
+  swing: 0.16,              // jeder zweite Schritt kommt etwas später → entspannter "Shuffle"
+  chords: {
+    Fmaj7:  { bass: -19, notes: [5, 9, 12, 16] },
+    Em7:    { bass: -20, notes: [4, 7, 11, 14] },
+    Dm9:    { bass: -22, notes: [2, 5, 9, 12, 16] },
+    Cmaj9:  { bass: -12, notes: [4, 7, 11, 14] },
+    Am7:    { bass: -15, notes: [7, 12, 16, 19] },
+    G7sus:  { bass: -17, notes: [5, 9, 12, 14] },
+  },
+  // zwei Akkordfolgen (je 4 Takte); gespielt wird A A B A
+  progressions: [['Fmaj7', 'Em7', 'Dm9', 'Cmaj9'], ['Am7', 'Dm9', 'G7sus', 'Cmaj9']],
+  order: [0, 0, 1, 0],
+};
+
+const audio = {
+  ctx: null,
+  sfxOn: true, musicOn: true, muted: false,
+  energy: 0,          // 0..1: wie viel gerade gemalt wird (klingt über einige Sekunden ab) – die Musik reagiert darauf
+  brushLevel: 0,      // 0..1: aktuelles Mal-Tempo für das Pinsel-Rauschen
+  travel: 0, lastNote: 0, lastIndex: -1,
+  step: 0, nextStep: 0, melodyIndex: 10,
+};
+const audioReady = () => !!audio.ctx && audio.ctx.state !== 'closed';
+
+function initAudio() {
+  if (audio.ctx) { if (audio.ctx.state === 'suspended' && !document.hidden) audio.ctx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  const ctx = audio.ctx = new AC();
+  const gain = (v, dest) => { const g = ctx.createGain(); g.gain.value = v; if (dest) g.connect(dest); return g; };
+  const filter = (type, freq, q, dest) => {
+    const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q; if (dest) f.connect(dest); return f;
+  };
+  // Ausgang: Kompressor fängt Spitzen ab, wenn viele Klänge zusammenkommen
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -16; comp.ratio.value = 4; comp.connect(ctx.destination);
+  audio.master = gain(0, comp);
+  audio.sfxBus = gain(audio.sfxOn ? 1 : 0, audio.master);
+  audio.musicOut = gain(audio.musicOn ? 1 : 0, audio.master);
+  audio.musicFilter = filter('lowpass', 900, 0.5, audio.musicOut);   // dumpf (ruhig) ↔ offen (viel Bewegung)
+  audio.musicBus = gain(0.6, audio.musicFilter);
+  audio.drumBus = gain(0.4, audio.musicBus);
+  // Echo: Verzögerung mit gedämpfter Rückkopplung – macht gezupfte Töne weich und räumlich
+  const delay = ctx.createDelay(1.5);
+  delay.delayTime.value = MUSIC.stepDur * 3;
+  const damp = filter('lowpass', 1800, 0.5, audio.master);
+  delay.connect(damp);
+  damp.connect(gain(0.32, delay));             // Rückkopplung: jedes Echo kommt leiser und dumpfer wieder
+  audio.echo = gain(0.3, delay);
+  // Rauschen (2 Sekunden, in Schleife): Grundlage für Pinsel-Rauschen und Schlagzeug
+  const noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), nd = noise.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  audio.noise = noise;
+  // Pinsel-Rauschen: läuft dauernd mit, ist aber nur beim Malen hörbar (Lautstärke und Klangfarbe folgen dem Tempo)
+  const brushSrc = ctx.createBufferSource(); brushSrc.buffer = noise; brushSrc.loop = true;
+  audio.brushGain = gain(0, audio.sfxBus);
+  audio.brushFilter = filter('bandpass', 500, 0.7, audio.brushGain);
+  brushSrc.connect(audio.brushFilter); brushSrc.start();
+  // Vinyl-Knistern: leises Rauschen plus vereinzelte Knackser, 5 Sekunden in Schleife
+  const vinyl = ctx.createBuffer(1, ctx.sampleRate * 5, ctx.sampleRate), vd = vinyl.getChannelData(0);
+  let pop = 0;
+  for (let i = 0; i < vd.length; i++) {
+    if (Math.random() < 0.00035) pop = (Math.random() * 2 - 1) * (0.25 + 0.75 * Math.random());
+    vd[i] = (Math.random() * 2 - 1) * 0.02 + pop;
+    pop *= 0.82;
+  }
+  const vinylSrc = ctx.createBufferSource(); vinylSrc.buffer = vinyl; vinylSrc.loop = true;
+  vinylSrc.connect(filter('highpass', 700, 0.5, gain(0.3, audio.musicOut))); vinylSrc.start();
+  // "Leiern" wie von einer alten Kassette: sehr langsame, kleine Tonhöhenschwankung für alle Akkord-Töne
+  const wobble = ctx.createOscillator(); wobble.frequency.value = 0.35;
+  audio.wobble = gain(7, null); wobble.connect(audio.wobble); wobble.start();
+  audio.nextStep = ctx.currentTime + 0.3;
+  updateAudioInfo();
+}
+// Ton darf erst nach einer echten Eingabe starten
+for (const type of ['pointerdown', 'pointerup', 'keydown', 'touchend']) window.addEventListener(type, initAudio, { capture: true, passive: true });
+// Tab im Hintergrund: Ton anhalten (sonst knistert es weiter, obwohl nichts zu sehen ist)
+document.addEventListener('visibilitychange', () => {
+  if (!audioReady()) return;
+  document.hidden ? audio.ctx.suspend() : audio.ctx.resume();
+});
+
+// Wert eines Ton-Reglers weich ansteuern – nur, wenn er sich wirklich geändert hat
+function aset(param, v, timeConstant = 0.08) {
+  if (param._last !== undefined && Math.abs(param._last - v) < 1e-3 * Math.max(1, Math.abs(v))) return;
+  param._last = v;
+  param.setTargetAtTime(v, audio.ctx.currentTime, timeConstant);
+}
+
+// Ein Ton aus einem Oszillator: schneller Anstieg, dann weiches Ausklingen. Gibt den Oszillator zurück.
+function tone(freq, t, { type = 'sine', peak = 0.2, attack = 0.005, decay = 0.5, hold = 0, dest = audio.sfxBus } = {}) {
+  const ctx = audio.ctx, o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(peak, t + attack);
+  g.gain.setTargetAtTime(0, t + attack + hold, decay / 4);
+  o.connect(g); g.connect(dest);
+  o.start(t); o.stop(t + attack + hold + decay * 1.6);
+  return o;
+}
+// Ein Geräusch aus gefiltertem Rauschen (Schlagzeug, Wischen)
+function noiseHit(t, { type = 'highpass', freq = 6000, q = 0.7, peak = 0.1, decay = 0.05, dest = audio.sfxBus } = {}) {
+  const ctx = audio.ctx, src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  src.buffer = audio.noise;
+  f.type = type; f.frequency.value = freq; f.Q.value = q;
+  g.gain.setValueAtTime(peak, t);
+  g.gain.setTargetAtTime(0, t, decay / 3);
+  src.connect(f); f.connect(g); g.connect(dest);
+  src.start(t, Math.random() * 1.5, decay * 2 + 0.05);
+  return f;
+}
+// Gezupfter Ton (wie eine Kalimba): weicher Grundton plus heller, sehr kurzer Anschlag; pan = links/rechts (−1..1)
+function pluck(freq, t, peak, pan = 0, dest = audio.sfxBus, decay = 0.9) {
+  const ctx = audio.ctx;
+  let out = ctx.createGain();
+  if (ctx.createStereoPanner) {
+    const p = ctx.createStereoPanner();
+    p.pan.value = Math.max(-0.7, Math.min(0.7, pan));
+    out.connect(p); p.connect(dest); p.connect(audio.echo);
+  } else { out.connect(dest); out.connect(audio.echo); }
+  tone(freq, t, { peak, attack: 0.004, decay, dest: out });
+  tone(freq * 4, t, { peak: peak * 0.3, attack: 0.002, decay: 0.08, dest: out });
+}
+
+// Malen: leises Rauschen wie ein Pinselstrich und gezupfte Töne – je schneller, desto lauter und höher
+function audioPaint(speed, dist, x) {
+  const v = Math.min(speed / 3, 1);                       // Tempo 0..1 (3 Bildbreiten pro Sekunde = voll)
+  audio.energy = Math.min(1, audio.energy + dist * 0.5);
+  audio.brushLevel = Math.max(audio.brushLevel, v);
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  audio.travel += dist;
+  const t = audio.ctx.currentTime;
+  if (audio.travel < 0.07 || t - audio.lastNote < 0.08) return;   // ein Ton pro Stück Weg, höchstens ~12 pro Sekunde
+  audio.travel = 0; audio.lastNote = t;
+  // Tonhöhe folgt dem Tempo (über zwei Oktaven), mit kleinen Zufallsschritten → kleine Melodien statt Tonleiter
+  let i = Math.round(3 + v * 10 + rand(-1.5, 1.5));
+  if (i === audio.lastIndex) i += Math.random() < 0.5 ? 1 : -1;
+  audio.lastIndex = i;
+  pluck(scaleFreq(i), t, 0.05 + 0.15 * v, x * 2 - 1);
+}
+// Klick: satter "Plop" (Ton, dessen Höhe schnell abfällt) plus zwei gezupfte Töne; oben im Bild = höher
+function audioClick(x, y) {
+  audio.energy = Math.min(1, audio.energy + 0.2);
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  const t = audio.ctx.currentTime, i = Math.round(2 + y * 8), f = scaleFreq(i);
+  const drop = tone(f * 2.5, t, { peak: 0.28, attack: 0.003, decay: 0.14 });
+  drop.frequency.exponentialRampToValueAtTime(f * 0.5, t + 0.1);
+  pluck(f, t, 0.2, x * 2 - 1, audio.sfxBus, 1.4);
+  pluck(scaleFreq(i + 2), t + 0.07, 0.12, x * 2 - 1, audio.sfxBus, 1.4);
+}
+// Leeren: weiches Wischen (Rauschen, dessen Klang von hell nach dunkel gleitet)
+function audioClear() {
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  const t = audio.ctx.currentTime;
+  const f = noiseHit(t, { type: 'bandpass', freq: 2600, q: 0.8, peak: 0.16, decay: 0.7 });
+  f.frequency.exponentialRampToValueAtTime(220, t + 0.6);
+}
+// Farbstoß im Auto-Play: ein leiser, tiefer Ton
+function audioBurst() {
+  audio.energy = Math.min(1, audio.energy + 0.08);
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  pluck(scaleFreq(Math.floor(rand(0, 6))), audio.ctx.currentTime, 0.07, rand(-0.6, 0.6), audio.sfxBus, 1.8);
+}
+
+// ----- Lofi-Musik: wird Schritt für Schritt kurz im Voraus eingeplant -----
+function playChord(chord, t, level, dur) {
+  for (const n of chord.notes) {
+    // zwei leicht gegeneinander verstimmte Stimmen pro Ton → warmer, schwebender Klang wie ein E-Piano
+    for (const [type, cents, peak] of [['sine', 0, 0.075], ['triangle', 5, 0.03]]) {
+      const o = tone(noteFreq(n), t + rand(0, 0.02), { type, peak: peak * level, attack: 0.02, hold: dur * 0.45, decay: dur * 0.9, dest: audio.musicBus });
+      o.detune.value = cents;
+      audio.wobble.connect(o.detune);
+    }
+  }
+}
+function scheduleMusicStep(t) {
+  const s = audio.step % 16, bar = Math.floor(audio.step / 16);
+  const prog = MUSIC.progressions[MUSIC.order[Math.floor(bar / 4) % 4]];
+  const chord = MUSIC.chords[prog[bar % 4]];
+  const e = audio.energy, d = MUSIC.stepDur;
+  if (s % 2 === 1) t += d * MUSIC.swing;
+  t += rand(0, 0.006);                                      // winzige Ungenauigkeit, klingt menschlicher
+  // Akkord und Bass
+  if (s === 0) { playChord(chord, t, 1, d * 14); tone(noteFreq(chord.bass), t, { peak: 0.3, attack: 0.01, hold: d * 5, decay: d * 5, dest: audio.musicBus }); }
+  if (s === 10) {
+    tone(noteFreq(chord.bass), t, { peak: 0.2, attack: 0.01, hold: d * 2, decay: d * 3, dest: audio.musicBus });
+    if (Math.random() < 0.35) playChord(chord, t, 0.45, d * 5);
+  }
+  // Schlagzeug: sanft, wird mit mehr Bewegung im Bild etwas kräftiger
+  const drums = 0.4 + 0.6 * e;
+  if (s === 0 || s === 10 || (s === 7 && Math.random() < 0.3)) {   // Bassdrum: tiefer Ton, der schnell absinkt
+    const k = tone(120, t, { peak: 1.0 * drums, attack: 0.002, decay: 0.22, dest: audio.drumBus });
+    k.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+  }
+  if (s === 4 || s === 12) {                                      // Snare: kurzes Rauschen plus ein Hauch Ton
+    noiseHit(t, { type: 'bandpass', freq: 1700, q: 0.8, peak: 0.55 * drums, decay: 0.16, dest: audio.drumBus });
+    tone(190, t, { type: 'triangle', peak: 0.2 * drums, attack: 0.002, decay: 0.07, dest: audio.drumBus });
+  }
+  if (s % 2 === 0 || Math.random() < 0.2 * e) {                   // Hi-Hat: ganz kurzes, helles Rauschen
+    noiseHit(t, { freq: 7000, peak: (s % 4 === 2 ? 0.2 : 0.11) * drums * rand(0.6, 1), decay: 0.035, dest: audio.drumBus });
+  }
+  // Melodie: einzelne gezupfte Töne aus der Pentatonik – selten, wenn nichts passiert; häufiger, wenn gemalt wird
+  if (s % 2 === 0 && Math.random() < 0.05 + 0.4 * e) {
+    audio.melodyIndex = Math.max(7, Math.min(16, audio.melodyIndex + Math.round(rand(-2.4, 2.4))));
+    pluck(scaleFreq(audio.melodyIndex), t, 0.09 + 0.05 * e, rand(-0.4, 0.4), audio.musicBus, 1.3);
+  }
+  audio.step++;
+}
+
+function updateAudio(dt) {
+  audio.energy *= Math.exp(-dt / 6);                                   // Bewegung klingt über einige Sekunden ab
+  if (autoplay.active) audio.energy = Math.max(audio.energy, 0.2 * autoplay.level);
+  audio.brushLevel *= Math.exp(-dt / 0.12);
+  if (!audioReady() || audio.ctx.state !== 'running') return;
+  const vol = PARAMS.volume.current;
+  aset(audio.master.gain, audio.muted ? 0 : vol * vol * 1.6);        // quadratisch: fühlt sich für das Ohr gleichmäßig an
+  aset(audio.sfxBus.gain, audio.sfxOn ? 1 : 0);
+  aset(audio.musicOut.gain, audio.musicOn ? 1 : 0, 0.3);
+  aset(audio.brushGain.gain, 0.09 * audio.brushLevel, 0.05);
+  aset(audio.brushFilter.frequency, 400 + 2600 * audio.brushLevel, 0.05);
+  aset(audio.musicFilter.frequency, 800 + 3400 * Math.pow(audio.energy, 0.7), 0.4);   // viel Bewegung → Musik klingt offener
+  // Musik einplanen: immer ein Viertelsekunde im Voraus, damit sie auch bei kleinen Rucklern im Takt bleibt
+  const t = audio.ctx.currentTime;
+  if (audio.nextStep < t - 0.1) audio.nextStep = t + 0.05;             // nach einer Pause (Tab war im Hintergrund) neu ansetzen
+  while (audio.nextStep < t + 0.25) {
+    if (audio.musicOn && !audio.muted) scheduleMusicStep(audio.nextStep); else audio.step++;
+    audio.nextStep += MUSIC.stepDur;
+  }
+}
+
+// ----- Bedienung -----
+function updateAudioInfo() {
+  $('audioInfo').textContent = audio.muted ? 'Stumm geschaltet (Taste M)'
+    : !audio.ctx ? 'Startet mit deinem ersten Klick oder Tastendruck.' : '';
+}
+function setMuted(m) {
+  audio.muted = m;
+  updateAudioInfo();
+  toast(m ? 'Ton aus' : 'Ton an');
+}
+function setSfxOn(on) {
+  audio.sfxOn = on;
+  $('sfxSwitch').classList.toggle('on', on);
+  toast(on ? 'Klänge an' : 'Klänge aus');
+}
+function setMusicOn(on) {
+  audio.musicOn = on;
+  $('musicSwitch').classList.toggle('on', on);
+  toast(on ? 'Musik an' : 'Musik aus');
+}
+$('sfxSwitchRow').addEventListener('click', e => { e.preventDefault(); setSfxOn(!audio.sfxOn); });
+$('musicSwitchRow').addEventListener('click', e => { e.preventDefault(); setMusicOn(!audio.musicOn); });
+bindSlider('volume', PARAMS.volume, v => v === 0 ? 'still' : Math.round(v * 100) + ' %');
+updateAudioInfo();
 
 // ---------- Hauptschleife ----------
 let last = performance.now();
@@ -2495,12 +2783,14 @@ function frame(now) {
   if (resizeCanvas()) { initFramebuffers(); updateQualityInfo(); }
   easeParams(dt);
   updateAutoplay(dt, now);
+  updateAudio(dt);
 
   if (pointer.moved) {
     pointer.moved = false;
     splat(pointer.x, pointer.y, pointer.dx * CONFIG.SPLAT_FORCE, pointer.dy * CONFIG.SPLAT_FORCE, nextColor(), PARAMS.brush.current);
     // Pinsel-Cursor: wird bei schneller Bewegung etwas größer
     const speed = Math.hypot(pointer.dx, pointer.dy) / dt;
+    audioPaint(speed, Math.hypot(pointer.dx, pointer.dy), pointer.x);
     cursorScale = Math.max(cursorScale, 1 + Math.min(speed * 0.35, 0.6));
     pointer.dx = pointer.dy = 0;
   }
