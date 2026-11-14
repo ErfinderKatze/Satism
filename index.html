@@ -125,7 +125,7 @@
   /* Looks */
   #looks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   #looks button {
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; justify-content: space-between; align-items: center; gap: 6px; text-align: left;
     border: none; border-radius: 10px; padding: 8px 10px; cursor: pointer;
     background: rgba(255,255,255,.05); color: var(--text); font: inherit; font-size: 12px;
     box-shadow: 0 0 0 1px var(--line);
@@ -270,10 +270,6 @@
     <div class="row look-param" data-param="bump">
       <label for="bump">Wölbung <output id="bumpOut"></output></label>
       <input id="bump" type="range" min="0" max="4" step="0.05">
-    </div>
-    <div class="row look-param" data-param="saturation">
-      <label for="saturation">Sättigung <output id="saturationOut"></output></label>
-      <input id="saturation" type="range" min="0.3" max="6" step="0.05">
     </div>
     <div class="row look-param" data-param="gloss">
       <label for="gloss">Glanz <output id="glossOut"></output></label>
@@ -431,7 +427,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>H</kbd>Panel</span><span><kbd>Leertaste</kbd>Leeren</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>1</kbd>–<kbd>9</kbd>Look</span>
+    <span><kbd>H</kbd>Panel</span><span><kbd>Leertaste</kbd>Leeren</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>1</kbd>–<kbd>0</kbd>Look</span><span><kbd>←</kbd><kbd>→</kbd>Look wechseln</span>
   </div>
 </div>
 
@@ -453,6 +449,7 @@ const CONFIG = {
   AUTOPLAY_PALETTE_SECONDS: 25,  // im Auto-Play alle X Sekunden zur nächsten Palette überblenden
   REF_RESOLUTION: 128,      // Bezugsgröße, damit sich die Strömung bei jeder Qualität gleich anfühlt
   SURFACE_BLUR: 0.006,      // Oberflächen-Baustein: Glättungsradius als Anteil der Bildschirmhöhe
+  SURFACE_SATURATION: 2,    // Oberflächen-Baustein: Sättigung k in Höhe = 1 − exp(−Dichte · k)
   BLOOM_GAIN: 6,            // Verstärkung des Glows: Looks liefern höchstens Helligkeit 1, beim Weichzeichnen
                             // kommt außen nur ein kleiner Bruchteil an – ohne Verstärkung wäre er kaum sichtbar.
                             // Ausbleichen verhindert die "Aufhellen"-Mischung in bloomFinal.
@@ -488,8 +485,7 @@ const PARAMS = {
   heat:        { target: 1,    current: 1,    def: 1    },  // Look-Regler (Feuer): wie stark Dichte/Tempo in Hitze umgesetzt werden
   flicker:     { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Feuer): Stärke des Flackerns (0 = aus)
   ember:       { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Feuer): 0 = rötliche Glut, 1 = gelbweißes Feuer
-  bump:        { target: 1,    current: 1,    def: 1    },  // Look-Regler (Oberfläche, vorläufig): Wölbung = Stärke der Neigung
-  saturation:  { target: 2,    current: 2,    def: 2    },  // Look-Regler (Oberfläche, vorläufig): Sättigung k in 1 − exp(−Dichte·k)
+  bump:        { target: 1,    current: 1,    def: 1    },  // Look-Regler (Metallic): Wölbung = Stärke der Oberflächenneigung
   metal:       { target: 0,    current: 0,    def: 0    },  // Look-Regler (Metallic): 0 Chrom, 1 Gold, 2 Kupfer, 3 Rosé
   gloss:       { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Metallic): Glanz, 0 = weich, 1 = scharf
   envSpin:     { target: 0.2,  current: 0.2,  def: 0.2  },  // Look-Regler (Metallic): Drehgeschwindigkeit der Umgebung, 0 = aus
@@ -811,7 +807,7 @@ const shaders = {
   surfaceHeight: header + densityGLSL + `
     uniform sampler2D uDye;
     uniform vec2 uDyeStep;      // Viertel eines Pixels im Höhenfeld
-    uniform float uSaturation;  // Look-Regler "Sättigung"
+    uniform float uSaturation;  // Sättigung k (CONFIG.SURFACE_SATURATION)
     float h (vec2 uv) { return 1.0 - exp(-densityFrom(texture(uDye, uv).rgb) * uSaturation); }
     void main () {
       float s = h(vUv + vec2(-uDyeStep.x, -uDyeStep.y)) + h(vUv + vec2(uDyeStep.x, -uDyeStep.y))
@@ -904,7 +900,7 @@ const lookHeader = header + `
 
   struct LookInput { vec2 uv; float density; float t; vec3 dye; };
 ` + densityGLSL + surfaceGLSL + noiseGLSL + `
-  uniform float uBump;          // Look-Regler "Wölbung"
+  uniform float uBump;          // Look-Regler "Wölbung" (Metallic)
   uniform float uMetal;         // Look-Regler "Metall-Typ" (0 Chrom, 1 Gold, 2 Kupfer, 3 Rosé – Zwischenwerte beim Überblenden)
   uniform float uGloss;         // Look-Regler "Glanz" (0 = weich/matt, 1 = scharf spiegelnd)
   uniform float uEnvAngle;      // aktueller Drehwinkel der Umgebung (wird in JavaScript aufsummiert)
@@ -1417,22 +1413,6 @@ const LOOKS = [
         return col + vec3(0.004, 0.006, 0.016) * (0.6 + 0.8 * cloud);
       }`,
   },
-  {
-    // Prüf-Look für den Oberflächen-Baustein: zeigt die Neigung als Farben (wie eine "Normal Map").
-    // Neigung nach rechts = mehr Rot, nach oben = mehr Grün, flach = Lila-Blau. Bereiche ohne Farbe = schwarz.
-    name: 'Oberfläche (Test)',
-    surface: true,
-    params: ['bump', 'saturation'],   // vorläufige Regler – später entfernen oder in Metallic übernehmen
-    glsl: `
-      vec3 look (LookInput L) {
-        vec3 n = surfaceNormal(L.uv, uBump);
-        vec3 col = n * 0.5 + 0.5;
-        // leichte Schattierung durch ein festes Licht von links oben, damit man das Relief erkennt
-        float light = 0.55 + 0.45 * max(dot(n, normalize(vec3(-0.5, 0.6, 0.65))), 0.0);
-        // ohne Farbe schwarz (sonst würde der flache Hintergrund lila leuchten)
-        return col * light * smoothstep(0.01, 0.08, heightAt(L.uv));
-      }`,
-  },
 ];
 
 function compile(type, src) {
@@ -1789,7 +1769,7 @@ function bindSurface(u, unit) {
   if (u.uSurface) gl.uniform1i(u.uSurface, surfaceA.attach(unit));
   if (u.uSurfaceStep) gl.uniform2f(u.uSurfaceStep, surfaceStepPx * 1.5 / gl.drawingBufferWidth, surfaceStepPx * 1.5 / gl.drawingBufferHeight);
   if (u.uAspect) gl.uniform1f(u.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
-  if (u.uSurfaceSat) gl.uniform1f(u.uSurfaceSat, PARAMS.saturation.current);
+  if (u.uSurfaceSat) gl.uniform1f(u.uSurfaceSat, CONFIG.SURFACE_SATURATION);
 }
 function updateSurface() {
   const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
@@ -1814,7 +1794,7 @@ function updateSurface() {
   let u = use('surfaceHeight');
   gl.uniform1i(u.uDye, dye.read.attach(0));
   gl.uniform2f(u.uDyeStep, 0.25 / w, 0.25 / h);
-  gl.uniform1f(u.uSaturation, PARAMS.saturation.current);
+  gl.uniform1f(u.uSaturation, CONFIG.SURFACE_SATURATION);
   blit(surfaceA);
 
   // 2) Glätten (waagrecht, dann senkrecht). Radius als Anteil der Bildschirmhöhe → auf jeder Qualitätsstufe gleich glatt.
@@ -2074,11 +2054,18 @@ function clearCanvas() {
 }
 
 window.addEventListener('keydown', e => {
-  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  // [ und ] brauchen auf deutschen Tastaturen AltGr (zählt als Strg+Alt) – deshalb vor der Sperre für Tastenkombinationen prüfen
+  const bracket = e.key === '[' ? -1 : e.key === ']' ? 1 : 0;
+  if (e.repeat || e.metaKey || (!bracket && (e.ctrlKey || e.altKey))) return;
   if (e.code === 'KeyA') { autoplay.active ? stopAutoplay() : startAutoplay(true); return; }
   userActive();
-  const digit = /^Digit([1-9])$/.exec(e.code);
-  if (digit) setLook(Number(digit[1]) - 1);
+  // Look wählen: 1–9 und 0 direkt (die ersten zehn), Pfeiltasten ← → bzw. , und . bzw. [ und ] schalten durch alle
+  const digit = /^Digit([0-9])$/.exec(e.code);
+  if (digit) setLook((Number(digit[1]) + 9) % 10);
+  const onSlider = e.target instanceof HTMLInputElement;   // Pfeiltasten gehören dort dem Regler
+  if (bracket) cycleLook(bracket);
+  else if ((e.code === 'ArrowRight' && !onSlider) || e.code === 'Period') cycleLook(1);
+  else if ((e.code === 'ArrowLeft' && !onSlider) || e.code === 'Comma') cycleLook(-1);
   if (e.code === 'Space') { clearCanvas(); e.preventDefault(); }
   if (e.code === 'KeyH') togglePanel();
   if (e.code === 'KeyF') setFpsVisible(!fpsVisible);
@@ -2175,7 +2162,7 @@ for (const [name, colors] of Object.entries(PALETTES)) {
 const lookBox = $('looks');
 LOOKS.forEach((look, i) => {
   const btn = document.createElement('button');
-  btn.innerHTML = `<span>${look.name}</span>` + (i < 9 ? `<kbd>${i + 1}</kbd>` : '');
+  btn.innerHTML = `<span>${look.name}</span>` + (i < 10 ? `<kbd>${(i + 1) % 10}</kbd>` : '');
   btn.addEventListener('click', () => { setLook(i); btn.blur(); });
   lookBox.appendChild(btn);
 });
@@ -2194,6 +2181,8 @@ function setLook(i) {
   const used = LOOKS[i].params || [];
   for (const row of document.querySelectorAll('.look-param')) row.classList.toggle('off', !used.includes(row.dataset.param));
 }
+// zum nächsten (+1) oder vorigen (−1) Look schalten; nach dem letzten geht es wieder von vorn los
+function cycleLook(dir) { setLook((lookIndex + dir + LOOKS.length) % LOOKS.length); }
 // Bloom: Regler und Schalter (der Schalter blendet den Glow weich ein und aus)
 bindSlider('bloomIntensity', PARAMS.bloomIntensity, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('bloomThreshold', PARAMS.bloomThreshold, v => Math.round(v * 100) + ' %');
@@ -2211,7 +2200,6 @@ bindSlider('heat',    PARAMS.heat,    v => v.toFixed(2) + '×');
 bindSlider('flicker', PARAMS.flicker, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('ember',   PARAMS.ember,   v => v < 0.35 ? 'Glut' : v > 0.65 ? 'Feuer' : 'Mitte');
 bindSlider('bump',       PARAMS.bump,       v => v.toFixed(2) + '×');
-bindSlider('saturation', PARAMS.saturation, v => v.toFixed(2));
 // Metall-Typ: gleitet beim Ziehen frei und rastet auf Chrom/Gold/Kupfer/Rosé ein; die Farbe blendet weich über
 bindSlider('metal',   PARAMS.metal,   v => ['Chrom', 'Gold', 'Kupfer', 'Rosé'][v], { snap: v => Math.round(v) });
 bindSlider('gloss',   PARAMS.gloss,   v => Math.round(v * 100) + ' %');
