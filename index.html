@@ -433,6 +433,8 @@
     <div class="sub" id="qualityInfo"></div>
     <label class="switch-row" id="autoSwitchRow">Automatisch anpassen <span class="switch on" id="autoSwitch"></span></label>
     <label class="switch-row" id="fpsSwitchRow">FPS anzeigen <span class="switch on" id="fpsSwitch"></span></label>
+    <label class="switch-row" id="calmSwitchRow">Flackern reduzieren <span class="switch" id="calmSwitch"></span></label>
+    <div class="sub">Dämpft schnelles Blinken und Flackern in allen Looks, im Auto-Play und bei Klicks.</div>
   </div>
   <div class="sec">
     <h3>Auto-Play</h3>
@@ -463,6 +465,8 @@ const CONFIG = {
   REF_RESOLUTION: 128,      // Bezugsgröße, damit sich die Strömung bei jeder Qualität gleich anfühlt
   SURFACE_BLUR: 0.006,      // Oberflächen-Baustein: Glättungsradius als Anteil der Bildschirmhöhe
   SURFACE_SATURATION: 2,    // Oberflächen-Baustein: Sättigung k in Höhe = 1 − exp(−Dichte · k)
+  CALM_RATE: 2.5,           // Flacker-Reduktion: so schnell darf sich die Helligkeit eines Bildpunkts höchstens ändern
+                            // (pro Sekunde; 1 = von Schwarz nach Weiß). Ein voller Blitz braucht damit 0,4 s.
   BLOOM_GAIN: 6,            // Verstärkung des Glows: Looks liefern höchstens Helligkeit 1, beim Weichzeichnen
                             // kommt außen nur ein kleiner Bruchteil an – ohne Verstärkung wäre er kaum sichtbar.
                             // Ausbleichen verhindert die "Aufhellen"-Mischung in bloomFinal.
@@ -534,6 +538,7 @@ const PARAMS = {
   bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
   bloomOn:        { target: 1,    current: 1,    def: 1    },  // Bloom-Schalter (wird weich ein-/ausgeblendet)
   volume:         { target: 0.6,  current: 0.6,  def: 0.6  },  // Ton: Gesamtlautstärke (0 = still)
+  calm:           { target: 0,    current: 0,    def: 0    },  // Schalter "Flackern reduzieren" (wird weich ein-/ausgeblendet)
 };
 
 // Farbpaletten: je 5 Farben, die ringförmig ineinander übergehen
@@ -815,6 +820,20 @@ const shaders = {
       fragColor = vec4(max(s, b), 1.0);
     }`,
 
+  // ----- Flacker-Reduktion (Nachbearbeitung, wirkt auf das fertige Bild jedes Looks) -----
+  // "Helligkeits-Bremse": Jeder Bildpunkt darf sich pro Bild nur um einen begrenzten Betrag ändern.
+  // Langsame Veränderungen kommen unverändert durch, plötzliche Blitze und schnelles Flackern werden zu
+  // sanftem An- und Abschwellen. uPrev = das zuletzt gezeigte (gebremste) Bild.
+  calmLimit: header + `
+    uniform sampler2D uScene;
+    uniform sampler2D uPrev;
+    uniform float uMaxChange;   // größte erlaubte Änderung in diesem Bild
+    void main () {
+      vec3 c = min(texture(uScene, vUv).rgb, vec3(3.0));
+      vec3 p = texture(uPrev, vUv).rgb;
+      fragColor = vec4(p + clamp(c - p, -uMaxChange, uMaxChange), 1.0);
+    }`,
+
   // ----- Oberflächen-Baustein (nur Darstellung: liest die Farb-Textur, schreibt nie in die Simulation) -----
   // 1) Höhe aus der Dichte: 1 − exp(−Dichte · Sättigung) → steigt weich an und flacht bei viel Farbe ab.
   //    4 Messpunkte je Bildpunkt mitteln, damit beim Verkleinern nichts flimmert.
@@ -889,7 +908,8 @@ const shaders = {
 //   palette(t), hsv2rgb(hsv), brightness(density), dyeColor(L), uTime (Sekunden),
 //   speedAt(uv) (Tempo der Strömung), curlAt(uv) (Drehung, + / − = Drehrichtung),
 //   curlSmoothAt(uv) (geglättete Drehung ohne Pixelrauschen – nur mit smoothCurl: true im Look),
-//   uSensitivity und uDyeMix (Look-Regler "Empfindlichkeit" / "Farbstoff-Anteil")
+//   uSensitivity und uDyeMix (Look-Regler "Empfindlichkeit" / "Farbstoff-Anteil"),
+//   uCalm (Schalter "Flackern reduzieren", 0..1): Looks mit eigenem Flackern/Funkeln schwächen es damit ab
 // Oberflächen-Baustein (nur mit surface: true im Look):
 //   heightAt(uv) (geglättete Höhe 0..1), surfaceNormal(uv, strength) (Oberflächenneigung, z zum Betrachter)
 // Spiegelnde Oberflächen (Metallic, Glas …):
@@ -911,6 +931,7 @@ const lookHeader = header + `
   uniform float uHeat;          // Look-Regler "Hitze"
   uniform float uFlicker;       // Look-Regler "Flackern"
   uniform float uEmber;         // Look-Regler "Glutfarbe" (0 = rötliche Glut, 1 = gelbweißes Feuer)
+  uniform float uCalm;          // Schalter "Flackern reduzieren" (0 = aus, 1 = an): Looks dämpfen damit ihr eigenes Flackern
 
   struct LookInput { vec2 uv; float density; float t; vec3 dye; };
 ` + densityGLSL + surfaceGLSL + noiseGLSL + `
@@ -1110,7 +1131,7 @@ const LOOKS = [
         // Flackern: zwei Lagen langsames Rauschen, die nach oben ziehen wie Flammen – kein Blinken
         float n = noise(L.uv * vec2(6.0, 9.0) + vec2(0.0, -uTime * 0.45)) * 0.65
                 + noise(L.uv * vec2(14.0, 20.0) + vec2(uTime * 0.2, -uTime * 0.8)) * 0.35;
-        heat *= 1.0 + uFlicker * 0.45 * (n - 0.5) * 2.0;
+        heat *= 1.0 + uFlicker * (1.0 - 0.85 * uCalm) * 0.45 * (n - 0.5) * 2.0;   // "Flackern reduzieren" dämpft es stark
         // Glutfarbe: verschiebt, wie weit die Hitze im Verlauf kommt (rötliche Glut ↔ gelbweißes Feuer)
         heat *= mix(0.65, 1.4, uEmber);
         // ganz kalte Bereiche bleiben komplett schwarz
@@ -1375,7 +1396,7 @@ const LOOKS = [
         if (r > amount) return 0.0;                                       // nicht jede Zelle hat einen Stern
         vec2 pos = (vec2(hash(id + 3.1), hash(id + 7.7)) - 0.5) * 0.7;
         float size = mix(0.035, 0.11, pow(hash(id + 11.3), 6.0));         // wenige große, viele kleine
-        float twinkle = 0.78 + 0.22 * sin(uTime * (0.5 + 1.1 * hash(id + 5.5)) + r * 60.0);
+        float twinkle = 1.0 - (1.0 - uCalm) * 0.22 * (1.0 - sin(uTime * (0.5 + 1.1 * hash(id + 5.5)) + r * 60.0));   // "Flackern reduzieren" → kein Funkeln
         return smoothstep(size, 0.0, length(fract(g) - 0.5 - pos)) * twinkle * (0.35 + 0.65 * hash(id + 2.2));
       }
       // Galaxie: leuchtendes Gas in Palettenfarben, dunkle Staubbänder, weißglühender Kern an dichten Stellen
@@ -1722,6 +1743,7 @@ function drawLook(i, alpha, time, target) {
   if (u.uHeat) gl.uniform1f(u.uHeat, PARAMS.heat.current);
   if (u.uFlicker) gl.uniform1f(u.uFlicker, PARAMS.flicker.current);
   if (u.uEmber) gl.uniform1f(u.uEmber, PARAMS.ember.current);
+  if (u.uCalm) gl.uniform1f(u.uCalm, PARAMS.calm.current);
   bindSurface(u, 4);
   if (u.uFoamTex) gl.uniform1i(u.uFoamTex, foamBuf.read.attach(5));
   if (u.uBump) gl.uniform1f(u.uBump, PARAMS.bump.current);
@@ -1906,15 +1928,15 @@ function ensureBloomBuffers() {
   }
 }
 
-function applyBloom(intensity) {
+function applyBloom(intensity, src) {
   const n = bloomLevels.length;
   const threshold = PARAMS.bloomThreshold.current;
   const scatter = 0.4 + 0.55 * PARAMS.bloomSoftness.current;   // Weichheit 0..1 → Mischverhältnis 0,4..0,95
 
   // 1) helle Bereiche herausfiltern → erste (verkleinerte) Stufe
   let u = use('bloomPrefilter');
-  gl.uniform1i(u.uTexture, scene.attach(0));
-  gl.uniform2fv(u.uSrcTexel, scene.texel);
+  gl.uniform1i(u.uTexture, src.attach(0));
+  gl.uniform2fv(u.uSrcTexel, src.texel);
   gl.uniform1f(u.uThreshold, threshold);
   gl.uniform1f(u.uKnee, Math.max(0.05, threshold * 0.5));
   blit(bloomLevels[0]);
@@ -1941,13 +1963,36 @@ function applyBloom(intensity) {
 
   // 4) Glow auf das Original legen und auf den Bildschirm zeichnen
   u = use('bloomFinal');
-  gl.uniform1i(u.uScene, scene.attach(0));
+  gl.uniform1i(u.uScene, src.attach(0));
   gl.uniform1i(u.uBloom, low.attach(1));
   gl.uniform1f(u.uIntensity, intensity * CONFIG.BLOOM_GAIN);
   blit(null);
 }
 
-function render(time, dt) {
+// ---------- Flacker-Reduktion ----------
+// Sitzt zwischen Look und Bloom: Reihenfolge Look → Helligkeits-Bremse → Bloom → Bildschirm.
+// Braucht das zuletzt gezeigte Bild; das liegt im Doppelpuffer calmBuf (Bildschirmgröße).
+let calmBuf = null, calmWasActive = false;
+function applyCalm(dt, calm) {
+  const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+  const fresh = !calmBuf || calmBuf.w !== w || calmBuf.h !== h;
+  if (fresh) { if (calmBuf) calmBuf.free(); calmBuf = createDoubleFBO(w, h, gl.RGBA16F, gl.RGBA); }
+  const u = use('calmLimit');
+  gl.uniform1i(u.uScene, scene.attach(0));
+  gl.uniform1i(u.uPrev, calmBuf.read.attach(1));
+  // Beim Einschalten (oder nach einer Größenänderung) gibt es noch kein altes Bild → dieses eine Mal ungebremst.
+  // Der Schalter blendet weich ein: je kleiner calm, desto größer die erlaubte Änderung.
+  gl.uniform1f(u.uMaxChange, fresh || !calmWasActive ? 1e6 : CONFIG.CALM_RATE * dt / (calm * calm));
+  blit(calmBuf.write);
+  calmBuf.swap();
+  return calmBuf.read;
+}
+
+let lookTime = 0;   // Uhr für die Animationen der Looks (läuft bei "Flackern reduzieren" langsamer)
+function render(dt) {
+  const calm = PARAMS.calm.current;
+  lookTime += dt * (1 - 0.6 * calm);
+  const time = lookTime;
   if (LOOKS[lookIndex].smoothCurl || (lookFade < 1 && LOOKS[prevLook].smoothCurl)) updateCurlSmooth();
   if (LOOKS[lookIndex].surface || (lookFade < 1 && LOOKS[prevLook].surface)) updateSurface();
   // Schaum nur, wenn ein sichtbarer Look ihn braucht (braucht das Höhenfeld, daher nach updateSurface)
@@ -1962,10 +2007,14 @@ function render(time, dt) {
   // beim Look-Wechsel wird weich zwischen beiden Werten überblendet
   const lookBloom = i => LOOKS[i].bloom === undefined ? 1 : LOOKS[i].bloom;
   const fadeK = lookFade * lookFade * (3 - 2 * lookFade);
-  const bloomAmount = PARAMS.bloomIntensity.current * PARAMS.bloomOn.current *
+  // ("Flackern reduzieren" nimmt den Glow etwas zurück – pulsierender Schein ist auch eine Art Flackern)
+  const bloomAmount = PARAMS.bloomIntensity.current * PARAMS.bloomOn.current * (1 - 0.35 * calm) *
     (lookBloom(prevLook) + (lookBloom(lookIndex) - lookBloom(prevLook)) * fadeK);
-  if (bloomAmount > 0.002) ensureBloomBuffers();
-  const target = bloomAmount > 0.002 && bloomLevels.length > 0 ? scene : null;
+  const useCalm = calm > 0.02;
+  if (bloomAmount > 0.002 || useCalm) ensureBloomBuffers();
+  const useBloom = bloomAmount > 0.002 && bloomLevels.length > 0;
+  // Bloom und Flacker-Reduktion arbeiten mit dem fertigen Bild des Looks → dann zeichnet er in die Szenen-Textur
+  const target = useBloom || useCalm ? scene : null;
 
   if (lookFade >= 1) {
     drawLook(lookIndex, 1, time, target);
@@ -1980,7 +2029,16 @@ function render(time, dt) {
     gl.disable(gl.BLEND);
   }
 
-  if (target) applyBloom(bloomAmount);
+  // Nachbearbeitung: erst die Helligkeits-Bremse (falls an), dann der Bloom (falls an), dann auf den Bildschirm
+  const src = useCalm ? applyCalm(dt, calm) : scene;
+  calmWasActive = useCalm;
+  if (useBloom) applyBloom(bloomAmount, src);
+  else if (useCalm) {
+    const u = use('scale');
+    gl.uniform1i(u.uTexture, src.attach(0));
+    gl.uniform1f(u.value, 1);
+    blit(null);
+  }
 }
 
 // ---------- Farben ----------
@@ -2053,9 +2111,10 @@ canvas.addEventListener('pointermove', e => { if (!autoplay.active) movePointer(
 canvas.addEventListener('pointerdown', e => {
   pointer.init = false;
   movePointer(e.clientX, e.clientY);
-  splat(pointer.x, pointer.y, 0, 0, dyeColor(Math.random(), 1.5), PARAMS.brush.current);
+  // "Flackern reduzieren": der Klecks ist weniger grell und der Cursor pulsiert kaum
+  splat(pointer.x, pointer.y, 0, 0, dyeColor(Math.random(), 1.5 * (1 - 0.6 * PARAMS.calm.current)), PARAMS.brush.current);
   audioClick(pointer.x, pointer.y);
-  cursorScale = 1.8;                    // kleiner "Puls" beim Klicken
+  cursorScale = 1.8 - 0.6 * PARAMS.calm.current;   // kleiner "Puls" beim Klicken
 });
 canvas.addEventListener('pointerleave', () => {
   pointer.init = false;
@@ -2344,6 +2403,16 @@ function setFpsVisible(v) {
 }
 $('fpsSwitchRow').addEventListener('click', e => { e.preventDefault(); setFpsVisible(!fpsVisible); });
 
+// Flacker-Reduktion: Schalter blendet weich ein/aus. Voreingestellt an, wenn im Betriebssystem
+// "Bewegung reduzieren" gewählt ist.
+function setCalm(on, silent) {
+  PARAMS.calm.target = on ? 1 : 0;
+  $('calmSwitch').classList.toggle('on', on);
+  if (!silent) toast(on ? 'Flackern wird reduziert' : 'Flacker-Reduktion aus');
+}
+$('calmSwitchRow').addEventListener('click', e => { e.preventDefault(); setCalm(PARAMS.calm.target === 0); });
+if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) setCalm(true, true);
+
 function fpsColor(f) { return f >= 55 ? '#3dff8a' : f >= 30 ? '#ffd23f' : '#ff4d5a'; }
 
 function updateFps(dt) {
@@ -2489,8 +2558,10 @@ function updateAutoplay(dt, now) {
   autoplay.nextBurst -= dt;
   if (autoplay.nextBurst <= 0) {
     autoplay.nextBurst = rand(3, 7);
-    const a = rand(0, 6.28), force = rand(600, 1000);
-    splat(rand(0.2, 0.8), rand(0.2, 0.8), Math.cos(a) * force, Math.sin(a) * force, dyeColor(Math.random(), 0.8));
+    // "Flackern reduzieren": Farbstöße kommen schwächer und sanfter
+    const soft = 1 - 0.5 * PARAMS.calm.current;
+    const a = rand(0, 6.28), force = rand(600, 1000) * soft;
+    splat(rand(0.2, 0.8), rand(0.2, 0.8), Math.cos(a) * force, Math.sin(a) * force, dyeColor(Math.random(), 0.8 * soft));
     audioBurst();
   }
   // langsam durch die Paletten wandern
@@ -2810,7 +2881,7 @@ function frame(now) {
   document.body.classList.toggle('immersed', now - lastPaint < 1200);
 
   step(dt);
-  render(now / 1000, dt);
+  render(dt);
   requestAnimationFrame(frame);
 }
 
