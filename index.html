@@ -140,8 +140,8 @@
                 transition: max-height .45s var(--smooth), opacity .35s var(--smooth), margin .45s var(--smooth); }
   .look-param.off { max-height: 0; opacity: 0; margin: 0; pointer-events: none; }
   /* Paletten-Auswahl tritt zurück, wenn der aktive Look sie nicht benutzt */
-  #paletteSection { transition: opacity .4s var(--smooth); }
-  #paletteSection.unused { opacity: .35; }
+  #paletteSection, #bloomSection { transition: opacity .4s var(--smooth); }
+  #paletteSection.unused, #bloomSection.unused { opacity: .35; }
 
   /* Paletten */
   #palettes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -335,6 +335,26 @@
       <label for="filmFlow">Fließen <output id="filmFlowOut"></output></label>
       <input id="filmFlow" type="range" min="0" max="1" step="0.01">
     </div>
+    <div class="row look-param" data-param="inkStyle">
+      <label for="inkStyle">Stil <output id="inkStyleOut"></output></label>
+      <input id="inkStyle" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="inkOpacity">
+      <label for="inkOpacity">Deckkraft <output id="inkOpacityOut"></output></label>
+      <input id="inkOpacity" type="range" min="0.3" max="3" step="0.05">
+    </div>
+    <div class="row look-param" data-param="inkEdge">
+      <label for="inkEdge">Ränder <output id="inkEdgeOut"></output></label>
+      <input id="inkEdge" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="inkBleed">
+      <label for="inkBleed">Verlaufen <output id="inkBleedOut"></output></label>
+      <input id="inkBleed" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row look-param" data-param="paperGrain">
+      <label for="paperGrain">Papierstruktur <output id="paperGrainOut"></output></label>
+      <input id="paperGrain" type="range" min="0" max="1" step="0.01">
+    </div>
     <div class="row look-param" data-param="envSpin">
       <label for="envSpin">Umgebung drehen <output id="envSpinOut"></output></label>
       <input id="envSpin" type="range" min="0" max="1" step="0.01">
@@ -344,7 +364,7 @@
     <h3>Farbpalette</h3>
     <div id="palettes"></div>
   </div>
-  <div class="sec">
+  <div class="sec" id="bloomSection">
     <h3>Bloom</h3>
     <label class="switch-row" id="bloomSwitchRow" style="margin-top:0">Glow <span class="switch on" id="bloomSwitch"></span></label>
     <div id="bloomControls">
@@ -455,6 +475,11 @@ const PARAMS = {
   filmThick:   { target: 1,    current: 1,    def: 1    },  // Look-Regler (Ölfilm): Filmdicke = wie viele Farbbänder entstehen
   iridescence: { target: 0.85, current: 0.85, def: 0.85 },  // Look-Regler (Ölfilm): Stärke der Regenbogenfarben (0 = farblos)
   filmFlow:    { target: 0.4,  current: 0.4,  def: 0.4  },  // Look-Regler (Ölfilm): wie schnell die Schlieren im Film wandern (0 = still)
+  inkStyle:    { target: 0.75, current: 0.75, def: 0.75 },  // Look-Regler (Tinte & Aquarell): 0 = blauschwarze Tinte, 1 = bunte Aquarellfarbe
+  inkOpacity:  { target: 1,    current: 1,    def: 1    },  // Look-Regler (Tinte & Aquarell): Deckkraft der Farbe
+  inkEdge:     { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Tinte & Aquarell): dunkle Trocknungsränder (0 = aus)
+  inkBleed:    { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Tinte & Aquarell): wie weich die Farbe ins Papier verläuft
+  paperGrain:  { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Papier-Looks): Stärke der Papierstruktur (0 = glatt)
   bloomIntensity: { target: 1,    current: 1,    def: 1    },  // Bloom: Stärke des Glows (0 = aus)
   bloomThreshold: { target: 0.4,  current: 0.4,  def: 0.4  },  // Bloom: ab welcher Helligkeit (0..1) etwas leuchtet
   bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
@@ -532,8 +557,11 @@ const surfaceGLSL = `
   uniform sampler2D uSurface;   // geglättetes Höhenfeld (0 = flach/leer, 1 = volle Höhe)
   uniform vec2 uSurfaceStep;    // Abstand der Messpunkte für die Neigung (in Bildschirm-Koordinaten 0..1)
   uniform float uAspect;        // Breite / Höhe des Bildschirms
+  uniform float uSurfaceSat;    // Sättigung k der Höhenformel 1 − exp(−Dichte · k)
   // Höhe an dieser Stelle (0..1)
   float heightAt (vec2 uv) { return texture(uSurface, uv).r; }
+  // dieselbe Höhenformel für eine einzelne (ungeglättete) Dichte – passt damit genau zum geglätteten Höhenfeld
+  float heightFrom (float density) { return 1.0 - exp(-density * uSurfaceSat); }
   // Oberflächenneigung ("Normale"): aus den Höhenunterschieden zu den Nachbarpunkten links/rechts und oben/unten.
   // strength = wie stark die Höhe die Oberfläche wölbt. Ergebnis: Einheitsvektor, z zeigt zum Betrachter.
   vec3 surfaceNormal (vec2 uv, float strength) {
@@ -852,6 +880,11 @@ const lookHeader = header + `
   uniform float uFilmThick;     // Look-Regler "Filmdicke" (Ölfilm)
   uniform float uIridescence;   // Look-Regler "Schillern" (Ölfilm, 0 = farblos)
   uniform float uFilmPhase;     // aufsummierte Wanderung der Schlieren (Ölfilm, Regler "Fließen")
+  uniform float uInkStyle;      // Look-Regler "Stil" (Tinte & Aquarell: 0 = Tinte, 1 = Aquarell)
+  uniform float uInkOpacity;    // Look-Regler "Deckkraft" (Tinte & Aquarell)
+  uniform float uInkEdge;       // Look-Regler "Ränder" (Tinte & Aquarell)
+  uniform float uInkBleed;      // Look-Regler "Verlaufen" (Tinte & Aquarell)
+  uniform float uPaperGrain;    // Look-Regler "Papierstruktur" (Papier-Looks)
 
   // ----- Spiegelnde Oberflächen (gemeinsam für Metallic, Glas … ) -----
   // weiches Rechteck (Softbox) in der Umgebung; p = (Richtung, Höhe), soft = Kantenweichheit
@@ -889,6 +922,14 @@ const lookHeader = header + `
   float studioSpecular (vec3 n, float gloss) {
     vec3 hv = normalize(normalize(vec3(-0.4, 0.6, 0.7)) + vec3(0.0, 0.0, 1.0));
     return pow(max(dot(n, hv), 0.0), mix(20.0, 300.0, gloss)) * mix(0.4, 1.5, gloss);
+  }
+
+  // ----- Papier (gemeinsam für Tinte & Aquarell, Marmorpapier) -----
+  // Körnung des Papiers an dieser Stelle (0 = Tal, 1 = Erhebung); steht still. q = Position, y-Bereich 0..1
+  float paperFibers (vec2 q) { return noise(q * 430.0) * 0.6 + noise(q * 160.0) * 0.4; }
+  // Papierfarbe: warmes Weiß mit feiner Körnung und ganz leichten Wolken; grain = Regler "Papierstruktur"
+  vec3 paperColor (vec2 q, float fibers, float grain) {
+    return vec3(0.955, 0.94, 0.905) * (1.0 - grain * 0.10 * (1.0 - fibers)) * (0.965 + 0.035 * fbm(q * 5.0));
   }
 
   // Farbe an Position t der aktiven Palette (5 Farben, ringförmig)
@@ -1185,6 +1226,35 @@ const LOOKS = [
         vec3 col = irid * (0.45 + 0.6 * light) + studioSpecular(n, uGloss) * 0.35;
         // Rand: hauchdünner Film ist fast unsichtbar (dunkel), Hintergrund wie nasser Asphalt
         return mix(vec3(0.008, 0.01, 0.016), col, smoothstep(0.01, 0.12, h));
+      }`,
+  },
+  {
+    name: 'Tinte & Aquarell',
+    surface: true,
+    surfaceBlur: 0.015,   // weiches Höhenfeld: daraus entstehen das Verlaufen und die Trocknungsränder
+    usesPalette: true,    // die gemalte Farbe ist die Aquarellfarbe
+    bloom: 0,             // helles Papier soll nicht glühen (der Glow würde die Farbe wegbleichen)
+    params: ['inkStyle', 'inkOpacity', 'inkEdge', 'inkBleed', 'paperGrain'],
+    glsl: `
+      vec3 look (LookInput L) {
+        vec2 q = vec2(L.uv.x * uAspect, L.uv.y);
+        float fibers = paperFibers(q);
+        vec3 paper = paperColor(q, fibers, uPaperGrain);
+        // Verlaufen: Die Farbe franst an den Papierfasern leicht aus (kleiner Versatz) und wird mit dem
+        // weichgezeichneten Höhenfeld gemischt – wie Farbe, die ins nasse Papier zieht.
+        vec2 uv = L.uv + (vec2(noise(q * 70.0), noise(q * 70.0 + 31.7)) - 0.5) * 0.006 * uInkBleed;
+        float sharp = heightFrom(densityFrom(texture(uDye, uv).rgb));
+        float cover = mix(sharp, heightAt(uv), uInkBleed * 0.85);          // 0 = Papier, 1 = satt Farbe
+        float amount = -log(1.0 - min(cover, 0.985));                       // Farbmenge (Pigment) an dieser Stelle
+        // Trocknungsränder: Am Rand eines nassen Flecks sammelt sich Pigment → dunkle Kontur, innen etwas heller
+        float slope = clamp((1.0 - surfaceNormal(uv, 2.0).z) * 5.0, 0.0, 1.0);
+        amount *= 1.0 + uInkEdge * (2.2 * slope * (1.0 - cover) - 0.25 * cover);
+        // Pigment setzt sich in den Tälern der Papierstruktur ab (Körnung)
+        amount *= 1.0 + uPaperGrain * 0.7 * (0.5 - fibers);
+        // Pigmentfarbe: blauschwarze Tinte ↔ gemalte Palettenfarbe
+        vec3 pigment = mix(vec3(0.05, 0.06, 0.14), palette(L.t), uInkStyle);
+        // Farbe schluckt Licht (je mehr Pigment, desto dunkler und satter) – wie echte Lasur auf Papier
+        return paper * exp(-(1.0 - pigment + 0.06) * amount * uInkOpacity * 1.1);
       }`,
   },
   {
@@ -1515,6 +1585,11 @@ function drawLook(i, alpha, time, target) {
   if (u.uFilmThick) gl.uniform1f(u.uFilmThick, PARAMS.filmThick.current);
   if (u.uIridescence) gl.uniform1f(u.uIridescence, PARAMS.iridescence.current);
   if (u.uFilmPhase) gl.uniform1f(u.uFilmPhase, filmPhase);
+  if (u.uInkStyle) gl.uniform1f(u.uInkStyle, PARAMS.inkStyle.current);
+  if (u.uInkOpacity) gl.uniform1f(u.uInkOpacity, PARAMS.inkOpacity.current);
+  if (u.uInkEdge) gl.uniform1f(u.uInkEdge, PARAMS.inkEdge.current);
+  if (u.uInkBleed) gl.uniform1f(u.uInkBleed, PARAMS.inkBleed.current);
+  if (u.uPaperGrain) gl.uniform1f(u.uPaperGrain, PARAMS.paperGrain.current);
   gl.uniform1f(u.uAlpha, alpha);
   blit(target);   // null = direkt auf den Bildschirm, sonst in die Szenen-Textur für den Bloom
 }
@@ -1547,6 +1622,7 @@ function bindSurface(u, unit) {
   if (u.uSurface) gl.uniform1i(u.uSurface, surfaceA.attach(unit));
   if (u.uSurfaceStep) gl.uniform2f(u.uSurfaceStep, surfaceStepPx * 1.5 / gl.drawingBufferWidth, surfaceStepPx * 1.5 / gl.drawingBufferHeight);
   if (u.uAspect) gl.uniform1f(u.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
+  if (u.uSurfaceSat) gl.uniform1f(u.uSurfaceSat, PARAMS.saturation.current);
 }
 function updateSurface() {
   const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
@@ -1710,7 +1786,12 @@ function render(time, dt) {
   filmPhase += PARAMS.filmFlow.current * 0.25 * dt; // Schlieren (Ölfilm) wandern; aufsummiert = weich bei Reglerwechsel
 
   // Bloom nur, wenn er sichtbar etwas beiträgt – sonst zeichnet der Look direkt auf den Bildschirm (wie vorher)
-  const bloomAmount = PARAMS.bloomIntensity.current * PARAMS.bloomOn.current;
+  // Looks können mit bloom: 0..1 angeben, wie stark der Glow bei ihnen wirkt (z. B. 0 bei hellem Papier);
+  // beim Look-Wechsel wird weich zwischen beiden Werten überblendet
+  const lookBloom = i => LOOKS[i].bloom === undefined ? 1 : LOOKS[i].bloom;
+  const fadeK = lookFade * lookFade * (3 - 2 * lookFade);
+  const bloomAmount = PARAMS.bloomIntensity.current * PARAMS.bloomOn.current *
+    (lookBloom(prevLook) + (lookBloom(lookIndex) - lookBloom(prevLook)) * fadeK);
   if (bloomAmount > 0.002) ensureBloomBuffers();
   const target = bloomAmount > 0.002 && bloomLevels.length > 0 ? scene : null;
 
@@ -1930,6 +2011,7 @@ function setLook(i) {
   }
   [...lookBox.children].forEach((b, j) => b.classList.toggle('active', j === i));
   $('paletteSection').classList.toggle('unused', !LOOKS[i].usesPalette);
+  $('bloomSection').classList.toggle('unused', LOOKS[i].bloom === 0);   // Look ohne Glow → Bloom-Abschnitt tritt zurück
   // nur die Regler zeigen, die der Look benutzt
   const used = LOOKS[i].params || [];
   for (const row of document.querySelectorAll('.look-param')) row.classList.toggle('off', !used.includes(row.dataset.param));
@@ -1972,6 +2054,11 @@ bindSlider('dyeMix',      PARAMS.dyeMix,      v => Math.round(v * 100) + ' %');
 bindSlider('filmThick',   PARAMS.filmThick,   v => v.toFixed(2) + '×');
 bindSlider('iridescence', PARAMS.iridescence, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('filmFlow',    PARAMS.filmFlow,    v => v === 0 ? 'still' : Math.round(v * 100) + ' %');
+bindSlider('inkStyle',    PARAMS.inkStyle,    v => v < 0.25 ? 'Tinte' : v > 0.75 ? 'Aquarell' : 'Mischung');
+bindSlider('inkOpacity',  PARAMS.inkOpacity,  v => v.toFixed(2) + '×');
+bindSlider('inkEdge',     PARAMS.inkEdge,     v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('inkBleed',    PARAMS.inkBleed,    v => Math.round(v * 100) + ' %');
+bindSlider('paperGrain',  PARAMS.paperGrain,  v => v === 0 ? 'glatt' : Math.round(v * 100) + ' %');
 setLook(0);
 
 function setPalette(name) {
