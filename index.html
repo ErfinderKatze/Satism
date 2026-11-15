@@ -92,6 +92,8 @@
   #panel .sec:nth-child(13) { transition-delay: .48s; }
   #panel .sec:nth-child(14) { transition-delay: .52s; }
   #panel .sec:nth-child(15) { transition-delay: .56s; }
+  #panel .sec:nth-child(16) { transition-delay: .6s; }
+  #panel .sec:nth-child(17) { transition-delay: .64s; }
   /* ---------- Modi ---------- */
   /* Abschnitte und Tastenkürzel mit data-mode="…" gehören zu einem Modus und sind nur dort zu sehen */
   /* (die Regel dafür wird im Skript aus der Modus-Liste erzeugt, siehe Abschnitt "Modi") */
@@ -115,8 +117,8 @@
   body.mode-mandel #cursor { border-width: 1.5px; box-shadow: 0 0 8px var(--brush, #fff); }
   body.frac-frozen #cursor { border-style: dashed; box-shadow: none; }
   /* Bloom-Regler treten zurück, wenn der Glow ausgeschaltet ist */
-  #bloomControls { transition: opacity .4s var(--smooth); }
-  #bloomControls.unused { opacity: .35; }
+  #bloomControls, #swarmControls { transition: opacity .4s var(--smooth); }
+  #bloomControls.unused, #swarmControls.unused { opacity: .35; }
 
   /* Auto-Play als Bildschirmschoner: Oberfläche blendet langsam ganz aus */
   body.screensaver .ui, body.screensaver #cursor { opacity: 0 !important; pointer-events: none; transition: opacity 1.8s var(--smooth); }
@@ -525,6 +527,29 @@
     <button class="btn" id="partScatter"><span>Neu verteilen</span><kbd>Leertaste</kbd></button>
   </div>
   <div class="sec" data-mode="particles">
+    <h3>Schwarm</h3>
+    <label class="switch-row" id="swarmSwitchRow" style="margin-top:0">Schwarmverhalten <span class="switch" id="swarmSwitch"></span></label>
+    <div class="sub">Die Partikel schwimmen von selbst los und achten auf ihre Nachbarn – wie Fische oder Vögel im Schwarm. Taste <b>S</b>.</div>
+    <div id="swarmControls" class="unused">
+      <div class="row" style="margin-top:12px">
+        <label for="swarmAlign">Ausrichtung <output id="swarmAlignOut"></output></label>
+        <input id="swarmAlign" type="range" min="0" max="1" step="0.01">
+      </div>
+      <div class="row">
+        <label for="swarmSep">Abstand <output id="swarmSepOut"></output></label>
+        <input id="swarmSep" type="range" min="0" max="1" step="0.01">
+      </div>
+      <div class="row">
+        <label for="swarmCoh">Zusammenhalt <output id="swarmCohOut"></output></label>
+        <input id="swarmCoh" type="range" min="0" max="1" step="0.01">
+      </div>
+      <div class="row" style="margin-bottom:0">
+        <label for="swarmSpeed">Schwarm-Tempo <output id="swarmSpeedOut"></output></label>
+        <input id="swarmSpeed" type="range" min="0.1" max="1" step="0.01">
+      </div>
+    </div>
+  </div>
+  <div class="sec" data-mode="particles">
     <h3>Kräfte</h3>
     <div id="forceTools" class="grid2"></div>
     <div class="sub">Knopf = Kraft erscheint in der Bildmitte, Taste <b>1</b>–<b>5</b> = an der Maus. Ziehen = verschieben · Rechtsklick oder <b>Entf</b> = löschen · Mausrad = Reichweite.</div>
@@ -595,7 +620,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span>
   </div>
 </div>
 
@@ -714,6 +739,11 @@ const PARAMS = {
   partSize:    { target: 1,    current: 1,    def: 1    },  // Partikel: Punktgröße (Faktor)
   partGlow:    { target: 1,    current: 1,    def: 1    },  // Partikel: Helligkeit (Faktor)
   partBlast:   { target: 1,    current: 1,    def: 1    },  // Partikel: Stärke der Explosion bei Klick (0 = aus)
+  swarm:       { target: 0,    current: 0,    def: 0    },  // Partikel: Schalter "Schwarmverhalten" (wird weich ein-/ausgeblendet)
+  swarmAlign:  { target: 0.6,  current: 0.6,  def: 0.6  },  // Schwarm: Ausrichtung = wie stark sich Partikel der Richtung ihrer Nachbarn anpassen
+  swarmSep:    { target: 0.5,  current: 0.5,  def: 0.5  },  // Schwarm: Abstand = wie stark sie dichtem Gedränge ausweichen
+  swarmCoh:    { target: 0.5,  current: 0.5,  def: 0.5  },  // Schwarm: Zusammenhalt = wie stark es sie zur Mitte ihrer Gruppe zieht
+  swarmSpeed:  { target: 0.5,  current: 0.5,  def: 0.5  },  // Schwarm: Tempo, mit dem die Partikel von selbst schwimmen
   forceStrength: { target: 1,   current: 1,   def: 1   },  // Partikel-Kräfte: Stärke der ausgewählten (bzw. nächsten) Kraft
   forceRange:    { target: 0.2, current: 0.2, def: 0.2 },  // Partikel-Kräfte: Reichweite (Anteil der Bildhöhe)
   forceDir:      { target: 0,   current: 0,   def: 0   },  // Partikel-Kräfte: Windrichtung in Grad (0 = rechts, 90 = oben)
@@ -4328,6 +4358,9 @@ MODES.push({
 //     Punkt ziehen. Deshalb wird vor jedem Schritt gezählt, wie viele Partikel in jedem Feld eines groben Rasters
 //     sind ("Dichte-Raster"). Wo es eng wird, drückt es die Partikel in Richtung der leereren Nachbarfelder – wie
 //     Gas, das sich nicht beliebig zusammenpressen lässt. So bleiben Wolken statt greller Punkte.
+//   - Schwarm: Dasselbe Raster merkt sich zusätzlich, in welche Richtung die Partikel jedes Felds unterwegs sind
+//     (Summe ihrer Tempos). Verkleinerte, geglättete Fassungen davon sagen jedem Partikel, wie dicht und wohin seine
+//     nahe und seine weitere Umgebung unterwegs ist – daraus entstehen die drei Schwarm-Regeln (siehe partStep).
 //   - Zeichnen (partDraw): für jedes Partikel ein Punkt; der Shader holt sich dessen Position aus der Zustands-Textur.
 //     Gezeichnet wird "additiv" (Helligkeiten zählen sich zusammen) in ein Spuren-Bild, das in jedem Bild etwas
 //     dunkler wird – so entstehen Spuren, die sanft verblassen.
@@ -4360,6 +4393,19 @@ const PARTICLES = {
   BLAST_SPEED: 1.6,  // Tempo, mit dem die Druckwelle nach außen läuft (Bildhöhen pro Sekunde)
   BLAST_KICK: 1.2,   // Explosion bei 100 %: Tempo, das die Druckwelle den Partikeln mitgibt
   BLAST_BACK: 2,     // … und wie kräftig sie danach zur Mitte zurückgeholt werden
+  // Schwarm (Regler jeweils bei 100 %)
+  NEAR_LEVEL: 0,     // "nahe Umgebung": Dichte-Raster so oft halbiert + 1 (0 = 64 Felder an der kurzen Seite)
+  WIDE_LEVEL: 1,     // "weitere Umgebung": ebenso (1 = 32 Felder)
+  ALIGN: 6,          // Ausrichtung: so schnell (pro Sekunde) gleicht ein Partikel sein Tempo dem seiner Nachbarn an
+  SEPARATE: 0.08,    // Abstand: Stärke des Ausweichens vor dichten Stellen in der nahen Umgebung
+  COHESION: 0.4,     // Zusammenhalt: Stärke des Zugs zur Mitte der weiteren Umgebung
+  CRUISE: 0.5,       // Schwarm-Tempo: so schnell schwimmen die Partikel von selbst (Bildhöhen pro Sekunde)
+  THRUST: 4,         // so schnell (pro Sekunde) kommt ein gebremstes Partikel wieder auf sein Schwarm-Tempo
+  SAMPLES: 530000,   // ins Schwarm-Raster werden höchstens so viele Partikel gezählt (bei mehr: nur jedes zweite, vierte …)
+  WANDER: 0.5,       // zufälliges Umherirren: Richtungsänderung pro Wurzel-Sekunde (Bogenmaß)
+  MEANDER: 3,        // gemeinsames Schlängeln: größte Drehgeschwindigkeit (Bogenmaß pro Sekunde, mal 0,75)
+  TURN_ZONE: 0.16,   // so weit vor dem Bildrand (Bildhöhen) beginnt der Schwarm abzudrehen
+  TURN: 3,           // … und so kräftig (Beschleunigung direkt am Rand)
 };
 
 const part = {
@@ -4367,6 +4413,10 @@ const part = {
   side: 0,                // Seitenlänge der Zustands-Textur → Anzahl der Partikel = side × side
   trail: null,            // Spuren-Bild
   grid: null,             // Dichte-Raster (Doppelpuffer): wie viele Partikel in jedem Rasterfeld sind
+  gridV: null,            // Schwarm-Raster (Doppelpuffer): Anzahl und Summe der Tempos – ersetzt bei Schwarm das Dichte-Raster
+  levels: [],             // Schwarm: immer weiter verkleinerte, geglättete Fassungen des Schwarm-Rasters (nahe … weite Umgebung)
+  gridNow: null,          // das Raster, das in diesem Bild gefüllt wurde (grid oder gridV)
+  gridCount: 1,           // … und wie viele Partikel hineingezählt wurden
   vao: gl.createVertexArray(),   // leere Punktliste: die Punkte holen ihre Position selbst aus der Zustands-Textur
   pointer: null,          // Mausposition [x, y] (0..1) – bleibt stehen, wenn die Maus aufs Panel wechselt; null = keine
   held: false,            // Maustaste gedrückt → die Kraft wirkt umgekehrt
@@ -4431,6 +4481,25 @@ programs.partGrid = makeProgram(`#version 300 es
     gl_Position = vec4(s.xy * 2.0 - 1.0, 0.0, 1.0);
     gl_PointSize = 1.0;
   }`));
+// Schwarm-Raster (nur bei eingeschaltetem Schwarm, dann anstelle des Rasters oben): in denselben Punkt kommt auch das
+// Tempo des Partikels. Rot = Anzahl, Grün/Blau = Summe der Tempos (geteilt durch die Anzahl ergibt das die mittlere
+// Bewegung der Partikel dort), Alpha = Summe der Geschwindigkeiten.
+programs.partGridV = makeProgram(`#version 300 es
+  precision highp float;
+  flat in vec4 vData;
+  out vec4 fragColor;
+  void main () { fragColor = vData; }`, compile(gl.VERTEX_SHADER, `#version 300 es
+  precision highp float;
+  precision highp sampler2D;
+  uniform sampler2D uState;
+  uniform int uSide;
+  flat out vec4 vData;
+  void main () {
+    vec4 s = texelFetch(uState, ivec2(gl_VertexID % uSide, gl_VertexID / uSide), 0);
+    vData = vec4(1.0, s.zw, length(s.zw));
+    gl_Position = vec4(s.xy * 2.0 - 1.0, 0.0, 1.0);
+    gl_PointSize = 1.0;
+  }`));
 // … danach wird das Raster leicht weichgezeichnet (jedes Feld mit seinen Nachbarn gemittelt), damit der Zufall,
 // wo gerade ein Partikel mehr oder weniger liegt, die Partikel nicht zittern lässt
 programs.partGridBlur = makeProgram(header + `
@@ -4473,6 +4542,19 @@ programs.partStep = makeProgram(header + noiseGLSL + partHashGLSL + `
   // "Druck" an einer Stelle: null, solange die Dichte unter uCrowd liegt; darüber wächst er immer langsamer
   // (Logarithmus) – so verhält sich ein Gas: doppelt so dicht gepackt = immer derselbe Zuwachs an Gegendruck
   float crowd (vec2 uv) { return log(1.0 + max(texture(uGrid, uv).r * uGridNorm - uCrowd, 0.0)); }
+  // Schwarm: Partikel können einander nicht einzeln sehen (bei zwei Millionen wären das Billionen Paare). Stattdessen
+  // liest jedes Partikel aus zwei geglätteten Rastern, was um es herum los ist:
+  //   uNear = nahe Umgebung (etwa 2 % der Bildhöhe): wie viele Nachbarn, und wohin sind sie im Mittel unterwegs
+  //   uWide = weitere Umgebung (etwa 6 % der Bildhöhe): wo ist die Mitte meiner Gruppe
+  uniform sampler2D uNear, uWide;
+  uniform vec2 uNearTexel, uWideTexel;
+  uniform vec4 uSwarm;        // x = Ausrichtung, y = Abstand, z = Zusammenhalt (fertige Stärken), w = Schwarm an (0..1)
+  uniform float uCruise;      // Schwarm-Tempo
+  uniform float uThrust, uWander, uMeander;
+  uniform vec2 uTurn;         // x = Breite der Zone vor dem Bildrand, in der der Schwarm abdreht, y = Stärke
+  // "Gedränge-Maß" der nahen bzw. weiteren Umgebung (Logarithmus: doppelt so dicht = immer derselbe Zuwachs)
+  float nearLog (vec2 uv) { return log(1.0 + texture(uNear, uv).r * uGridNorm); }
+  float wideLog (vec2 uv) { return log(0.3 + texture(uWide, uv).r * uGridNorm); }
 
   // Magnet (auch die Maus ist einer). d = Weg vom Partikel zum Magneten, S = Stärke, R = Reichweite.
   // Am stärksten im Abstand "Reichweite", zur Mitte hin sanft auf null; weiter draußen klingt die Kraft schnell ab
@@ -4570,6 +4652,39 @@ programs.partStep = makeProgram(header + noiseGLSL + partHashGLSL + `
     vec2 gx = vec2(uGridTexel.x * 1.5, 0.0), gy = vec2(0.0, uGridTexel.y * 1.5);
     vec2 push = vec2((crowd(p - gx) - crowd(p + gx)) / (2.0 * gx.x * uAspect), (crowd(p - gy) - crowd(p + gy)) / (2.0 * gy.y));
     acc += push * uPressure;
+
+    // Schwarm: drei Regeln, wie bei Fischen oder Vögeln – jede schaut nur auf die Umgebung des Partikels
+    if (uSwarm.w > 0.001) {
+      float sw = uSwarm.w;
+      // 1) Ausrichtung: das eigene Tempo dem mittleren Tempo der Nachbarn angleichen (Summe der Tempos / Anzahl)
+      vec4 g = texture(uNear, p);
+      acc += (g.gb / max(g.r, 1e-4) - v) * uSwarm.x;
+      // 2) Abstand: weg von dort, wo es in der nahen Umgebung dichter ist
+      vec2 nx = vec2(uNearTexel.x, 0.0), ny = vec2(0.0, uNearTexel.y);
+      acc += vec2((nearLog(p - nx) - nearLog(p + nx)) / (2.0 * nx.x * uAspect), (nearLog(p - ny) - nearLog(p + ny)) / (2.0 * ny.y)) * uSwarm.y;
+      // 3) Zusammenhalt: hin zur Mitte der Gruppe = dorthin, wo in der weiteren Umgebung mehr Partikel sind.
+      // Wo es schon sehr eng ist (ab dem 3- bis 8-Fachen des Durchschnitts), zieht nichts mehr weiter zusammen –
+      // sonst würde der Schwarm ohne "Abstand" zu einem einzigen grellen Punkt zusammenfallen.
+      vec2 wx = vec2(uWideTexel.x, 0.0), wy = vec2(0.0, uWideTexel.y);
+      acc += vec2((wideLog(p + wx) - wideLog(p - wx)) / (2.0 * wx.x * uAspect), (wideLog(p + wy) - wideLog(p - wy)) / (2.0 * wy.y))
+           * (uSwarm.z * (1.0 - smoothstep(3.0, 8.0, g.r * uGridNorm)));
+      // Eigenantrieb: jedes Partikel schwimmt in seiner Richtung weiter und hält dabei sein Schwarm-Tempo (jedes ein
+      // etwas anderes). Wer langsamer ist, beschleunigt; wer schneller ist (Explosion!), gleitet einfach aus.
+      vec2 rel = v - wind;
+      float rs = length(rel), cruise = uCruise * (0.75 + 0.5 * rnd.y);
+      vec2 dir = rs > 1e-3 ? rel / rs : vec2(cos(6.2832 * rnd.x), sin(6.2832 * rnd.x));
+      acc += dir * (sw * (uThrust * max(cruise - rs, 0.0) + uDrag * cruise));
+      // ein wenig zufälliges Umherirren (kleine Richtungsänderung in jedem Bild), sonst wirkt der Schwarm wie ein Roboter
+      float jitter = hash2(vec2(id) + fract(uTime * 3.7) * 117.0).x * 2.0 - 1.0;
+      acc += vec2(-dir.y, dir.x) * (sw * uWander * cruise * 1.73 * jitter / sqrt(max(uDt, 1e-4)));
+      // gemeinsames Schlängeln: ein langsam wanderndes Rauschen lenkt Nachbarn in dieselbe Richtung – der Schwarm
+      // zieht Bögen, statt stur geradeaus zu schwimmen, und teilt sich dabei immer wieder in mehrere Gruppen
+      float bend = noise(p * asp * 2.6 + vec2(uTime * 0.17, -uTime * 0.12)) + 0.5 * noise(p * asp * 5.3 - vec2(uTime * 0.21, 3.7)) - 0.75;
+      acc += vec2(-dir.y, dir.x) * (sw * uMeander * cruise * bend);
+      // Abdrehen vor dem Bildrand: schon ein gutes Stück vorher lenkt der Schwarm sanft zurück ins Bild
+      vec2 tlo = max(1.0 - p * asp / uTurn.x, 0.0), thi = max(1.0 - (1.0 - p) * asp / uTurn.x, 0.0);
+      acc += (tlo * tlo - thi * thi) * (uTurn.y * sw);
+    }
 
     // Weiche Wand: kurz vor dem Bildrand (5 % der Bildhöhe) werden die Partikel sanft zurückgedrückt. Ohne sie
     // blieben weggeschleuderte Partikel für immer am Rand kleben, denn dort steht die Strömung still.
@@ -4719,6 +4834,8 @@ programs.partShow = makeProgram(header + `
   }`);
 
 // ----- Puffer -----
+// Darf die Grafikkarte additiv in 32-Bit-Texturen zeichnen und sie weich auslesen? (sonst 16 Bit)
+const partGridFloat = !!gl.getExtension('EXT_float_blend') && floatLinear;
 // Werden erst angelegt, wenn der Modus zum ersten Mal gebraucht wird, und passen sich Qualitätsstufe und Fenster an
 function ensurePartBuffers() {
   const q = QUALITY[qualityLevel], W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
@@ -4756,23 +4873,47 @@ function ensurePartBuffers() {
   if (!part.grid || part.grid.w !== g.w || part.grid.h !== g.h) {
     if (part.grid) part.grid.free();
     part.grid = createDoubleFBO(g.w, g.h, gl.R16F, gl.RED);
+    part.gridNow = part.grid;
+    if (part.gridV) { part.gridV.free(); part.gridV = null; }      // wird bei Bedarf in der neuen Größe angelegt
+    for (const l of part.levels) l.free();
+    part.levels = [];
   }
 }
-
-// Dichte-Raster neu füllen: leeren, alle Partikel hineinzählen, zweimal weichzeichnen
-function updatePartGrid() {
+// Die Raster für den Schwarm – erst angelegt, wenn der Schwarm zum ersten Mal eingeschaltet wird
+function ensureSwarmBuffers() {
+  if (part.gridV) return;
   const g = part.grid;
+  // (32-Bit-Zahlen, wenn die Grafikkarte sie beim additiven Zeichnen erlaubt: viele kleine Tempos zu einer großen
+  // Summe zusammenzuzählen ist mit 16 Bit ungenau)
+  const fmt = partGridFloat ? [gl.RGBA32F, gl.RGBA, gl.FLOAT] : [gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT];
+  part.gridV = createDoubleFBO(g.w, g.h, ...fmt);
+  // das Raster in halber, viertel und achtel Größe (jede Stufe mittelt über eine größere Umgebung)
+  part.levels = [2, 4, 8].map(d => createFBO(Math.max(2, Math.round(g.w / d)), Math.max(2, Math.round(g.h / d)), ...fmt));
+}
+
+// Dichte-Raster neu füllen: leeren, alle Partikel hineinzählen, zweimal weichzeichnen.
+// swarm = true: stattdessen das Schwarm-Raster füllen (Anzahl UND Tempo) und daraus die verkleinerten Fassungen
+// rechnen (jede aus der nächstgrößeren, dabei über 4×4 Felder gemittelt – winzige Texturen, kostet fast nichts).
+// Für Mittelwerte muss man nicht jedes Partikel fragen: Bei sehr vielen Partikeln wird nur jedes zweite oder vierte
+// gezählt (eine feste, gut durchmischte Auswahl – die ersten Zeilen der Zustands-Textur). Das spart den größten Teil
+// der Zeit, und das Ergebnis ist so genau wie auf der Stufe "Ultra".
+function updatePartGrid(swarm) {
+  if (swarm) ensureSwarmBuffers();
+  const g = swarm ? part.gridV : part.grid, n = part.side * part.side;
+  const count = swarm ? Math.ceil(part.side / Math.ceil(n / PARTICLES.SAMPLES)) * part.side : n;
+  part.gridNow = g;
+  part.gridCount = count;
   gl.bindFramebuffer(gl.FRAMEBUFFER, g.write.fbo);
   gl.viewport(0, 0, g.w, g.h);
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE);
-  let u = use('partGrid');
+  let u = use(swarm ? 'partGridV' : 'partGrid');
   gl.uniform1i(u.uState, part.state.read.attach(0));
   gl.uniform1i(u.uSide, part.side);
   gl.bindVertexArray(part.vao);
-  gl.drawArrays(gl.POINTS, 0, part.side * part.side);
+  gl.drawArrays(gl.POINTS, 0, count);
   gl.bindVertexArray(null);
   gl.disable(gl.BLEND);
   g.swap();
@@ -4782,6 +4923,14 @@ function updatePartGrid() {
     gl.uniform1i(u.uTexture, g.read.attach(0));
     blit(g.write);
     g.swap();
+  }
+  if (!swarm) return;
+  let src = g.read;
+  for (const l of part.levels) {
+    gl.uniform2f(u.uTexel, 2 * src.texel[0], 2 * src.texel[1]);
+    gl.uniform1i(u.uTexture, src.attach(0));
+    blit(l);
+    src = l;
   }
 }
 
@@ -4909,7 +5058,8 @@ function updateParticles(dt) {
   part.dir += (wantDir - part.dir) * (1 - Math.exp(-7 * dt));                // Anziehen ↔ Abstoßen wechselt weich
 
   updateForces(dt);
-  updatePartGrid();
+  const sw = PARAMS.swarm.current;
+  updatePartGrid(sw > 0.001);
   part.time += dt * (1 - 0.4 * calm);
   gl.disable(gl.BLEND);
   const u = use('partStep');
@@ -4917,11 +5067,24 @@ function updateParticles(dt) {
   bindBlasts(u);
   gl.uniform1f(u.uBlastKick, PARTICLES.BLAST_KICK);
   gl.uniform1f(u.uBlastBack, PARTICLES.BLAST_BACK);
-  gl.uniform1i(u.uGrid, part.grid.read.attach(1));
-  gl.uniform2fv(u.uGridTexel, part.grid.texel);
-  gl.uniform1f(u.uGridNorm, part.grid.w * part.grid.h / (part.side * part.side));
+  gl.uniform1i(u.uGrid, part.gridNow.read.attach(1));
+  gl.uniform2fv(u.uGridTexel, part.gridNow.texel);
+  gl.uniform1f(u.uGridNorm, part.gridNow.w * part.gridNow.h / part.gridCount);
   gl.uniform1f(u.uPressure, PARTICLES.PRESSURE);
   gl.uniform1f(u.uCrowd, PARTICLES.CROWD);
+  // Schwarm (ist er aus, liest der Shader diese beiden Raster nicht – dann steht dort einfach das Dichte-Raster)
+  const near = part.levels[PARTICLES.NEAR_LEVEL] || part.grid.read, wide = part.levels[PARTICLES.WIDE_LEVEL] || part.grid.read;
+  gl.uniform1i(u.uNear, near.attach(2));
+  gl.uniform1i(u.uWide, wide.attach(3));
+  gl.uniform2fv(u.uNearTexel, near.texel);
+  gl.uniform2fv(u.uWideTexel, wide.texel);
+  gl.uniform4f(u.uSwarm, PARAMS.swarmAlign.current * PARTICLES.ALIGN * sw, PARAMS.swarmSep.current * PARTICLES.SEPARATE * sw,
+    PARAMS.swarmCoh.current * PARTICLES.COHESION * sw, sw);
+  gl.uniform1f(u.uCruise, PARAMS.swarmSpeed.current * PARTICLES.CRUISE);
+  gl.uniform1f(u.uThrust, PARTICLES.THRUST);
+  gl.uniform1f(u.uWander, PARTICLES.WANDER);
+  gl.uniform1f(u.uMeander, PARTICLES.MEANDER);
+  gl.uniform2f(u.uTurn, PARTICLES.TURN_ZONE, PARTICLES.TURN);
   gl.uniform1i(u.uState, part.state.read.attach(0));
   gl.uniform1f(u.uDt, dt);
   gl.uniform1f(u.uAspect, canvas.width / canvas.height);
@@ -5074,8 +5237,18 @@ function partScatter() {
   audioClear();
   toast('Neu verteilt');
 }
+// Schwarmverhalten an/aus (blendet weich ein und aus)
+function setSwarm(on, silent) {
+  PARAMS.swarm.target = on ? 1 : 0;
+  $('swarmSwitch').classList.toggle('on', on);
+  $('swarmControls').classList.toggle('unused', !on);
+  if (silent) return;
+  audioTock(!on);
+  toast(on ? 'Schwarm an – die Partikel schwimmen los' : 'Schwarm aus');
+}
 function partKey(e) {
   if (e.code === 'KeyR') setPartPull(-part.pull);
+  if (e.code === 'KeyS') setSwarm(PARAMS.swarm.target === 0);
   if (e.code === 'Space') { partScatter(); e.preventDefault(); }
   // 1–5: Kraft an der Mausposition setzen (ohne Maus im Bild: in der Bildmitte)
   const digit = /^Digit([1-9])$/.exec(e.code);
@@ -5101,6 +5274,12 @@ bindSlider('partTrail',   PARAMS.partTrail,   v => v === 0 ? 'aus' : Math.round(
 bindSlider('partSize',    PARAMS.partSize,    v => v.toFixed(2) + '×');
 bindSlider('partGlow',    PARAMS.partGlow,    v => Math.round(v * 100) + ' %');
 setPartPull(1, true);
+// Schwarm: Schalter und Regler
+$('swarmSwitchRow').addEventListener('click', e => { e.preventDefault(); setSwarm(PARAMS.swarm.target === 0); });
+bindSlider('swarmAlign', PARAMS.swarmAlign, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('swarmSep',   PARAMS.swarmSep,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('swarmCoh',   PARAMS.swarmCoh,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('swarmSpeed', PARAMS.swarmSpeed, v => Math.round(v * 100) + ' %');
 
 // Kräfte: Knöpfe entstehen aus FORCE_TYPES; ein Klick setzt die Kraft nahe der Bildmitte (dann an ihre Stelle ziehen)
 const forceBox = $('forceTools');
@@ -5137,7 +5316,7 @@ updateForceUi();
 
 MODES.push({
   id: 'particles', name: 'Partikel',
-  hint: 'Maus = Partikel anziehen · Klick = Explosion · halten = abstoßen · <b>1</b>–<b>5</b> = Kraft setzen · <b>Tab</b> = Modus',
+  hint: 'Maus = Partikel anziehen · Klick = Explosion · halten = abstoßen · <b>S</b> = Schwarm · <b>1</b>–<b>5</b> = Kraft setzen · <b>Tab</b> = Modus',
   autoplayHint: 'Auto-Play · Bewege die Maus, um die Partikel selbst zu lenken',
   enter() {
     $('paletteSection').classList.remove('unused');          // Palette und Bloom wirken hier immer
