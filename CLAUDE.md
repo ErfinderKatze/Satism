@@ -29,8 +29,8 @@ Ein **Chill-Modus ohne Ziel** ist wichtiger als ein klassisches Spiel mit Punkte
 Wirbelstärke, Schwerkraft, Verblassen. ✅ Hindernisse zeichnen, um die die Flüssigkeit herumfließt.
 
 **Partikel:** ✅ Anziehung/Abstoßung durch die Maus. ✅ Kräfte wie schwarze Löcher, Magnete, Wind, Orbits.
-✅ Trails und Glow. ✅ Explosionen bei Klick. ⬜ Schwarmverhalten (Flocking). ⬜ Farbe nach Tempo/Alter, eigener
-Partikel-Klang, richtiges Auto-Play.
+✅ Trails und Glow. ✅ Explosionen bei Klick. ✅ Schwarmverhalten (Flocking). ✅ Farbe nach Tempo/Alter, eigener
+Partikel-Klang, Auto-Play mit unsichtbaren Kräften.
 
 **Mandelbrot:** ✅ Zoom per Scrollen/Ziehen mit Trägheit, ✅ Julia-Sets live mit Mausposition, ✅ animierte Farbpaletten,
 ✅ automatische Zoom-Fahrt zu schönen Stellen, ✅ tiefer Zoom bis 10³⁰-fach (Bezugsbahn statt Float32-Grenze).
@@ -41,7 +41,7 @@ speichern und teilen. ✅ Idle-Modus/Screensaver (Auto-Play). ⬜ Screenshot-, W
 Sammelziele („entdecke 10 Muster“). ✅ Moduswechsel Fluid/Mandelbrot/Partikel, ⬜ Desktop-App (Tauri oder Electron).
 
 **Satisfying-Faktoren:** ✅ Audio-Feedback per Web Audio API (selbst synthetisiert, Pentatonik, Lautstärke/Tonhöhe abhängig
-von Geschwindigkeit, ✅ im Mandelbrot-Modus von der Zoomtiefe; ⬜ Partikelzahl kommt mit dem Partikel-Modus). ✅ Lofi-Musik (generativ: Akkorde,
+von Geschwindigkeit, ✅ im Mandelbrot-Modus von der Zoomtiefe, ✅ im Partikel-Modus von Tempo und Dichte der Partikel). ✅ Lofi-Musik (generativ: Akkorde,
 Vinyl-Knistern, sanfte Drums, reagiert auf Interaktion). ✅ Wenig UI: minimalistisches, ausblendbares Panel (⬜ Radialmenü).
 ✅ Bloom/Glow, dunkler Hintergrund, kontrastreiche Paletten. ✅ Option „Flackern reduzieren“.
 
@@ -57,9 +57,10 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - **Mandelbrot-Modus** (Abschnitt unten): Zoom per Scrollen/Klick, Ziehen mit Trägheit, Julia-Sets live per Maus
   (Taste `J`), wandernde Farben in der aktiven Palette, 7 „schöne Stellen“ mit Flug dorthin, Zoom-Fahrt als Auto-Play,
   Töne passend zur Zoomtiefe, scharf bis 10³⁰-fachem Zoom.
-- **Partikel-Modus** (Abschnitt unten, Stand nach Schritt 3 von 5): bis 2,1 Millionen Partikel auf der GPU, Maus zieht
-  an/stößt ab, Spuren und Glow, platzierbare Kräfte (Schwarzes Loch, Magnet +/−, Wind, Orbit), Explosion bei Klick.
-  Noch offen: Schwarmverhalten (Schritt 4), Farbe nach Tempo/Alter, eigener Klang, richtiges Auto-Play (Schritt 5).
+- **Partikel-Modus** (Abschnitt unten, alle 5 Schritte fertig): bis 2,1 Millionen Partikel auf der GPU, Maus zieht
+  an/stößt ab, Spuren und Glow, platzierbare Kräfte (Schwarzes Loch, Magnet +/−, Wind, Orbit), Explosion bei Klick,
+  Schwarmverhalten (Schalter, Taste `S`), Farbe nach Wolken/Tempo/Alter (Taste `C`), eigener Klang, Auto-Play mit
+  unsichtbaren Kräften.
 - Fluid-Modus nach Stable Fluids auf der GPU (WebGL2 + `EXT_color_buffer_float`): Vorticity Confinement (Wirbel),
   Viskosität (Jacobi-Diffusion), Druck-Lösung (Jacobi), Gradienten-Subtraktion, Advektion.
 - Farbe wird als „Dichte + Position auf der Palette“ gespeichert (R = Dichte, G/B = Dichte·cos/sin des Palettenwinkels);
@@ -111,9 +112,8 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - Bedienung Partikel: Maus bewegen = Kraft folgt der Maus, Klick = Explosion, Maustaste halten = Kraft umgekehrt,
   `R` = Anziehen ↔ Abstoßen, Leertaste = neu verteilen, `1`–`5` = Kraft an der Maus setzen (Schwarzes Loch, Magnet +,
   Magnet −, Wind, Orbit), gesetzte Kraft ziehen = verschieben, Rechtsklick oder `Entf` = löschen, `X` = alle löschen,
-  Mausrad über einer Kraft = Reichweite.
-- Noch nicht umgesetzt: Partikel Schritt 4/5 (Schwarm, Farbe nach Tempo/Alter, Klang, Auto-Play), Presets
-  speichern/teilen, Export, Desktop-App.
+  Mausrad über einer Kraft = Reichweite, `S` = Schwarm an/aus, `C` = Farbe wechseln (Wolken → Tempo → Alter).
+- Noch nicht umgesetzt: Presets speichern/teilen, Export, Desktop-App.
 - Testen: Die Seite läuft per Doppelklick. Zum automatischen Prüfen (FPS, GPU-Zeit per `EXT_disjoint_timer_query_webgl2`,
   alle Stufen × alle Looks) wurde sie über einen kleinen lokalen Server geladen (`python -m http.server`). Innerhalb
   eines Seitenaufrufs ist die Simulation bei gleichem Ablauf bitgenau wiederholbar (Prüfsumme der Farb-Textur) – gut für
@@ -376,6 +376,12 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   (40 → 100 %), mehr Hi-Hats, Melodietöne häufiger (5 % → 45 % pro Achtel).
 - Panel-Abschnitt „Ton“: Schalter **Ton (Klänge beim Malen)**, Schalter **Musik (Lofi)**, Regler **Lautstärke**
   (`PARAMS.volume`, Standard 60 %), Hinweiszeile. Taste `M` = stumm (`setMuted`).
+- **Partikel-Modus:** `audioBlast(x, y, Stärke)` (Explosion: tiefer Ton fällt von 140 auf 40 Hz, dazu Rauschen
+  2800 → 160 Hz und zwei gezupfte Töne, der zweite 0,6 s später), `audioGather(Dichte, x)` („Sammeln“: Dichte an der
+  Maus-Kraft → Stufe `round(log2(1 + max(Dichte − 1,5; 0)) · 2,5)`; bei jedem Stufenwechsel ein leiser, tiefer
+  gezupfter Ton, höchstens ~7/s), `audioSwallow(n)` („Verschlucken“ am Schwarzen Loch: leiser Tropfen, der nach unten
+  wegkippt, etwa 3–4/s, unregelmäßig). Das mittlere Tempo der Partikel hebt `audio.energy` (bis 0,75) → die Musik
+  öffnet sich bei Schwarm und Explosionen. Die Zahlen dafür liefert `partStat` (Abschnitt „Partikel-Modus“).
 - Geprüft (per Analyser am Ausgang): Tonhöhen stimmen (131/262/330/440 Hz), schnelles Malen ≈ 3× so laut wie langsames,
   Stumm und Schalter ergeben Stille, 60 FPS bleiben. **Nicht geprüft: wie es klingt** – das kann nur ein Mensch hören.
 
@@ -529,10 +535,10 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Während der Verwandlung Mandelbrot ↔ Julia aus großer Tiefe wird die Bezugsbahn in jedem Bild neu gerechnet
   (gemessen 56 FPS, zwei Bilder über 25 ms).
 
-## Partikel-Modus (Stand nach Schritt 3 von 5)
+## Partikel-Modus (alle 5 Schritte fertig)
 - **Ausbauplan:** 1 Grundsystem ✅ · 2 Kräfte ✅ · 3 Explosionen ✅ · 4 Schwarmverhalten (Ausrichtung, Abstand,
-  Zusammenhalt) ⬜ · 5 Look und Gefühl (Farbe nach Tempo/Alter mit Paletten, eigener Klang, Auto-Play mit unsichtbaren
-  Kräften, Panel-Feinschliff) ⬜. Commits: `f07c1e4`, `63afdbc`, `b70d80e`.
+  Zusammenhalt) ✅ · 5 Look und Gefühl (Farbe nach Tempo/Alter mit Paletten, eigener Klang, Auto-Play mit unsichtbaren
+  Kräften, Panel-Feinschliff) ✅. Commits: `f07c1e4`, `63afdbc`, `b70d80e`, `bc630dc` (Schritt 4), `e22be53` (Schritt 5).
 - Code: Abschnitt `// ---------- Partikel-Modus ----------` in `index.html` (vor `// ----- Moduswechsel -----`),
   Konstanten in `PARTICLES`, Zustand in `part`, Modus-Objekt `MODES.push({ id: 'particles', … })`.
 
@@ -553,7 +559,7 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   zufälligen Stelle auf seiner Strecke vom letzten zum neuen Ort gezeichnet (Sprünge > 0,2, z. B. nach dem Verschlucken,
   ausgenommen) → durchgehende Linien statt Perlenketten. Punktgröße = `clamp(0,8 · √(Bildpunkte/Partikel); 1,2; 2,6) ·
   Größe`; die Helligkeit pro Partikel ist so normiert, dass das Bild bei jeder Partikelzahl/Größe/Spurlänge gleich hell
-  wirkt. Farbe vorläufig: `palette(Phase + Zufall · 0,06 + Wolke + Tempo · 0,45)`, Wolke = Rauschen der Position.
+  wirkt. Farbe: siehe „Farbe“ unten.
 - **Anzeigen** (`partShow`): Farbtreue Tonwert-Kompression (`L / (1 + L)`, Farbton bleibt) mit Überschuss > 1 in sehr
   dichten Bereichen → nur dort Glow über den gemeinsamen Bloom. Darüber die Zeichen der gesetzten Kräfte und der
   Explosionsblitz. Der Rest (Flacker-Bremse, Bloom) ist der gemeinsame `render()`-Weg.
@@ -574,35 +580,115 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   ziehen, wird vor jedem Schritt gezählt, wie viele in jedem Feld eines groben Rasters liegen (`partGrid`: jedes Partikel
   als Punkt additiv in eine R16F-Textur, 128 Felder an der kurzen Seite, danach 2× weichgezeichnet). Über dem Doppelten
   des Durchschnitts (`CROWD`) drückt es die Partikel auseinander: `−∇ log(1 + Überschuss) · PRESSURE` (wie ein Gas).
-  **Dieses Raster ist auch die Grundlage für Schritt 4** (Schwarm: dort zusätzlich Tempo-Summen pro Feld sammeln).
+  Ist der Schwarm an, übernimmt das Schwarm-Raster (siehe unten) diese Aufgabe mit.
 - **Explosionen** (höchstens `MAX_BLASTS` = 4, `uBlast[4]`, `bindBlasts`): Druckwelle als Ring, der mit `BLAST_SPEED`
   (1,6 Bildhöhen/s) nach außen läuft, breiter und schwächer wird (`exp(−t/0,4)`) und die Partikel nach außen
   schleudert; ab ≈ 0,5 s holt eine sanfte Kraft sie zurück (weit entfernte stärker), nach 3,2 s ist alles vorbei.
   Anzeige: kurzer Blitz im Zentrum plus feiner Ring auf der Welle. Regler „Explosion (Klick)“ 0–250 % (0 = aus).
 - **Flacker-Reduktion:** Explosion schwächer (× 0,7), Blitz und Ring breiter, langsamer und × 0,2 so hell, Partikel-Uhr
   langsamer; dazu die gemeinsame Helligkeits-Bremse.
-- **Panel:** Abschnitt „Partikel“ (Anziehen/Abstoßen, Kraft, Reichweite, Explosion, Trägheit, Strömung, Spuren, Größe,
-  Leuchten, Knopf „Neu verteilen“) und „Kräfte“ (Knöpfe aus `FORCE_TYPES`, Stärke, Reichweite, Windrichtung, Infozeile,
-  Löschen, Alle löschen). Panel-Knöpfe setzen die Kraft nahe der Bildmitte.
+- **Panel** (vier Abschnitte): „Partikel“ (Anziehen/Abstoßen, Maus-Kraft, Reichweite, Explosion, Trägheit, Strömung,
+  Knopf „Neu verteilen“), „Schwarm“ (Schalter, Ausrichtung, Abstand, Zusammenhalt, Schwarm-Tempo – abgeblendet, solange
+  der Schwarm aus ist), „Kräfte“ (Knöpfe aus `FORCE_TYPES`, Stärke, Reichweite, Windrichtung, Infozeile, Löschen, Alle
+  löschen; Panel-Knöpfe setzen die Kraft nahe der Bildmitte), „Aussehen“ (Farbe: Wolken/Tempo/Alter, Lebensdauer – nur
+  bei „Alter“ aufgeklappt –, Spuren, Größe, Helligkeit).
 
-### Messwerte (1920×1080, 12 Kräfte + 4 Explosionen gleichzeitig)
-| Stufe | Partikel | Bild gesamt | Rechnen (GPU) | Zeichnen (GPU) |
-|---|---|---|---|---|
-| Niedrig | 36.864 | 1,22 ms | 0,08 ms | 0,59 ms |
-| Mittel | 102.400 | 1,54 ms | 0,15 ms | 0,77 ms |
-| Hoch | 262.144 | 2,22 ms | 0,35 ms | 1,53 ms |
-| Ultra | 524.176 | 3,01 ms | 0,63 ms | 1,74 ms |
-| Extrem | 1.048.576 | 4,94 ms | 1,29 ms | 2,79 ms |
-| Maximum | 2.096.704 | 8,24 ms | 2,43 ms | 4,16 ms |
-- Alle Stufen 60 FPS, GL-Fehler 0, keine ungültigen Partikel (NaN/außerhalb), 21 Moduswechsel fehlerfrei. Ohne Kräfte:
-  Maximum ≈ 5,6 ms. Flacker-Reduktion bei Explosion: größter Helligkeitssprung pro Bild 0,49 → 0,043, Anteil
-  Bildpunkte mit Sprung > 10 %: 10,4 % → 0 %. Fluid-Prüfsumme (häufigster Wert) unverändert.
+### Schwarm (Schritt 4)
+- **Nachbarsuche über ein Raster statt Paar für Paar:** Bei 2 Millionen Partikeln wären das Billionen Paare. Stattdessen
+  wird jedes Partikel als Punkt additiv in ein Raster gezeichnet (`partGridV`, `part.gridV`, 128 Felder an der kurzen
+  Seite): Rot = Anzahl, Grün/Blau = Summe der Tempos, Alpha = Summe der Geschwindigkeiten. Summe / Anzahl = mittlere
+  Bewegung der Partikel dort. Daraus entstehen drei verkleinerte, geglättete Fassungen (`part.levels`, ½, ¼, ⅛, jede
+  mittelt über 4×4 Felder der vorigen; Shader `partGridBlur`). Jedes Partikel liest in `partStep`:
+  `uNear` = `levels[NEAR_LEVEL]` (64 Felder, nahe Umgebung ≈ 2 % der Bildhöhe) und `uWide` = `levels[WIDE_LEVEL]`
+  (32 Felder, weitere Umgebung ≈ 6 %).
+- **Die drei Regeln** (nur wenn `uSwarm.w` > 0, d. h. Schwarm an): **Ausrichtung** `acc += (mittleres Tempo der Nachbarn −
+  v) · ALIGN (6/s)`; **Abstand** `acc −= ∇ log(1 + Dichte nah) · SEPARATE (0,08)`; **Zusammenhalt**
+  `acc += ∇ log(0,3 + Dichte weit) · COHESION (0,4)`, ausgeblendet ab dem 3- bis 8-Fachen der Durchschnittsdichte
+  (sonst fällt der Schwarm ohne „Abstand“ auf einen Punkt zusammen). Regler je 0–100 % (Standard 60/50/50 %).
+- **Dazu, damit es wie ein Schwarm wirkt:** Eigenantrieb (jedes Partikel hält sein Schwarm-Tempo = Regler × `CRUISE` 0,5
+  Bildhöhen/s, je Partikel 0,75–1,25-fach; wer langsamer ist, beschleunigt mit `THRUST` 4/s, wer schneller ist, gleitet
+  aus), zufälliges Umherirren (`WANDER`), **gemeinsames Schlängeln** (`MEANDER`: wanderndes Rauschen dreht Nachbarn in
+  dieselbe Richtung → der Schwarm zieht Bögen und teilt sich in Gruppen) und Abdrehen vor dem Bildrand (`TURN_ZONE`
+  16 % der Bildhöhe, `TURN`).
+- **Kosten sparen:** Ohne Schwarm läuft exakt der alte Weg (R16F-Raster, altes Programm `partGrid`) – keine Mehrkosten.
+  Mit Schwarm ersetzt das Schwarm-Raster das Dichte-Raster (`part.gridNow`), und es werden höchstens `SAMPLES` (530.000)
+  Partikel hineingezählt: auf Extrem jedes zweite, auf Maximum jedes vierte (die ersten Zeilen der Zustands-Textur =
+  feste, durchmischte Auswahl; `part.gridCount`). Für Mittelwerte reicht das, und der Schwarm kostet dadurch auf den
+  höchsten Stufen nichts extra. Schwarm-Raster ist RGBA32F, wenn `EXT_float_blend` vorhanden (sonst RGBA16F – beim
+  Aufsummieren vieler kleiner Tempos ungenauer); es wird erst beim ersten Einschalten angelegt (`ensureSwarmBuffers`).
+- **Mit Kräften kombinierbar:** Die Schwarm-Regeln sind nur weitere Beschleunigungen im selben Schritt – Maus, gesetzte
+  Kräfte, Explosionen, Gedränge und Wand wirken unverändert weiter. Der Eigenantrieb zählt relativ zum „Wind“ der
+  Kräfte (ein Schwarm im Orbit kreist mit).
+
+### Farbe, Klang, Auto-Play (Schritt 5)
+- **Farbe** (`PART_COLORS`, Knöpfe im Abschnitt „Aussehen“, Taste `C`; `PARAMS.partColor.target` = 0/1/2, die Anteile
+  `part.colorW` blenden weich über, gerechnet wird im Vertex-Shader `partVertex` nur, was zu sehen ist):
+  **Wolken** (bisheriges Aussehen, Standard: `palette(Phase + Zufall · 0,06 + Wolke + Tempo · 0,45)`),
+  **Tempo** (`k = 1 − exp(−Tempo · 2,2)`, `palette(Phase + k · 0,8)`, Helligkeit `0,45 + 1,7 · k` – langsam = dunkel),
+  **Alter** (`palette(Phase + Alter · 0,7)`, Neugeborene gut doppelt so hell, am Lebensende verglimmt das Partikel).
+- **Alter** (`partAge`, `part.age`, R32F, nur gerechnet, solange die Farbe „Alter“ zu sehen ist; `updatePartAge`):
+  Alter 0..1 wächst um `dt / Lebensdauer` (Regler 3–40 s, Standard 12 s); bei 1 wird das Partikel an Ort und Stelle
+  neu geboren. Sofort jung macht: vom Schwarzen Loch verschluckt (Sprung > 0,2) und die Druckwelle einer Explosion
+  (`AGE_BLAST`). **Geburtswellen:** Würde jedes Partikel für sich altern, mischten sich bei Millionen Partikeln alle
+  Farben zu grauem Brei. Deshalb legt ein Wolkenmuster (`wave = fract(Zeit + Rauschen der Position)`) fest, wie alt man
+  an jeder Stelle sein „sollte“; die Partikel gleichen ihr Alter mit `AGE_SYNC` (0,8/s) daran an
+  (`Alter += SYNC · dt · sin(2π · (wave − Alter)) / 2π`). Ergebnis: große Farbflächen, durch die Geburts-Fronten wandern.
+  Beim Einschalten und bei neuer Partikelzahl wird das Alter aus dem Muster neu verteilt.
+- **Kennzahlen für den Klang** (`partStat`, `readPartStats`): Ein 8×8-Bild mittelt über 4096 Stichproben-Partikel:
+  mittleres Tempo, wie viele seit dem letzten Bild verschluckt wurden, Dichte an der Maus-Kraft. Abgeholt wird das
+  Ergebnis **ohne die Grafikkarte aufzuhalten** (Zwischenspeicher `PIXEL_PACK_BUFFER` + `fenceSync`, meist zwei Bilder
+  später). Läuft nur, wenn der Ton an ist. Klänge: siehe „Ton & Musik“ (`audioBlast`, `audioGather`, `audioSwallow`).
+- **Auto-Play** (`partAutoplayStart/Stop`, `partAutoplay`): Die unsichtbare „Maus“ auf der Pinselbahn zieht meist an
+  und stößt zwischendurch 4–7 s lang ab (`part.autoPull`; die Einstellung des Nutzers bleibt unberührt). Dazu bis zu
+  `AUTO_GHOSTS` (2) **unsichtbare Kräfte** (`ghost: true` in `part.forces`: Orbit, Magnet +/−, Wind – kein Schwarzes
+  Loch), die auf eigenen Bahnen wandern und nach 15–30 s durch eine andere ersetzt werden; sie sind nicht zu sehen
+  (`uG.w` = 0), nicht zu greifen, zählen nicht in der Infozeile und weichen, wenn der Nutzer selbst 12 Kräfte setzt.
+  Alle 7–14 s eine sanfte Explosion (Stärke 45–80 %, mit `audioBurst`). Bei jeder Eingabe blenden die unsichtbaren
+  Kräfte aus. Schwarm und Farbe bleiben, wie der Nutzer sie eingestellt hat.
+- **Flacker-Reduktion:** Neugeborene leuchten weniger auf (× 0,3), Geburtswellen laufen langsamer, Explosionsklang und
+  Auto-Play-Explosionen schwächer; dazu die gemeinsame Helligkeits-Bremse.
+
+### Messwerte (1920×1080; „Bild“ = ganzes Bild inkl. Bloom, CPU + GPU, kleinster von 3 Durchläufen)
+| Stufe | Partikel | Bild, ohne Kräfte | … mit Schwarm | Bild, 12 Kräfte + 4 Explosionen | … mit Schwarm | … + Farbe „Alter“ |
+|---|---|---|---|---|---|---|
+| Niedrig | 36.864 | 0,69 ms | 0,70 ms | 1,28 ms | 1,23 ms | 1,24 ms |
+| Mittel | 102.400 | 0,92 ms | 0,85 ms | 1,55 ms | 1,58 ms | – |
+| Hoch | 262.144 | 1,67 ms | 1,58 ms | 2,23 ms | 2,38 ms | – |
+| Ultra | 524.176 | 2,40 ms | 2,49 ms | 3,08 ms | 3,41 ms | 3,43 ms |
+| Extrem | 1.048.576 | 4,02 ms | 3,74 ms | 4,95 ms | 4,93 ms | 5,10 ms |
+| Maximum | 2.096.704 | 7,11 ms | 6,61 ms | 8,53 ms | 8,18 ms | 8,31 ms |
+- **Schwarm, GPU-Zeit des Rechenschritts** (Raster + `partStep`, ohne Kräfte) ohne → mit Schwarm: Niedrig 0,07 → 0,11 ms,
+  Mittel 0,12 → ≈ 0,2 ms, Hoch 0,28 → 0,49 ms, Ultra 0,58 → 0,88 ms, Extrem 1,11 → 1,23 ms, Maximum 2,02 → 2,00 ms.
+  Der Schwarm kostet also höchstens 0,3 ms pro Bild; auf Extrem/Maximum gleicht das sparsamere Raster die Mehrarbeit aus.
+  Ohne Schwarm sind die Kosten wie vor Schritt 4 (Vergleich direkt hintereinander: 0,67/0,93/1,62/2,35/3,99/7,06 ms).
+  Erste Fassung (ein gemeinsames RGBA32F-Raster für alles, jedes Partikel gezählt) kostete auch ohne Schwarm
+  0,5–1,1 ms mehr auf Extrem/Maximum → deshalb zwei getrennte Raster.
+- **Farbe:** Wolken/Tempo/Alter kosten gleich viel (Maximum 6,91/6,91/7,26 ms); der Alters-Schritt allein
+  0,005/0,03/0,06/0,12/0,23/0,46 ms (Niedrig … Maximum). Kennzahlen für den Klang: nicht messbar (60 FPS auf allen
+  Stufen, Bildkosten mit und ohne Ton gleich).
+- Alle Stufen 60 FPS, GL-Fehler 0, keine ungültigen Partikel (NaN/außerhalb), keine ungültigen Alterswerte. Geprüft
+  außerdem: 72 Kombinationen aus Regler-Extremen des Schwarms × Bildrate (30/60/144/240 FPS) × Stufe, Fenstergröße
+  ändern mit Schwarm, Auto-Play 90 s auf drei Stufen (7–8 Explosionen, unsichtbare Kräfte wechseln, danach alle weg),
+  je 21 Moduswechsel mit Schwarm bzw. Farbe „Alter“.
+- Flacker-Reduktion bei Explosion: größter Helligkeitssprung pro Bild 0,49 → 0,043, Anteil Bildpunkte mit Sprung
+  > 10 %: 10,4 % → 0 % (Farbe „Wolken“); bei Farbe „Alter“ 5,2 % → 0 %.
+- Fluid unverändert: alte und neue Fassung liefern dieselben drei Prüfsummen (`3ff93dc5-b33e3505`, `28e31dc5-e9c55505`,
+  `ee1e9dc5-123c5505`; welche wie oft kommt, streut von Lauf zu Lauf).
+- Ton (Analyser am Ausgang, Musik aus): Stille 0,003, Explosion Spitze 0,27, Sammel-Töne Spitze 0,06–0,08.
 
 ### Grenzen
 - Maximum mit vielen Kräften (8,2 ms) liegt über dem 144-Hz-Budget (6,9 ms) → die Auto-Qualität geht dort auf Extrem.
   FPS wurden nur in der 60-Hz-Vorschau gemessen, nicht am 144-Hz-Monitor.
-- Klang: nur die vorhandenen Klänge (`audioPaint`, `audioClick`, `audioTock`, `audioClear`) wiederverwendet, nicht
-  angehört. Auto-Play: nur eine unsichtbare Kraft auf einer Pinselbahn (`partAutoplay`). Farbe: vorläufig (Schritt 5).
+- **Klang nicht angehört** – nur gemessen, dass er entsteht und wie laut er ist. Ob „Sammeln“ und „Verschlucken“
+  angenehm klingen oder nerven, kann nur ein Mensch beurteilen (Stellschrauben: Lautstärken und Mindestabstände in
+  `audioGather`/`audioSwallow`).
+- Schwarm: Partikel sehen keine einzelnen Nachbarn, nur Mittelwerte ihrer Umgebung. Dadurch wirkt der Schwarm eher wie
+  fließende Bänder und Wolken als wie einzelne Vögel; feine Abstände zwischen einzelnen Partikeln gibt es nicht.
+  Mit Kräften sammelt sich meist der ganze Schwarm an einer Kraft. Standardmäßig ist der Schwarm aus.
+- Farbe „Alter“: Das Alter gleicht sich an ein Wolkenmuster an – Farbflecken einer Explosion halten deshalb nur einige
+  Sekunden. Im Schwarm (alles bewegt sich) sind die Farbunterschiede geringer als im ruhigen Bild.
+- Nach starken Kräften/Explosionen bleiben leere Stellen im Bild lange leer (die Strömung verteilt nicht neu) →
+  Leertaste „Neu verteilen“.
 - In einem fast quadratischen Fenster reicht die Anziehung über fast das ganze Bild.
 - Das Gedränge ist grob (Rasterfeld ≈ 1/128 Bildhöhe): Partikel stoßen sich nicht einzeln ab, sehr feine Strukturen
   bleiben möglich.
@@ -615,6 +701,13 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - `partBlast`, Kräfte und Maus nutzen dieselben Einheiten; Tempo wird auf `MAX_SPEED` begrenzt – das verhindert, dass
   starke Kräfte/Explosionen Partikel durch die Wand oder ins Unendliche schießen.
 - Explosionen erst nach dem Rechenschritt altern lassen (`updateBlasts` nach `swap`), sonst fehlt der erste Stoß.
+- Schwarm: „Zusammenhalt“ braucht eine Grenze (hier: ab 3- bis 8-facher Dichte aus) – ohne sie und ohne „Abstand“ ballte
+  sich alles auf das 100-Fache der Durchschnittsdichte. Neue anziehende Regeln immer mit Abstand = 0 testen.
+- Raster-Textur: additiv gezeichnet wird in `gridV` (32 Bit braucht `EXT_float_blend`); `uGridNorm` muss zur Zahl der
+  wirklich gezählten Partikel passen (`part.gridCount`), sonst stimmen Gedränge und Schwarm-Stärken nicht mehr.
+- `PIXEL_PACK_BUFFER` nach jedem Gebrauch wieder lösen (`bindBuffer(…, null)`), sonst schlagen alle anderen
+  `readPixels`-Aufrufe fehl.
+- Alter nach `fract()` auf < 1 begrenzen (`fract` kann bei winzigen negativen Zahlen genau 1,0 liefern).
 
 ### Ausprobiert und verworfen
 - **Strömung als Kraft aufs Tempo:** Partikel sammelten sich durch ihre Trägheit in dünnen Fäden und an den Wänden →
@@ -626,16 +719,29 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Bewegungsunschärfe.
 - **Helligkeit:** zuerst zu dunkel im Ruhezustand bzw. weiß ausgebrannte Kerne → `BRIGHT` 0,5, farbtreue
   Tonwert-Kompression, Grundhelligkeit 0,75.
+- **Schwarm, weite Umgebung mit 16 Feldern, ohne Schlängeln:** der ganze Schwarm wurde eine einzige Masse, die an den
+  Wänden entlang kreist → 32 Felder (`WIDE_LEVEL` 1) und gemeinsames Schlängeln; `COHESION` 0,5 ergab einen einzigen
+  Klumpen, 0,25 nur flächige Schleier → 0,4.
+- **Ein Raster für alles (RGBA32F, alle Partikel):** teurer auch bei ausgeschaltetem Schwarm → getrennte Raster.
+- **Farbe „Alter“ mit schwacher Angleichung (`AGE_SYNC` 0,25):** fein gestreifte, blasse Mischfarben → 0,8.
+  Farbwechsel als ein Regler 0…2 (Wolken → Alter lief sichtbar über „Tempo“) → drei eigene Anteile (`part.colorW`).
+- **Verschluck-Ton bei jeder Messung (bis 9/s):** Dauerregen → höchstens ~4/s, zufällige Abstände.
 
 ### Testen
-- Lokaler Server (`python -m http.server`, in diesem Chat Port 8791, Name `satisim-b` in `.claude/launch.json`),
+- Lokaler Server (`python -m http.server`, Name `satisim` = Port 8765 bzw. `satisim-b` = Port 8791 in
+  `.claude/launch.json`),
   Seite mit `?v=N` neu laden (Cache). Hilfen in `.claude/` (nicht im Repo): `p-harness.js` (`__p.cost(n)` = ms pro Bild
   inkl. GPU-Wartezeit, `__p.stats()` = ungültige Partikel), `p-setup.js` (Auto-Play/Auto-Qualität aus, Partikel-Modus,
   `__crop` für Ausschnitt in echter Pixelgröße, `__sweep` führt die Maus, `__errors`), `run-p1.js` (alle Stufen: Bildkosten,
   GPU-Zeit per Timer-Query, FPS, GL-Fehler, 21 Moduswechsel, Fluid-Prüfsumme; `window.__pre` für Vorbereitung wie
-  Kräfte setzen). Ergebnis in `window.__res`.
+  Kräfte setzen). Ergebnis in `window.__res`. Für Schritt 4/5: `s4-tools.js` (`__s.stats()` = Kennzahlen des Schwarms:
+  Ordnung, Dichte-Kontrast, Anteil am Rand; `__s.run(n)`, `__s.set({…})`), `run-p4.js` (Schwarm an/aus auf allen Stufen,
+  Regler-Extreme, `window.__opt = { forces: true, quick: true }`), `run-p5.js` (Farben, Alter, Auto-Play, alles zusammen),
+  `run-ab.js` (Fluid-Prüfsumme 12-mal), `patchlib.py` (Änderungen an `index.html` per Python, erhält die Zeilenenden).
+- Ton prüfen: echter Klick in die Vorschau (sonst läuft der AudioContext nicht), dann Analyser an `audio.master`.
+  Direkt nach einem langen JavaScript-Aufruf zeigt ein Bildschirmfoto manchmal noch das alte Bild → 1–2 s warten.
 - Ist die Vorschau verdeckt, ist `requestAnimationFrame` gedrosselt → FPS dann nicht messbar, stattdessen `__p.cost`.
-- Fluid unverändert: `.claude/ab.js` mit alter Fassung (`.claude/old.html`) vergleichen – die Prüfsumme streut,
-  verglichen wird der häufigste Wert aus ~12 Läufen.
+- Fluid unverändert: `.claude/ab.js` mit alter Fassung (`.claude/old.html`, `.claude/pre4.html`) vergleichen – die
+  Prüfsumme streut zwischen drei Werten; verglichen wird, ob alte und neue Fassung dieselben Werte liefern.
 - Bedienung zusätzlich mit echten Maus-/Tasten-Eingaben im Browser geprüft (Tab, R, Leertaste, 1–5, Ziehen, Mausrad,
-  Rechtsklick, Klick). Verkleinerte Bildschirmfotos zeigen Partikel nur als Nebel → `__crop` benutzen.
+  Rechtsklick, Klick, `S`, `C`, Knöpfe „Tempo“/„Alter“ im Panel). Verkleinerte Bildschirmfotos zeigen Partikel nur als Nebel → `__crop` benutzen.
