@@ -181,7 +181,7 @@
   #looks kbd, .btn kbd { margin: 0; opacity: .7; }
   /* Fallrichtung tritt zurück, solange die Schwerkraft aus ist */
   #gravityDirRow { transition: opacity .4s var(--smooth); }
-  #gravityDirRow.unused { opacity: .35; }
+  #gravityDirRow.unused, #liqGravityDirRow.unused { opacity: .35; }
   /* Look-Regler klappen weich auf und zu */
   .look-param, .fold { overflow: hidden; max-height: 60px; margin: 12px 0 0;
                 transition: max-height .45s var(--smooth), opacity .35s var(--smooth), margin .45s var(--smooth); }
@@ -587,7 +587,32 @@
   </div>
   <div class="sec" data-mode="liquid">
     <h3>Flüssigkeit (Partikel)</h3>
-    <div class="sub" style="margin-top:0">Tausende einzelne Partikel, die sich zusammen wie Wasser verhalten: Sie fallen, drücken gegeneinander und schwappen.</div>
+    <div class="row">
+      <label for="liqGravity">Schwerkraft <output id="liqGravityOut"></output></label>
+      <input id="liqGravity" type="range" min="0" max="2" step="0.01">
+    </div>
+    <div class="row" id="liqGravityDirRow">
+      <label for="liqGravityDir">Fallrichtung <output id="liqGravityDirOut"></output></label>
+      <input id="liqGravityDir" type="range" min="-180" max="180" step="5">
+    </div>
+    <div class="row">
+      <label for="liqViscosity">Viskosität <output id="liqViscosityOut"></output></label>
+      <input id="liqViscosity" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="liqCohesion">Zusammenhalt <output id="liqCohesionOut"></output></label>
+      <input id="liqCohesion" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="liqStiff">Steifigkeit <output id="liqStiffOut"></output></label>
+      <input id="liqStiff" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="liqDensity">Dichte <output id="liqDensityOut"></output></label>
+      <input id="liqDensity" type="range" min="0.7" max="1.4" step="0.01">
+    </div>
+    <div class="hint-reset">Doppelklick auf einen Regler = Standardwert</div>
+    <div class="sub">Viskosität = wie zäh (Wasser … Honig) · Zusammenhalt = Oberflächenspannung (Tropfen bleiben beisammen) · Steifigkeit = wie wenig sich die Flüssigkeit zusammendrücken lässt · Dichte = wie eng die Partikel gepackt sind.</div>
     <button class="btn" id="liqRefill"><span>Neu einfüllen</span><kbd>Leertaste</kbd></button>
   </div>
   <div class="sec" id="paletteSection">
@@ -685,15 +710,15 @@ const CONFIG = {
 // iter = Mandelbrot-Modus: Obergrenze für die Rechendurchgänge pro Bildpunkt
 // pside = Partikel-Modus: Seitenlänge der Zustands-Textur (Anzahl der Partikel = pside × pside),
 // pscale = Partikel-Modus: Auflösung des Spuren-Bilds als Vielfaches der Bildschirmauflösung
-// lside = Flüssigkeits-Modus: Seitenlänge der Zustands-Textur (Anzahl der Partikel = lside × lside),
-// lsteps = Flüssigkeits-Modus: Rechenschritte pro 1/60 Sekunde (mehr Partikel = kleinere Partikel = kürzere Schritte)
+// lside = Flüssigkeits-Modus: Seitenlänge der Zustands-Textur (Platz für lside × lside Partikel; beim Einfüllen
+// kommen 60 % davon ins Bild, der Rest ist Vorrat)
 const QUALITY = [
-  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4, fscale: 0.5, iter: 2000, pside: 192, pscale: 0.5, lside: 64, lsteps: 6 },
-  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2, fscale: 0.75, iter: 3000, pside: 320, pscale: 0.75, lside: 96, lsteps: 10 },
-  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2, fscale: 1, iter: 4500, pside: 512, pscale: 1, lside: 128, lsteps: 13 },
-  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 6000, pside: 724, pscale: 1, lside: 160, lsteps: 16 },
-  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 8000, pside: 1024, pscale: 1, lside: 192, lsteps: 19, heavy: true },
-  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 10000, pside: 1448, pscale: 1, lside: 224, lsteps: 22, heavy: true },
+  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4, fscale: 0.5, iter: 2000, pside: 192, pscale: 0.5, lside: 80 },
+  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2, fscale: 0.75, iter: 3000, pside: 320, pscale: 0.75, lside: 128 },
+  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2, fscale: 1, iter: 4500, pside: 512, pscale: 1, lside: 160 },
+  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 6000, pside: 724, pscale: 1, lside: 208 },
+  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 8000, pside: 1024, pscale: 1, lside: 256, heavy: true },
+  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 10000, pside: 1448, pscale: 1, lside: 288, heavy: true },
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
@@ -769,6 +794,12 @@ const PARAMS = {
   swarmSep:    { target: 0.5,  current: 0.5,  def: 0.5  },  // Schwarm: Abstand = wie stark sie dichtem Gedränge ausweichen
   swarmCoh:    { target: 0.5,  current: 0.5,  def: 0.5  },  // Schwarm: Zusammenhalt = wie stark es sie zur Mitte ihrer Gruppe zieht
   swarmSpeed:  { target: 0.5,  current: 0.5,  def: 0.5  },  // Schwarm: Tempo, mit dem die Partikel von selbst schwimmen
+  liqGravity:    { target: 1,    current: 1,    def: 1    },  // Flüssigkeit: Schwerkraft (1 = normal, 0 = schwerelos)
+  liqGravityDir: { target: 0,    current: 0,    def: 0    },  // Flüssigkeit: Fallrichtung in Grad (0 = unten, 90 = rechts, ±180 = oben)
+  liqViscosity:  { target: 0.2,  current: 0.2,  def: 0.2  },  // Flüssigkeit: Viskosität = Zähigkeit (0 = dünn wie Wasser, 1 = zäh wie Honig)
+  liqCohesion:   { target: 0.3,  current: 0.3,  def: 0.3  },  // Flüssigkeit: Zusammenhalt = Oberflächenspannung (0 = aus)
+  liqStiff:      { target: 0.85, current: 0.85, def: 0.85 },  // Flüssigkeit: Steifigkeit (0 = weich und federnd, 1 = kaum zusammendrückbar)
+  liqDensity:    { target: 1,    current: 1,    def: 1    },  // Flüssigkeit: Dichte = wie eng die Partikel gepackt sind
   forceStrength: { target: 1,   current: 1,   def: 1   },  // Partikel-Kräfte: Stärke der ausgewählten (bzw. nächsten) Kraft
   forceRange:    { target: 0.2, current: 0.2, def: 0.2 },  // Partikel-Kräfte: Reichweite (Anteil der Bildhöhe)
   forceDir:      { target: 0,   current: 0,   def: 0   },  // Partikel-Kräfte: Windrichtung in Grad (0 = rechts, 90 = oben)
@@ -2729,7 +2760,8 @@ bindSlider('curl',      PARAMS.curl,      v => v.toFixed(0));
 bindSlider('fade',      PARAMS.fade,      v => v === 0 ? 'nie' : v.toFixed(2));
 bindSlider('gravity',   PARAMS.gravity,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 // Fallrichtung: 0° = unten (Mitte des Reglers), nach rechts gedreht = rechts herum bis oben, nach links entsprechend
-bindSlider('gravityDir', PARAMS.gravityDir, v => ['unten ↓', 'unten rechts ↘', 'rechts →', 'oben rechts ↗', 'oben ↑', 'oben links ↖', 'links ←', 'unten links ↙'][Math.round((v + 360) % 360 / 45) % 8]);
+const fallDirLabel = v => ['unten ↓', 'unten rechts ↘', 'rechts →', 'oben rechts ↗', 'oben ↑', 'oben links ↖', 'links ←', 'unten links ↙'][Math.round((v + 360) % 360 / 45) % 8];
+bindSlider('gravityDir', PARAMS.gravityDir, fallDirLabel);
 
 // Werkzeug-Auswahl (Farbe / Hindernis / Radierer)
 const toolBox = $('tools');
@@ -5719,31 +5751,63 @@ MODES.push({
 //
 // Ränder: Nahe am Bildrand "sieht" ein Partikel das Spiegelbild seiner Nachbarn (und von sich selbst) hinter der
 // Wand. Dadurch stimmt die Dichte auch am Rand, und die Wand drückt weich zurück.
+//
+// Gleiches Gefühl auf jeder Qualitätsstufe: Alle Partikel zusammen füllen immer denselben Anteil des Bildes – mehr
+// Partikel heißt kleinere Partikel. Gerechnet wird in "Bildhöhen" und Sekunden; alles, was von der Partikelgröße
+// abhängt (Schrittdauer, Zähigkeit, Zusammenhalt), wird darauf umgerechnet.
 const LIQUID = {
-  FILL: 0.3,         // so viel der Bildfläche füllt die Flüssigkeit
+  FILL_MAX: 0.5,     // so viel der Bildfläche füllen ALLE Partikel zusammen (bei Dichte 100 %)
+  START: 0.6,        // dieser Anteil der Partikel kommt beim Einfüllen ins Bild (der Rest ist Vorrat)
   REACH: 2.15,       // Reichweite: so weit "spürt" ein Partikel seine Nachbarn, als Vielfaches des Partikelabstands
-  GRAVITY: 4,        // Schwerkraft: Beschleunigung in Bildhöhen pro Sekunde²
+  STEP_RATE: 4.5,    // Rechenschritte pro Sekunde = STEP_RATE / Partikelabstand. Druck breitet sich pro Schritt nur
+                     // etwa einen Partikelabstand weit aus – mit diesem Wert trägt sich ein volles Becken selbst
+                     // (unten nur etwa 5 % dichter als oben). Kleinere Partikel brauchen dafür kürzere Schritte.
+  MAX_RATE: 2400,    // mehr Rechenschritte pro Sekunde werden es nie (sehr schmale Fenster)
+  MAX_STEPS: 64,     // … und nie mehr als so viele in einem Bild (danach läuft die Zeit lieber etwas langsamer)
+  GRAVITY: 4,        // Schwerkraft bei 100 %: Beschleunigung in Bildhöhen pro Sekunde²
   MAX_SPEED: 4,      // schneller wird kein Partikel (Bildhöhen pro Sekunde)
-  STIFF: 0.45,       // Steifigkeit: Anteil des Dichte-Fehlers, der pro Teilschritt korrigiert wird. Weil sich die
-                     // Korrekturen benachbarter Partikel überlagern, beginnt es ab etwa 0,6 zu zittern.
+  STIFF_MIN: 0.2,    // Steifigkeit (Regler 0 … 100 %): Anteil des Dichte-Fehlers, der pro Teilschritt korrigiert wird.
+  STIFF_MAX: 0.45,   // Weil sich die Korrekturen benachbarter Partikel überlagern, beginnt es ab etwa 0,6 zu zittern
+                     // (in stark zusammengedrückter Flüssigkeit schon früher).
   SPREAD: 0.012,     // zusätzliches Auseinanderschieben sehr naher Partikel (verhindert Klümpchen)
   SPREAD_AT: 0.2,    // … bezogen auf diesen Abstand (Anteil der Reichweite)
   MAX_PUSH: 0.2,     // weiter als so wird ein Partikel pro Teilschritt nicht geschoben (Anteil der Reichweite)
-  MAX_FIX: 0.05,     // so viel zusätzliches Tempo darf das Wegschieben einem Partikel höchstens geben (Bildhöhen/s)
-  VISCOSITY: 0.03,   // Zähigkeit: so stark gleicht ein Partikel pro Teilschritt sein Tempo den Nachbarn an (0..1)
+  MAX_FIX: 0.05,     // so viel zusätzliches Tempo darf das Wegschieben einem Partikel pro Teilschritt höchstens geben
+                     // (Bildhöhen/s). Ohne diese Grenze macht jeder kleine Schubs bei so kurzen Schritten ein großes
+                     // Tempo – die Flüssigkeit "kocht" dann wie Gas.
+  CRUSH: 1.5,        // ab dieser Dichte (1 = normal) gilt ein Partikel als "extrem zusammengepresst": Es wird dann nur noch
+                     // weggerückt, gewinnt dabei aber kein Tempo mehr (ab CRUSH + 0,6 gar keins)
+  VISCOSITY: 0.004,  // Viskosität bei 100 %: so schnell gleichen Nachbarn ihr Tempo an (Bildhöhen² pro Sekunde)
+  VISC_MAX: 0.6,     // … pro Teilschritt höchstens zu diesem Anteil
+  DRAG: 5,           // Viskosität bei 100 %: zusätzliche Bremsung pro Sekunde (zähe Flüssigkeit kriecht)
+  COHESION: 60,      // Zusammenhalt bei 100 %: Zug zwischen Nachbarn (Bildhöhen pro Sekunde², bei Bezugs-Reichweite)
+  COH_REF: 0.0127,   // Bezugs-Reichweite dafür (Stufe "Hoch" im Format 16:9). Bei kleineren Partikeln wird der Zug
+                     // stärker, damit gleich große Tropfen auf jeder Stufe gleich gut zusammenhalten.
+  COH_FROM: 0.5,     // der Zug beginnt bei diesem Abstand (Anteil der Reichweite ≈ normaler Abstand zum Nachbarn)
+  RESCUE: 0.08,      // Teilt sich ein Partikel sein Rasterfeld mit einem anderen (es ist dann für die übrigen unsichtbar),
+                     // rückt es pro Teilschritt so weit von ihm ab (Anteil der Reichweite) – sonst könnte stark
+                     // zusammengepresste Flüssigkeit unbemerkt immer weiter in sich zusammenfallen.
+  BOUNCE: 0.2,       // so viel Tempo bleibt übrig, wenn ein schnelles Partikel vom Rand abprallt
+  BOUNCE_FROM: 0.3,  // … erst ab diesem Tempo (Bildhöhen/s); langsamere bleiben einfach liegen
   JITTER: 0.5,       // der Mindestabstand zum Rand ist je Partikel etwas anders (sonst lägen in einer Ecke alle exakt aufeinander)
+  DENSITY_MAX: 1.4,  // größter Wert des Reglers "Dichte" (für ihn wird das Such-Raster angelegt)
 };
 
 const liq = {
   state: null,            // alle Partikel (Doppelpuffer): xy = Ort im Bild (0..1), zw = Tempo (Bildhöhen pro Sekunde)
   pred: null,             // Zwischenergebnis je Partikel: xy = Tempo-Ausgleich mit den Nachbarn, z = Druck, w = Dichte
-  grid: null,             // das Such-Raster
-  side: 0,                // Seitenlänge der Zustands-Textur → Anzahl der Partikel = side × side
+  grid: null,             // das Such-Raster (angelegt für die kleinste Partikelgröße; benutzt wird der Teil gw × gh)
+  gw: 0, gh: 0,
+  side: 0,                // Seitenlänge der Zustands-Textur → Platz für side × side Partikel
+  count: 0,               // so viele Partikel sind im Bild (die ersten "count" der Textur; der Rest ist Vorrat)
   aspect: 1,              // Breite / Höhe des Bildes
   d: 0, h: 0,             // Partikelabstand und Reichweite (in Bildhöhen)
+  H: 1 / 600,             // Dauer eines Teilschritts
   rho0: 1,                // Soll-Dichte (Summe der Nachbar-Gewichte bei gleichmäßiger Packung)
   acc: 0,                 // Zeit, die noch nicht gerechnet ist (kleiner als ein Teilschritt)
+  tick: 0,                // Nummer des Teilschritts (gerade/ungerade bestimmt die Zeichen-Reihenfolge im Such-Raster)
   fresh: true,            // true = Partikel müssen neu eingefüllt werden
+  gravity: [0, -4],       // Schwerkraft, mit der gerade gerechnet wird
   phase: Math.random(),   // wandernde Farbverschiebung
   compileMs: 0,           // so lange hat das Übersetzen der Shader gedauert
 };
@@ -5753,9 +5817,12 @@ const liq = {
 // damit Kreise rund bleiben und sich alles in jedem Fensterformat gleich anfühlt.
 const liqCommonGLSL = partHashGLSL + `
   uniform sampler2D uState;     // alle Partikel: xy = Ort im Bild (0..1), zw = Tempo (Bildhöhen pro Sekunde)
+  uniform int uSide;            // Seitenlänge der Zustands-Textur
+  uniform int uCount;           // so viele Partikel sind im Bild (die mit den kleinsten Nummern)
   uniform float uDt;            // Dauer eines Teilschritts (Sekunden)
   uniform float uAspect;        // Breite / Höhe des Bildes
   uniform vec2 uGravity;        // Schwerkraft (Bildhöhen pro Sekunde²)
+  uniform float uKeep;          // so viel Tempo bleibt nach diesem Teilschritt übrig (Bremsung zäher Flüssigkeit)
   uniform float uH;             // Reichweite eines Partikels (Bildhöhen)
   uniform float uMargin;        // Mindestabstand zum Bildrand (Bildhöhen)
   uniform float uJitter;        // … je Partikel um bis zu diesen Anteil größer
@@ -5768,7 +5835,7 @@ const liqCommonGLSL = partHashGLSL + `
   }
   // Vorhersage: Wo wäre das Partikel nach diesem Teilschritt, wenn es allein wäre? p = Ort (Bildhöhen), v = Tempo
   void predict (vec4 s, vec2 id, out vec2 p, out vec2 v) {
-    v = s.zw + uGravity * uDt;
+    v = (s.zw + uGravity * uDt) * uKeep;
     float sp = length(v);
     if (sp > uMaxSpeed) v *= uMaxSpeed / sp;
     p = inside(s.xy * vec2(uAspect, 1.0) + v * uDt, id);
@@ -5777,34 +5844,54 @@ const liqCommonGLSL = partHashGLSL + `
   ivec2 cellOf (vec2 p) { return ivec2(clamp(floor(p / vec2(uAspect, 1.0) * uGridSize), vec2(0.0), uGridSize - 1.0)); }
 `;
 
-// Start: die Partikel als ordentlich gepackter Block (uBox = linke untere Ecke und Breite, in Bildhöhen)
+// Einfüllen: die Partikel im Bild als ordentlich gepackter Block (uBox = linke untere Ecke und Breite, in Bildhöhen);
+// der Vorrat wartet außerhalb der Rechnung
 const liqInitSrc = header + `precision highp int;` + partHashGLSL + `
-  uniform int uSide;
+  uniform int uSide, uCount;
   uniform float uAspect, uD;
   uniform vec3 uBox;
   void main () {
     ivec2 id = ivec2(gl_FragCoord.xy);
     int k = id.x + id.y * uSide, cols = max(1, int(uBox.z / uD));
     vec2 p = uBox.xy + (vec2(k % cols, k / cols) + 0.5 + 0.3 * (hash2(vec2(id) + 0.5) - 0.5)) * uD;
-    fragColor = vec4(p / vec2(uAspect, 1.0), 0.0, 0.0);
+    fragColor = k < uCount ? vec4(p / vec2(uAspect, 1.0), 0.0, 0.0) : vec4(0.5, 0.5, 0.0, 0.0);
+  }`;
+
+// Andere Qualitätsstufe = andere Partikelzahl: die Flüssigkeit bleibt, wo sie ist. Werden es mehr Partikel, entstehen
+// sie als Kopien dicht neben den alten (kleiner zufälliger Versatz); werden es weniger, bleibt eine Auswahl übrig.
+const liqResizeSrc = header + `precision highp int;` + partHashGLSL + `
+  uniform sampler2D uOld;
+  uniform int uSide, uCount, uOldSide, uOldCount;
+  uniform float uAspect, uSpread;
+  void main () {
+    ivec2 id = ivec2(gl_FragCoord.xy);
+    int k = id.x + id.y * uSide;
+    if (k >= uCount || uOldCount < 1) { fragColor = vec4(0.5, 0.5, 0.0, 0.0); return; }
+    int ko = min(int(float(k) * float(uOldCount) / float(uCount)), uOldCount - 1);
+    vec4 s = texelFetch(uOld, ivec2(ko % uOldSide, ko / uOldSide), 0);
+    vec2 shift = (hash2(vec2(id) + 0.5) - 0.5) * uSpread;
+    fragColor = vec4(clamp(s.xy + shift / vec2(uAspect, 1.0), 0.001, 0.999), s.zw);
   }`;
 
 // Such-Raster füllen: jedes Partikel ist ein Punkt, der in sein Rasterfeld schreibt.
-// uPayload 0: Ort + Tempo (für das Messen der Dichte), 1: Ort + Druck (für das Wegschieben)
+// uPayload 0: Ort + Tempo (für das Messen der Dichte), 1: Ort + Druck + Dichte (für das Wegschieben)
 const liqGridVertex = `#version 300 es
   precision highp float;
   precision highp int;
   precision highp sampler2D;
   ` + liqCommonGLSL + `
   uniform sampler2D uPred;
-  uniform int uSide;
   uniform int uPayload;
+  uniform int uFlip;           // 1 = Partikel in umgekehrter Reihenfolge zeichnen
   flat out vec4 vData;
   void main () {
-    ivec2 id = ivec2(gl_VertexID % uSide, gl_VertexID / uSide);
+    // Landen zwei Partikel im selben Feld, gewinnt das zuletzt gezeichnete. Die Reihenfolge wechselt von Teilschritt
+    // zu Teilschritt – so ist jedes der beiden abwechselnd für die Nachbarn sichtbar, und keins bleibt unbemerkt.
+    int k = uFlip == 1 ? uCount - 1 - gl_VertexID : gl_VertexID;
+    ivec2 id = ivec2(k % uSide, k / uSide);
     vec2 p, v;
     predict(texelFetch(uState, id, 0), vec2(id), p, v);
-    vData = uPayload == 0 ? vec4(p, v) : vec4(p, texelFetch(uPred, id, 0).z, 0.0);
+    vData = uPayload == 0 ? vec4(p, v) : vec4(p, texelFetch(uPred, id, 0).zw);
     gl_Position = vec4((vec2(cellOf(p)) + 0.5) / uGridSize * 2.0 - 1.0, 0.0, 1.0);
     gl_PointSize = 1.0;
   }`;
@@ -5817,12 +5904,12 @@ const liqGridSrc = `#version 300 es
 // Dichte messen → Druck. Jedes Partikel zählt seine Nachbarn in Reichweite, nahe stärker gewichtet als ferne.
 // Ist es dichter gepackt als gewollt, bekommt es einen (negativen) "Druck": wie stark es und seine Nachbarn
 // auseinandergeschoben werden müssen, damit die Dichte wieder stimmt. Nebenbei: Tempo-Ausgleich mit den Nachbarn
-// (Zähigkeit) – zähe Flüssigkeit bewegt sich mehr im Verbund.
+// (Viskosität) – zähe Flüssigkeit bewegt sich mehr im Verbund.
 const liqLambdaSrc = header + `precision highp int;` + liqCommonGLSL + `
   uniform sampler2D uGrid;      // Raster: xy = Ort (Bildhöhen), zw = Tempo des Partikels in diesem Feld (x < 0 = leer)
   uniform float uRho0;          // Soll-Dichte
   uniform float uStiff;         // Steifigkeit (0..1)
-  uniform float uVisc;          // Zähigkeit
+  uniform float uVisc;          // Viskosität: Anteil des Tempo-Unterschieds zu den Nachbarn, der ausgeglichen wird
   float rho; vec2 gsum; float g2;
   // einen Nachbarn (oder sein Spiegelbild) im Abstand r mitzählen; gibt sein Gewicht zurück
   float feel (vec2 r) {
@@ -5837,6 +5924,7 @@ const liqLambdaSrc = header + `precision highp int;` + liqCommonGLSL + `
   }
   void main () {
     ivec2 id = ivec2(gl_FragCoord.xy);
+    if (id.x + id.y * uSide >= uCount) { fragColor = vec4(0.0); return; }    // Vorrat: nicht im Bild
     vec2 p, v;
     predict(texelFetch(uState, id, 0), vec2(id), p, v);
     rho = 1.0; gsum = vec2(0.0); g2 = 0.0;                    // (1 = das Partikel selbst)
@@ -5872,30 +5960,43 @@ const liqLambdaSrc = header + `precision highp int;` + liqCommonGLSL + `
   }`;
 
 // Wegschieben: Jedes Partikel wird von seinen Nachbarn weggeschoben – umso stärker, je höher sein eigener Druck und
-// der des Nachbarn ist. Danach steht der neue Ort fest; das neue Tempo ist (neuer Ort − alter Ort) / Zeit.
+// der des Nachbarn ist. Der Zusammenhalt (Oberflächenspannung) wirkt dagegen wie eine dünne, dehnbare Haut: Partikel
+// an der Oberfläche – erkennbar daran, dass sie weniger Nachbarn haben als im Inneren – ziehen einander an. Die Haut
+// zieht sich zusammen, glättet Wellen und macht Tropfen rund. Im Inneren wirkt er nicht (dort zöge er die Partikel
+// nur zu einem starren Gitter zusammen – die Flüssigkeit würde zäh wie Gel).
+// Danach steht der neue Ort fest; das neue Tempo ist (neuer Ort − alter Ort) / Zeit.
 const liqPushSrc = header + `precision highp int;` + liqCommonGLSL + `
-  uniform sampler2D uGrid;      // Raster: xy = Ort (Bildhöhen), z = Druck des Partikels in diesem Feld (x < 0 = leer)
+  uniform sampler2D uGrid;      // Raster: xy = Ort (Bildhöhen), z = Druck, w = Dichte des Partikels in diesem Feld (x < 0 = leer)
   uniform sampler2D uPred;      // eigener Tempo-Ausgleich (xy) und eigener Druck (z)
   uniform float uRho0;
   uniform float uSpread, uSpreadW;   // Auseinanderschieben sehr naher Partikel: Stärke und Bezugs-Gewicht
+  uniform float uCoh, uCohFrom;      // Zusammenhalt: Stärke und Abstand, ab dem er zieht (Anteil der Reichweite)
+  uniform float uRescue;        // Abrücken von einem Partikel im selben Rasterfeld
   uniform float uMaxPush;       // weiter wird ein Partikel pro Teilschritt nicht geschoben (Bildhöhen)
   uniform float uMaxFix;        // so viel zusätzliches Tempo darf das Schieben höchstens geben
+  uniform vec2 uCrush;          // Dichte, ab der die Flüssigkeit als "extrem zusammengepresst" gilt (Beginn, voll)
+  uniform vec2 uBounce;         // Abprallen am Rand: x = Anteil des Tempos, der zurückkommt, y = erst ab diesem Tempo
   float lam; vec2 disp;
-  // von einem Nachbarn (oder seinem Spiegelbild) im Abstand r weggeschoben werden; lj = dessen Druck
-  void push (vec2 r, float lj) {
+  // von einem Nachbarn (oder seinem Spiegelbild) im Abstand r weggeschoben werden; lj = dessen Druck,
+  // pull = Stärke des Zusammenhalts (0 bei Spiegelbildern: die Wand zieht nicht an)
+  void push (vec2 r, float lj, float pull) {
     float r2 = dot(r, r);
     if (r2 >= uH * uH) return;
     float q = sqrt(r2) / uH, w = 1.0 - q * q, g = 7.5 * (1.0 - q) * (1.0 - q);
     float tight = w * w * w / uSpreadW;
     tight *= tight; tight *= tight;
-    disp -= (lam + lj - uSpread * tight) * g * r / max(q * uH, 1e-9);
+    float amount = (lam + lj - uSpread * tight) * g + pull * max(q - uCohFrom, 0.0) * (1.0 - q);
+    disp -= amount * r / max(q * uH, 1e-9);
   }
   void main () {
     ivec2 id = ivec2(gl_FragCoord.xy);
     vec4 s = texelFetch(uState, id, 0), own = texelFetch(uPred, id, 0);
+    if (id.x + id.y * uSide >= uCount) { fragColor = s; return; }            // Vorrat: nicht im Bild
     vec2 p, v;
     predict(s, vec2(id), p, v);
     lam = own.z; disp = vec2(0.0);
+    // Zusammenhalt: wie sehr dieses Partikel zur Oberfläche gehört (Dichte unter dem Soll) …
+    float skin = uCoh * clamp((1.02 - own.w) * 6.0, 0.0, 1.0);
     float wx = p.x < uH ? 0.0 : p.x > uAspect - uH ? uAspect : -1.0;
     float wy = p.y < uH ? 0.0 : p.y > 1.0 - uH ? 1.0 : -1.0;
     ivec2 c = cellOf(p), size = ivec2(uGridSize);
@@ -5906,16 +6007,17 @@ const liqPushSrc = header + `precision highp int;` + liqCommonGLSL + `
       if (g.x < -0.5) continue;
       vec2 r = p - g.xy;
       if (dot(r, r) < 1e-12) continue;
-      push(r, g.z);
+      push(r, g.z, skin * clamp((1.02 - g.w) * 6.0, 0.0, 1.0));   // … mal dasselbe für den Nachbarn: beide ziehen gleich stark
+      if (i == 0 && j == 0) disp += uRescue * r / max(length(r), 1e-9);   // gleiches Rasterfeld: abrücken
       vec2 m = p + g.xy - 2.0 * vec2(wx, wy);
-      if (wx >= 0.0) push(vec2(m.x, r.y), g.z);
-      if (wy >= 0.0) push(vec2(r.x, m.y), g.z);
-      if (wx >= 0.0 && wy >= 0.0) push(m, g.z);
+      if (wx >= 0.0) push(vec2(m.x, r.y), g.z, 0.0);
+      if (wy >= 0.0) push(vec2(r.x, m.y), g.z, 0.0);
+      if (wx >= 0.0 && wy >= 0.0) push(m, g.z, 0.0);
     }
     vec2 m = 2.0 * (p - vec2(wx, wy));
-    if (wx >= 0.0) push(vec2(m.x, 0.0), lam);
-    if (wy >= 0.0) push(vec2(0.0, m.y), lam);
-    if (wx >= 0.0 && wy >= 0.0) push(m, lam);
+    if (wx >= 0.0) push(vec2(m.x, 0.0), lam, 0.0);
+    if (wy >= 0.0) push(vec2(0.0, m.y), lam, 0.0);
+    if (wx >= 0.0 && wy >= 0.0) push(m, lam, 0.0);
     vec2 dp = disp * uH / uRho0;
     float len = length(dp);
     if (len > uMaxPush) dp *= uMaxPush / len;
@@ -5924,15 +6026,26 @@ const liqPushSrc = header + `precision highp int;` + liqCommonGLSL + `
     vec2 vn = (pn - s.xy * vec2(uAspect, 1.0)) / uDt + own.xy;
     // Das Wegschieben darf nicht beliebig viel Tempo erzeugen (stark zusammengepresste Partikel entspannen sich
     // dann über mehrere Schritte, statt auseinanderzuschießen)
+    // Extrem zusammengepresst (z. B. alle Partikel in einer Ecke)? Dann werden sie nur auseinandergerückt, ohne
+    // dabei Tempo zu gewinnen, und ihr Tempo wird gebremst – der Klumpen entfaltet sich, statt zu explodieren.
+    float crush = smoothstep(uCrush.x, uCrush.y, own.w);
     vec2 fix = vn - v;
-    float fl = length(fix), lim = length(v) + uMaxFix;
-    if (fl > lim) vn = v + fix * (lim / fl);
+    float fl = length(fix), lim = (length(v) + uMaxFix) * (1.0 - crush);
+    if (fl > lim) vn = v + fix * (lim / max(fl, 1e-9));
+    vn *= 1.0 - 0.25 * crush;
+    // Rand: Wer schnell auf eine Wand zufliegt, prallt weich ab – ein kleiner Teil des Tempos kommt zurück.
+    // (Langsame Partikel und alles, was am Rand liegt, bleiben einfach liegen.)
+    vec2 zone = vec2(0.5 * uH);
+    vec2 side = vec2(lessThan(p, zone)) - vec2(greaterThan(p, vec2(uAspect, 1.0) - zone));   // +1 / −1 = Wand links/unten bzw. rechts/oben, 0 = keine
+    vec2 into = max(-side * v, 0.0);                          // Tempo zur Wand hin
+    vec2 back = uBounce.x * into * smoothstep(uBounce.y, 2.5 * uBounce.y, into);
+    vn += side * max(back - side * vn, 0.0) * step(1e-6, back);   // mindestens "back" von der Wand weg
     float sp = length(vn);
     if (sp > uMaxSpeed) vn *= uMaxSpeed / sp;
     fragColor = vec4(pn / vec2(uAspect, 1.0), vn);
   }`;
 
-// Vorläufige Anzeige (Prototyp): jedes Partikel als weiches Scheibchen, Farbe nach Tempo
+// Vorläufige Anzeige: jedes Partikel als weiches Scheibchen, Farbe nach Tempo
 const liqDotsVertex = `#version 300 es
   precision highp float;
   precision highp int;
@@ -5967,6 +6080,7 @@ function liqCompile() {
   if (programs.liqGrid) return;
   const t0 = performance.now();
   programs.liqInit = makeProgram(liqInitSrc);
+  programs.liqResize = makeProgram(liqResizeSrc);
   programs.liqGrid = makeProgram(liqGridSrc, compile(gl.VERTEX_SHADER, liqGridVertex));
   programs.liqLambda = makeProgram(liqLambdaSrc);
   programs.liqPush = makeProgram(liqPushSrc);
@@ -5992,67 +6106,107 @@ function liqRestDensity() {
 function ensureLiqBuffers() {
   liqCompile();
   const q = QUALITY[qualityLevel], side = Math.min(q.lside, maxTextureSize), n = side * side;
+  const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
   gl.disable(gl.BLEND);
   if (side !== liq.side) {
+    const fresh = createDoubleFBO(side, side, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+    let count = 0;
+    if (liq.state && !liq.fresh) {
+      // Stufe gewechselt: die Flüssigkeit bleibt, wo sie ist – mit mehr oder weniger Partikeln
+      count = Math.round(liq.count * n / (liq.side * liq.side));
+      const u = use('liqResize');
+      gl.uniform1i(u.uOld, liq.state.read.attach(0));
+      gl.uniform1i(u.uSide, side);
+      gl.uniform1i(u.uCount, count);
+      gl.uniform1i(u.uOldSide, liq.side);
+      gl.uniform1i(u.uOldCount, liq.count);
+      gl.uniform1f(u.uAspect, aspect);
+      gl.uniform1f(u.uSpread, side > liq.side ? liq.d : 0);
+      blit(fresh.read); blit(fresh.write);
+    } else liq.fresh = true;
     if (liq.state) { liq.state.free(); liq.pred.free(); }
-    liq.state = createDoubleFBO(side, side, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+    liq.state = fresh;
     liq.pred = createFBO(side, side, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
     liq.side = side;
-    liq.fresh = true;
+    liq.count = count;
   }
-  // Partikelgröße: so, dass alle Partikel zusammen immer denselben Anteil des Bildes füllen – mehr Partikel = feiner
-  liq.aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
-  liq.d = Math.sqrt(LIQUID.FILL * liq.aspect / n);
+  // Partikelgröße: so, dass alle Partikel zusammen immer denselben Anteil des Bildes füllen – mehr Partikel = feiner.
+  // Der Regler "Dichte" packt sie enger oder lockerer (die Flüssigkeit nimmt dann weniger oder mehr Platz ein).
+  const base = Math.sqrt(LIQUID.FILL_MAX * aspect / n);
+  liq.aspect = aspect;
+  liq.d = base / Math.sqrt(PARAMS.liqDensity.current);
   liq.h = LIQUID.REACH * liq.d;
-  // Such-Raster: Felder mindestens ein Drittel der Reichweite groß → 3 Felder in jede Richtung decken sie ab
-  const gw = clampNum(Math.floor(3 * liq.aspect / liq.h), 8, maxTextureSize), gh = clampNum(Math.floor(3 / liq.h), 8, maxTextureSize);
-  if (!liq.grid || liq.grid.w !== gw || liq.grid.h !== gh) {
+  // Schrittdauer: je kleiner die Partikel, desto kürzer
+  liq.H = Math.max(liq.d / LIQUID.STEP_RATE, 1 / LIQUID.MAX_RATE);
+  // Such-Raster: Felder mindestens ein Drittel der Reichweite groß → 3 Felder in jede Richtung decken sie ab.
+  // Angelegt wird es für die kleinste Partikelgröße (Dichte-Regler am Anschlag); benutzt wird der Teil gw × gh.
+  const size = (h, a) => clampNum(Math.floor(3 * a / h), 8, maxTextureSize);
+  const hMin = LIQUID.REACH * base / Math.sqrt(LIQUID.DENSITY_MAX);
+  const maxW = size(hMin, aspect), maxH = size(hMin, 1);
+  if (!liq.grid || liq.grid.w !== maxW || liq.grid.h !== maxH) {
     if (liq.grid) liq.grid.free();
-    liq.grid = createFBO(gw, gh, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+    liq.grid = createFBO(maxW, maxH, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
   }
+  liq.gw = Math.min(size(liq.h, aspect), maxW);
+  liq.gh = Math.min(size(liq.h, 1), maxH);
   if (liq.fresh) liqFill();
 }
 
 // Partikel neu einfüllen: als Block an der linken Seite, der dann zusammensackt und durchs Bild schwappt
 function liqFill() {
-  const n = liq.side * liq.side, width = 0.45 * liq.aspect;
+  liq.count = Math.round(LIQUID.START * liq.side * liq.side);
   gl.disable(gl.BLEND);
   const u = use('liqInit');
   gl.uniform1i(u.uSide, liq.side);
+  gl.uniform1i(u.uCount, liq.count);
   gl.uniform1f(u.uAspect, liq.aspect);
   gl.uniform1f(u.uD, liq.d);
-  gl.uniform3f(u.uBox, 0.25 * liq.d, 0.25 * liq.d, width);
+  gl.uniform3f(u.uBox, 0.25 * liq.d, 0.25 * liq.d, 0.45 * liq.aspect);
   blit(liq.state.read); blit(liq.state.write);
   liq.fresh = false;
   liq.acc = 0;
 }
 
 // ----- einmal pro Bild: rechnen -----
-// Gemeinsame Werte der Rechen-Shader (H = Dauer eines Teilschritts)
-function liqUniforms(u, H) {
+// Gemeinsame Werte der Rechen-Shader
+function liqUniforms(u) {
+  const visc = PARAMS.liqViscosity.current;
   gl.uniform1i(u.uState, 0);
   gl.uniform1i(u.uPred, 1);
   gl.uniform1i(u.uGrid, 2);
-  gl.uniform1f(u.uDt, H);
+  gl.uniform1i(u.uSide, liq.side);
+  gl.uniform1i(u.uCount, liq.count);
+  gl.uniform1f(u.uDt, liq.H);
   gl.uniform1f(u.uAspect, liq.aspect);
-  gl.uniform2f(u.uGravity, 0, -LIQUID.GRAVITY);
+  gl.uniform2fv(u.uGravity, liq.gravity);
+  gl.uniform1f(u.uKeep, Math.exp(-visc * visc * LIQUID.DRAG * liq.H));
   gl.uniform1f(u.uH, liq.h);
   gl.uniform1f(u.uMargin, 0.25 * liq.d);
   gl.uniform1f(u.uJitter, LIQUID.JITTER);
   gl.uniform1f(u.uMaxSpeed, LIQUID.MAX_SPEED);
-  gl.uniform2f(u.uGridSize, liq.grid.w, liq.grid.h);
+  gl.uniform2f(u.uGridSize, liq.gw, liq.gh);
   gl.uniform1f(u.uRho0, liq.rho0);
+}
+// Ein Rechen-Durchgang über alle Partikel im Bild (nur die Zeilen der Textur, in denen welche stehen)
+function liqPass(target) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+  gl.viewport(0, 0, liq.side, Math.ceil(liq.count / liq.side));
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 // Such-Raster neu füllen (payload 0: Ort + Tempo, 1: Ort + Druck)
 function liqFillGrid(payload) {
-  const g = liq.grid, u = use('liqGrid');
+  const u = use('liqGrid');
   gl.uniform1i(u.uPayload, payload);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, g.fbo);
-  gl.viewport(0, 0, g.w, g.h);
+  gl.uniform1i(u.uFlip, liq.tick & 1);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, liq.grid.fbo);
+  gl.viewport(0, 0, liq.gw, liq.gh);
+  gl.enable(gl.SCISSOR_TEST);                                // nur den benutzten Teil leeren
+  gl.scissor(0, 0, liq.gw, liq.gh);
   gl.clearColor(-1, 0, 0, 0);                                // x = −1 heißt: Feld ist leer
   gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.disable(gl.SCISSOR_TEST);
   gl.bindVertexArray(part.vao);
-  gl.drawArrays(gl.POINTS, 0, liq.side * liq.side);
+  gl.drawArrays(gl.POINTS, 0, liq.count);
   gl.bindVertexArray(null);
 }
 // Erste Hälfte eines Teilschritts: Raster füllen, Dichte messen → Druck (Ergebnis in liq.pred)
@@ -6061,48 +6215,61 @@ function liqMeasure() {
   liqFillGrid(0);
   use('liqLambda');
   liq.grid.attach(2);
-  blit(liq.pred);
+  liqPass(liq.pred);
 }
 // Zweite Hälfte: Raster mit dem Druck füllen, Partikel auseinanderschieben → neuer Zustand
 function liqResolve() {
   liq.pred.attach(1);
   liqFillGrid(1);
   use('liqPush');
-  blit(liq.state.write);
+  liqPass(liq.state.write);
   liq.state.swap();
 }
-// Mehrere Teilschritte der Dauer H rechnen
-function liqSimulate(steps, H) {
+// Mehrere Teilschritte rechnen (Dauer je Schritt: liq.H). Die Regler werden hier in die Größen der Rechnung
+// umgerechnet – so, dass sie auf jeder Qualitätsstufe (= Partikelgröße) dasselbe bewirken.
+function liqSimulate(steps) {
+  const P = PARAMS, H = liq.H, d = liq.d, h = liq.h;
   gl.disable(gl.BLEND);
+  const g = P.liqGravity.current * LIQUID.GRAVITY, a = P.liqGravityDir.current * Math.PI / 180;
+  liq.gravity = [Math.sin(a) * g, -Math.cos(a) * g];        // 0° = unten, 90° = rechts, ±180° = oben
   let u = use('liqGrid');
-  liqUniforms(u, H);
-  gl.uniform1i(u.uSide, liq.side);
+  liqUniforms(u);
   u = use('liqLambda');
-  liqUniforms(u, H);
-  gl.uniform1f(u.uStiff, LIQUID.STIFF);
-  gl.uniform1f(u.uVisc, LIQUID.VISCOSITY);
+  liqUniforms(u);
+  gl.uniform1f(u.uStiff, LIQUID.STIFF_MIN + (LIQUID.STIFF_MAX - LIQUID.STIFF_MIN) * P.liqStiff.current);
+  // Viskosität: gewünschte Stärke (Bildhöhen² pro Sekunde) → Anteil pro Teilschritt bei dieser Partikelgröße
+  const nu = P.liqViscosity.current * P.liqViscosity.current * LIQUID.VISCOSITY;
+  gl.uniform1f(u.uVisc, Math.min(nu * H / (0.208 * d * d), LIQUID.VISC_MAX));
   u = use('liqPush');
-  liqUniforms(u, H);
+  liqUniforms(u);
   gl.uniform1f(u.uSpread, LIQUID.SPREAD);
   gl.uniform1f(u.uSpreadW, (1 - LIQUID.SPREAD_AT * LIQUID.SPREAD_AT) ** 3);
-  gl.uniform1f(u.uMaxPush, LIQUID.MAX_PUSH * liq.h);
+  // Zusammenhalt: Beschleunigung → Verschiebung pro Teilschritt (in den Einheiten des Shaders)
+  const from = LIQUID.COH_FROM, pull = P.liqCohesion.current * LIQUID.COHESION * (LIQUID.COH_REF / h) ** 2;
+  gl.uniform1f(u.uCoh, pull * H * H * liq.rho0 / (h * (1 - from) * (1 - from) / 4));
+  gl.uniform1f(u.uCohFrom, from);
+  gl.uniform1f(u.uRescue, LIQUID.RESCUE * liq.rho0);
+  gl.uniform1f(u.uMaxPush, LIQUID.MAX_PUSH * h);
   gl.uniform1f(u.uMaxFix, LIQUID.MAX_FIX);
-  for (let i = 0; i < steps; i++) { liqMeasure(); liqResolve(); }
+  gl.uniform2f(u.uCrush, LIQUID.CRUSH, LIQUID.CRUSH + 0.6);
+  gl.uniform2f(u.uBounce, LIQUID.BOUNCE, LIQUID.BOUNCE_FROM);
+  for (let i = 0; i < steps; i++) { liqMeasure(); liqResolve(); liq.tick++; }
 }
 
 function updateLiquid(dt) {
   ensureLiqBuffers();
-  // Feste Teilschritte: Jede Qualitätsstufe hat ihre Schrittdauer (mehr Partikel = kleinere Partikel = kürzere
-  // Schritte). Ein Bild rechnet so viele ganze Schritte, wie in seine Zeit passen; der Rest wird aufgehoben.
-  const perFrame = QUALITY[qualityLevel].lsteps, H = 1 / (60 * perFrame);
-  liq.acc += dt;
-  let steps = Math.floor(liq.acc / H + 1e-4);
-  liq.acc = Math.max(0, liq.acc - steps * H);
-  if (steps > 2 * perFrame + 1) { steps = 2 * perFrame + 1; liq.acc = 0; }
-  if (steps > 0) liqSimulate(steps, H);
+  // Feste Teilschritte: Die Schrittdauer hängt nur von der Partikelgröße ab, nicht von der Bildrate. Ein Bild
+  // rechnet so viele ganze Schritte, wie in seine Zeit passen; der Rest wird für das nächste Bild aufgehoben.
+  // (Kommt ein sehr langes Bild – z. B. nach einem Tab-Wechsel –, wird die überzählige Zeit einfach verworfen.)
+  liq.acc += Math.max(0, dt);
+  let steps = Math.floor(liq.acc / liq.H + 1e-4);
+  liq.acc = Math.max(0, liq.acc - steps * liq.H);
+  if (steps > LIQUID.MAX_STEPS) { steps = LIQUID.MAX_STEPS; liq.acc = 0; }
+  if (steps > 0 && liq.count > 0) liqSimulate(steps);
   liq.phase += 0.012 * dt * (1 - 0.6 * PARAMS.calm.current);
   cursorEl.style.setProperty('--brush', paletteColor(liq.phase + 0.3));
   cursorEl.style.setProperty('--size', '26px');
+  $('liqGravityDirRow').classList.toggle('unused', PARAMS.liqGravity.target === 0);
 }
 
 // ----- einmal pro Bild: zeichnen -----
@@ -6124,7 +6291,7 @@ function drawLiquid(target) {
   gl.uniform1f(u.uPhase, liq.phase);
   gl.uniform3fv(u['uPalette[0]'], currentPalette);
   gl.bindVertexArray(part.vao);
-  gl.drawArrays(gl.POINTS, 0, liq.side * liq.side);
+  gl.drawArrays(gl.POINTS, 0, liq.count);
   gl.bindVertexArray(null);
   gl.disable(gl.BLEND);
 }
@@ -6140,6 +6307,12 @@ function liqKey(e) {
 }
 
 // ----- Panel -----
+bindSlider('liqGravity',    PARAMS.liqGravity,    v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('liqGravityDir', PARAMS.liqGravityDir, fallDirLabel);
+bindSlider('liqViscosity',  PARAMS.liqViscosity,  v => Math.round(v * 100) + ' %');
+bindSlider('liqCohesion',   PARAMS.liqCohesion,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('liqStiff',      PARAMS.liqStiff,      v => Math.round(v * 100) + ' %');
+bindSlider('liqDensity',    PARAMS.liqDensity,    v => Math.round(v * 100) + ' %');
 $('liqRefill').addEventListener('click', e => { liqRefill(); e.currentTarget.blur(); });
 
 MODES.push({
@@ -6162,9 +6335,10 @@ MODES.push({
   pointerUp() {},
   pointerLeave() {},
   key: liqKey,
-  qualityInfo(q) {
+  qualityInfo() {
     ensureLiqBuffers();
-    return `${(liq.side * liq.side).toLocaleString('de-DE')} Partikel · ${60 * q.lsteps} Rechenschritte pro Sekunde<br>Such-Raster ${liq.grid.w}×${liq.grid.h}`;
+    const n = v => v.toLocaleString('de-DE');
+    return `${n(liq.count)} Partikel im Bild (Platz für ${n(liq.side * liq.side)})<br>${n(Math.round(1 / liq.H))} Rechenschritte pro Sekunde · Such-Raster ${liq.gw}×${liq.gh}`;
   },
 });
 
