@@ -105,6 +105,12 @@
   #partScatter { width: 100%; }
   body.mode-particles #cursor { border-width: 1.5px; box-shadow: 0 0 10px var(--brush, #fff); }
   body.part-repel #cursor { border-style: dashed; }
+  /* Maus zeigt auf eine gesetzte Kraft (greifen/verschieben): größerer, heller Ring */
+  body.part-grab #cursor { border-style: solid; border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,.7); }
+  #forceTools .btn:first-child { grid-column: 1 / -1; }
+  #forceDelete, #forceClear { width: 100%; margin-top: 8px; }
+  #forceDelete { transition: opacity .4s var(--smooth), transform .35s var(--spring), box-shadow .3s, background .3s; }
+  #forceDelete.unused { opacity: .35; pointer-events: none; }
   /* Mandelbrot-Modus: schmaler Ring als Cursor; gestrichelt, solange die Julia-Form festgehalten ist */
   body.mode-mandel #cursor { border-width: 1.5px; box-shadow: 0 0 8px var(--brush, #fff); }
   body.frac-frozen #cursor { border-style: dashed; box-shadow: none; }
@@ -168,9 +174,9 @@
   #gravityDirRow { transition: opacity .4s var(--smooth); }
   #gravityDirRow.unused { opacity: .35; }
   /* Look-Regler klappen weich auf und zu */
-  .look-param { overflow: hidden; max-height: 60px; margin: 12px 0 0;
+  .look-param, .fold { overflow: hidden; max-height: 60px; margin: 12px 0 0;
                 transition: max-height .45s var(--smooth), opacity .35s var(--smooth), margin .45s var(--smooth); }
-  .look-param.off { max-height: 0; opacity: 0; margin: 0; pointer-events: none; }
+  .look-param.off, .fold.off { max-height: 0; opacity: 0; margin: 0; pointer-events: none; }
   /* Paletten-Auswahl tritt zurück, wenn der aktive Look sie nicht benutzt */
   #paletteSection, #bloomSection { transition: opacity .4s var(--smooth); }
   #paletteSection.unused, #bloomSection.unused { opacity: .35; }
@@ -514,6 +520,26 @@
     </div>
     <button class="btn" id="partScatter"><span>Neu verteilen</span><kbd>Leertaste</kbd></button>
   </div>
+  <div class="sec" data-mode="particles">
+    <h3>Kräfte</h3>
+    <div id="forceTools" class="grid2"></div>
+    <div class="sub">Knopf = Kraft erscheint in der Bildmitte, Taste <b>1</b>–<b>5</b> = an der Maus. Ziehen = verschieben · Rechtsklick oder <b>Entf</b> = löschen · Mausrad = Reichweite.</div>
+    <div class="row" style="margin-top:12px">
+      <label for="forceStrength">Stärke <output id="forceStrengthOut"></output></label>
+      <input id="forceStrength" type="range" min="0" max="2.5" step="0.01">
+    </div>
+    <div class="row" style="margin-bottom:0">
+      <label for="forceRange">Reichweite <output id="forceRangeOut"></output></label>
+      <input id="forceRange" type="range" min="0.05" max="0.6" step="0.01">
+    </div>
+    <div class="row fold off" id="forceDirRow">
+      <label for="forceDir">Windrichtung <output id="forceDirOut"></output></label>
+      <input id="forceDir" type="range" min="-180" max="180" step="5">
+    </div>
+    <div class="sub" id="forceInfo"></div>
+    <button class="btn" id="forceDelete"><span>Ausgewählte Kraft löschen</span><kbd>Entf</kbd></button>
+    <button class="btn" id="forceClear"><span>Alle Kräfte löschen</span><kbd>X</kbd></button>
+  </div>
   <div class="sec" id="paletteSection">
     <h3>Farbpalette</h3>
     <div id="palettes"></div>
@@ -565,7 +591,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span>
   </div>
 </div>
 
@@ -683,6 +709,9 @@ const PARAMS = {
   partTrail:   { target: 0.35, current: 0.35, def: 0.35 },  // Partikel: Länge der Spuren (0 = keine)
   partSize:    { target: 1,    current: 1,    def: 1    },  // Partikel: Punktgröße (Faktor)
   partGlow:    { target: 1,    current: 1,    def: 1    },  // Partikel: Helligkeit (Faktor)
+  forceStrength: { target: 1,   current: 1,   def: 1   },  // Partikel-Kräfte: Stärke der ausgewählten (bzw. nächsten) Kraft
+  forceRange:    { target: 0.2, current: 0.2, def: 0.2 },  // Partikel-Kräfte: Reichweite (Anteil der Bildhöhe)
+  forceDir:      { target: 0,   current: 0,   def: 0   },  // Partikel-Kräfte: Windrichtung in Grad (0 = rechts, 90 = oben)
   bloomIntensity: { target: 1,    current: 1,    def: 1    },  // Bloom: Stärke des Glows (0 = aus)
   bloomThreshold: { target: 0.4,  current: 0.4,  def: 0.4  },  // Bloom: ab welcher Helligkeit (0..1) etwas leuchtet
   bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
@@ -4290,6 +4319,10 @@ MODES.push({
 //   - Zustand: eine Textur, in der JEDER Bildpunkt ein Partikel ist (Rot/Grün = Position 0..1 im Bild, Blau/Alpha =
 //     Tempo in Bildhöhen pro Sekunde). 32-Bit-Zahlen, damit auch winzige Bewegungen nicht verloren gehen.
 //   - Rechnen (partStep): ein Shader liest den alten Zustand und schreibt den neuen (Kräfte → Tempo → Position).
+//   - Gedränge (partGrid): Partikel wissen nichts voneinander – ohne Weiteres würden Kräfte sie alle auf denselben
+//     Punkt ziehen. Deshalb wird vor jedem Schritt gezählt, wie viele Partikel in jedem Feld eines groben Rasters
+//     sind ("Dichte-Raster"). Wo es eng wird, drückt es die Partikel in Richtung der leereren Nachbarfelder – wie
+//     Gas, das sich nicht beliebig zusammenpressen lässt. So bleiben Wolken statt greller Punkte.
 //   - Zeichnen (partDraw): für jedes Partikel ein Punkt; der Shader holt sich dessen Position aus der Zustands-Textur.
 //     Gezeichnet wird "additiv" (Helligkeiten zählen sich zusammen) in ein Spuren-Bild, das in jedem Bild etwas
 //     dunkler wird – so entstehen Spuren, die sanft verblassen.
@@ -4306,12 +4339,24 @@ const PARTICLES = {
   BRIGHT: 0.5,       // Helligkeit, wenn die Partikel gleichmäßig über das Bild verteilt sind (bei Helligkeit 100 %)
   KICK: 2.5,         // "Neu verteilen": größtes Tempo des zufälligen Stoßes
   SWIRL: 0.06,       // Wirbel um die Maus: Dreh-Tempo am Rand der Reichweite, als Anteil der Maus-Kraft
+  MAX_FORCES: 12,    // so viele Kräfte lassen sich höchstens setzen (muss zu MAXF in den Shadern passen)
+  GRAB: 0.04,        // so nah (in Bildhöhen) muss die Maus an einer Kraft sein, um sie zu greifen
+  MAGNET: 5,         // Magnet bei Stärke 100 %: Beschleunigung im Abstand "Reichweite" (wie die Maus-Kraft)
+  HOLE: 6,           // Schwarzes Loch bei Stärke 100 %: Beschleunigung im Abstand "Reichweite" (innen viel mehr)
+  HORIZON: 0.12,     // Schwarzes Loch: Radius der Scheibe, die Partikel verschluckt, als Anteil der Reichweite
+  WIND: 3,           // Wind bei Stärke 100 %: Beschleunigung in der Mitte
+  ORBIT_PULL: 60,    // Orbit: wie kräftig die Partikel auf ihre Kreisbahn gezogen werden
+  ORBIT_SPEED: 0.5,  // Orbit bei Stärke 100 %: Tempo auf der Kreisbahn (Bildhöhen pro Sekunde)
+  GRID: 128,         // Dichte-Raster: Felder entlang der kurzen Bildschirmseite
+  PRESSURE: 0.25,    // Gedränge: wie stark sich dicht gepackte Partikel auseinanderdrücken
+  CROWD: 2,          // … ab dieser Dichte (Vielfaches des Durchschnitts); darunter stören sie sich nicht
 };
 
 const part = {
   state: null,            // Zustands-Textur (Doppelpuffer): Position und Tempo aller Partikel
   side: 0,                // Seitenlänge der Zustands-Textur → Anzahl der Partikel = side × side
   trail: null,            // Spuren-Bild
+  grid: null,             // Dichte-Raster (Doppelpuffer): wie viele Partikel in jedem Rasterfeld sind
   vao: gl.createVertexArray(),   // leere Punktliste: die Punkte holen ihre Position selbst aus der Zustands-Textur
   pointer: null,          // Mausposition [x, y] (0..1) – bleibt stehen, wenn die Maus aufs Panel wechselt; null = keine
   held: false,            // Maustaste gedrückt → die Kraft wirkt umgekehrt
@@ -4323,6 +4368,10 @@ const part = {
   phase: Math.random(),   // wandernde Farbverschiebung
   time: 0,                // Uhr der Strömung
   move: 0,                // Strecke, die die Maus seit dem letzten Bild zurückgelegt hat (für den Ton)
+  forces: [],             // gesetzte Kräfte (siehe addForce)
+  sel: null,              // ausgewählte Kraft: für sie gelten die Regler Stärke / Reichweite / Windrichtung
+  hover: null,            // Kraft, auf die die Maus gerade zeigt
+  drag: null,             // Kraft, die gerade verschoben wird: { f, ox, oy }
 };
 
 // ----- Shader -----
@@ -4357,6 +4406,31 @@ programs.partResize = makeProgram(header + partHashGLSL + `
     fragColor = vec4(clamp(s.xy + a * uJitter, 0.0, 1.0), s.zw + b * uJitter * 4.0);
   }`);
 
+// Dichte-Raster: jedes Partikel zählt als 1 in dem Rasterfeld, in dem es liegt (additiv gezeichnet) …
+programs.partGrid = makeProgram(`#version 300 es
+  precision highp float;
+  out vec4 fragColor;
+  void main () { fragColor = vec4(1.0, 0.0, 0.0, 0.0); }`, compile(gl.VERTEX_SHADER, `#version 300 es
+  precision highp float;
+  precision highp sampler2D;
+  uniform sampler2D uState;
+  uniform int uSide;
+  void main () {
+    vec4 s = texelFetch(uState, ivec2(gl_VertexID % uSide, gl_VertexID / uSide), 0);
+    gl_Position = vec4(s.xy * 2.0 - 1.0, 0.0, 1.0);
+    gl_PointSize = 1.0;
+  }`));
+// … danach wird das Raster leicht weichgezeichnet (jedes Feld mit seinen Nachbarn gemittelt), damit der Zufall,
+// wo gerade ein Partikel mehr oder weniger liegt, die Partikel nicht zittern lässt
+programs.partGridBlur = makeProgram(header + `
+  uniform sampler2D uTexture;
+  uniform vec2 uTexel;
+  void main () {
+    vec2 o = uTexel * 0.5;
+    fragColor = 0.25 * (texture(uTexture, vUv + o) + texture(uTexture, vUv - o)
+                      + texture(uTexture, vUv + vec2(o.x, -o.y)) + texture(uTexture, vUv + vec2(-o.x, o.y)));
+  }`);
+
 // Rechnen: ein Schritt für alle Partikel. Gerechnet wird in "Bildhöhen" (x-Abstände mal Seitenverhältnis),
 // damit Kreise rund bleiben und sich alles in jedem Fensterformat gleich anfühlt.
 programs.partStep = makeProgram(header + noiseGLSL + partHashGLSL + `
@@ -4369,6 +4443,45 @@ programs.partStep = makeProgram(header + noiseGLSL + partHashGLSL + `
   uniform float uWall;        // Stärke der weichen Wand kurz vor dem Bildrand
   uniform float uKick;        // > 0: einmaliger zufälliger Stoß ("Neu verteilen")
   uniform float uSwirl;       // wie stark sich die Umgebung der Maus mitdreht
+  // gesetzte Kräfte (höchstens MAXF)
+  #define MAXF 12
+  uniform int uCount;
+  uniform vec4 uF[MAXF];      // xy = Stelle (0..1), z = Reichweite (Bildhöhen), w = Stärke (Magnet: + zieht an, − stößt ab)
+  uniform vec4 uG[MAXF];      // x = Art (0 Magnet, 1 Schwarzes Loch, 2 Wind, 3 Orbit), yz = Windrichtung
+  uniform float uHorizon;     // Schwarzes Loch: Radius der verschluckenden Scheibe als Anteil der Reichweite
+  // Gedränge
+  uniform sampler2D uGrid;    // Dichte-Raster: Partikel pro Rasterfeld
+  uniform vec2 uGridTexel;    // Größe eines Rasterfelds (0..1)
+  uniform float uGridNorm;    // macht aus der Zahl pro Feld die Dichte im Verhältnis zum Durchschnitt (1 = gleichmäßig verteilt)
+  uniform float uPressure, uCrowd;
+  // "Druck" an einer Stelle: null, solange die Dichte unter uCrowd liegt; darüber wächst er immer langsamer
+  // (Logarithmus) – so verhält sich ein Gas: doppelt so dicht gepackt = immer derselbe Zuwachs an Gegendruck
+  float crowd (vec2 uv) { return log(1.0 + max(texture(uGrid, uv).r * uGridNorm - uCrowd, 0.0)); }
+
+  // Magnet (auch die Maus ist einer). d = Weg vom Partikel zum Magneten, S = Stärke, R = Reichweite.
+  // Am stärksten im Abstand "Reichweite", zur Mitte hin sanft auf null; weiter draußen klingt die Kraft schnell ab
+  // (beim Dreifachen der Reichweite ist sie fast weg) – Partikel in der Ferne treiben ungestört weiter.
+  // Beim Anziehen stößt ein Kern in der Mitte wieder ab: jedes Partikel hat dadurch seinen eigenen Lieblings-Abstand
+  // (je Partikel verschieden groß, bis etwa zur Reichweite). Zusammen mit dem Wirbel entsteht eine kreisende
+  // Scheibe wie eine kleine Galaxie – statt dass alle Partikel auf einem einzigen Punkt landen.
+  // Abstoßen wirkt dagegen NUR innerhalb der Reichweite (am stärksten in der Mitte, am Rand null): es entsteht eine
+  // leere Blase genau in dieser Größe, statt dass das ganze Bild leergefegt wird.
+  void magnet (vec2 d, float S, float R, vec2 rnd, inout vec2 acc, inout vec2 wind) {
+    float r2 = dot(d, d), reach;
+    if (S >= 0.0) {
+      float core = R * (0.15 + 1.4 * rnd.x);
+      reach = exp(0.5 - 0.5 * r2 / (R * R)) / R;
+      // jedes Partikel reagiert verschieden stark: die meisten kräftig, einige wenige kaum – die bleiben als
+      // ruhiger Hintergrund zurück, wenn der Magnet den Rest mitreißt
+      acc += d * (S * reach * (1.0 - 1.5 * exp(-r2 / (core * core))) * mix(0.15, 1.3, sqrt(rnd.y)));
+    } else {
+      float x = max(0.0, 1.0 - r2 / (R * R));
+      reach = x * x / R;
+      acc += d * (S * 1.2 * x * x / max(sqrt(r2), 1e-4));
+    }
+    // Wirbel: die "Luft" dreht sich um den Magneten mit – innen schneller als außen, das zieht die Wolke zu Spiralen
+    wind += vec2(d.y, -d.x) * (reach * S * uSwirl);
+  }
   // Strömung: sanft wanderndes Rauschen als "Höhenkarte"; die Partikel fließen an den Höhenlinien entlang.
   // So eine Strömung hat nirgends Quellen oder Senken – die Partikel bleiben gleichmäßig verteilt, statt zu verklumpen.
   // Zum Bildrand hin wird die Karte flach (edge), dadurch fließt dort nichts in die Wand hinein.
@@ -4382,37 +4495,51 @@ programs.partStep = makeProgram(header + noiseGLSL + partHashGLSL + `
     vec4 s = texelFetch(uState, id, 0);
     vec2 p = s.xy, v = s.zw, asp = vec2(uAspect, 1.0);
     vec2 rnd = hash2(vec2(id) + 0.5);          // zwei feste Zufallszahlen pro Partikel: jedes reagiert etwas anders
-    vec2 acc = vec2(0.0);
+    vec2 acc = vec2(0.0);      // Beschleunigung durch alle Kräfte zusammen
+    vec2 wind = vec2(0.0);     // Tempo der "Luft" an dieser Stelle (Wirbel um Magnete, Löcher, Orbits)
+    bool gone = false;         // von einem Schwarzen Loch verschluckt?
 
-    // Maus: am stärksten im Abstand "Reichweite", zur Mitte hin sanft auf null; weiter draußen klingt die Kraft schnell
-    // ab (beim Dreifachen der Reichweite ist sie fast weg) – Partikel in der Ferne treiben ungestört weiter.
-    // Beim Anziehen stößt ein Kern in der Mitte wieder ab: jedes Partikel hat dadurch seinen eigenen Lieblings-Abstand
-    // zur Maus (je Partikel verschieden groß, bis etwa zur Reichweite). Zusammen mit dem Wirbel unten entsteht eine
-    // kreisende Scheibe wie eine kleine Galaxie – statt dass alle Partikel auf einem einzigen Punkt landen.
-    // Abstoßen wirkt dagegen NUR innerhalb der Reichweite (am stärksten in der Mitte, am Rand null): um die Maus
-    // entsteht eine leere Blase genau in dieser Größe, statt dass das ganze Bild leergefegt wird.
-    vec2 d = (uMouse.xy - p) * asp;
-    float r2 = dot(d, d), R = uMouse.w, reach;
-    if (uMouse.z >= 0.0) {
-      float core = R * (0.15 + 1.4 * rnd.x);
-      reach = exp(0.5 - 0.5 * r2 / (R * R)) / R;
-      // jedes Partikel reagiert verschieden stark: die meisten kräftig, einige wenige kaum – die bleiben als
-      // ruhiger Hintergrund zurück, wenn die Maus den Rest mitreißt
-      acc += d * (uMouse.z * reach * (1.0 - 1.5 * exp(-r2 / (core * core))) * mix(0.15, 1.3, sqrt(rnd.y)));
-    } else {
-      float x = max(0.0, 1.0 - r2 / (R * R));
-      reach = x * x / R;
-      acc += d * (uMouse.z * 1.2 * x * x / max(sqrt(r2), 1e-4));
+    magnet((uMouse.xy - p) * asp, uMouse.z, uMouse.w, rnd, acc, wind);     // die Maus
+
+    for (int i = 0; i < MAXF; i++) {
+      if (i >= uCount) break;
+      vec4 F = uF[i];
+      vec2 d = (F.xy - p) * asp;
+      float R = F.z, S = F.w, r2 = dot(d, d), r = max(sqrt(r2), 1e-4);
+      int kind = int(uG[i].x + 0.5);
+      if (kind == 0) {
+        magnet(d, S, R, rnd, acc, wind);
+      } else if (kind == 1) {
+        // Schwarzes Loch: zieht umso stärker, je näher man kommt (wie echte Schwerkraft, ganz innen begrenzt). Die Luft
+        // kreist fast so schnell, wie eine Kreisbahn es verlangt – die Partikel stürzen deshalb nicht gerade hinein,
+        // sondern in einer Spirale. Wer die Scheibe in der Mitte erreicht, wird verschluckt.
+        float soft = 0.2 * R, fade = exp(-r2 / (9.0 * R * R));
+        float g = S * R * R / (r2 + soft * soft) * fade;
+        acc += d / r * g;
+        wind += vec2(d.y, -d.x) / r * (sqrt(g * r) * 0.85);
+        if (r < uHorizon * R && S > 0.3) gone = true;
+      } else if (kind == 2) {
+        // Wind: schiebt alles in seiner Umgebung in eine Richtung, zur Mitte hin am stärksten
+        acc += uG[i].yz * (S * exp(-r2 / (R * R)));
+      } else {
+        // Orbit: zieht die Partikel der Umgebung auf eine Kreisbahn im Abstand "Reichweite" (jedes auf eine etwas
+        // andere, das ergibt einen breiten Ring) und lässt die Luft dort kreisen
+        float ring = R * (0.8 + 0.4 * rnd.x), fade = exp(-r2 / (6.0 * R * R));
+        acc += d / r * ((r - ring) * uG[i].y * fade);
+        wind += vec2(d.y, -d.x) / r * (S * fade);
+      }
     }
-
-    // Wirbel um die Maus: die "Luft" dreht sich dort mit – innen schneller als außen, das zieht die Wolke zu Spiralen
-    vec2 wind = vec2(d.y, -d.x) * (reach * uMouse.z * uSwirl);
 
     // Hintergrund-Strömung: trägt die Partikel einfach mit (ohne Trägheit – sonst würden sie aus den Wirbeln
     // herausgeschleudert und sich zu dünnen Fäden sammeln)
     const float e = 0.012;
     vec2 ex = vec2(e / uAspect, 0.0), ey = vec2(0.0, e);
     vec2 flow = vec2(flowPot(p + ey) - flowPot(p - ey), flowPot(p - ex) - flowPot(p + ex)) / (2.0 * e * 2.2) * uFlow;
+
+    // Gedränge: weg von den dichteren Nachbarfeldern (Druckgefälle über drei Rasterfelder)
+    vec2 gx = vec2(uGridTexel.x * 1.5, 0.0), gy = vec2(0.0, uGridTexel.y * 1.5);
+    vec2 push = vec2((crowd(p - gx) - crowd(p + gx)) / (2.0 * gx.x * uAspect), (crowd(p - gy) - crowd(p + gy)) / (2.0 * gy.y));
+    acc += push * uPressure;
 
     // Weiche Wand: kurz vor dem Bildrand (5 % der Bildhöhe) werden die Partikel sanft zurückgedrückt. Ohne sie
     // blieben weggeschleuderte Partikel für immer am Rand kleben, denn dort steht die Strömung still.
@@ -4434,6 +4561,11 @@ programs.partStep = makeProgram(header + noiseGLSL + partHashGLSL + `
     if (p.x > 1.0) { p.x = 2.0 - p.x; v.x = -abs(v.x) * uBounce; }
     if (p.y < 0.0) { p.y = -p.y; v.y = abs(v.y) * uBounce; }
     if (p.y > 1.0) { p.y = 2.0 - p.y; v.y = -abs(v.y) * uBounce; }
+    // verschluckt: das Partikel taucht an einer zufälligen Stelle wieder auf (die Zahl der Partikel bleibt gleich)
+    if (gone) {
+      p = 0.04 + 0.92 * hash2(vec2(id) + fract(uTime * 7.31) * 913.0);
+      v = vec2(0.0);
+    }
     fragColor = vec4(clamp(p, 0.0, 1.0), v);
   }`);
 
@@ -4462,7 +4594,9 @@ const partVertex = `#version 300 es
     float seed = hash2(vec2(id) + 0.5).x;
     float cloud = noise(s.xy * vec2(uAspect, 1.0) * 1.4 + vec2(uPhase * 4.0, -uPhase * 2.5));
     vColor = palette(uPhase + seed * 0.06 + cloud + k * 0.45) * (uEnergy * (0.75 + 1.05 * k));
-    vec2 pos = mix(texelFetch(uPrev, id, 0).xy, s.xy, hash2(vec2(id) + uSeed).x);
+    vec2 before = texelFetch(uPrev, id, 0).xy, jump = s.xy - before;
+    // (ein großer Sprung heißt: von einem Schwarzen Loch verschluckt und woanders aufgetaucht – kein Wegstück)
+    vec2 pos = dot(jump, jump) > 0.04 ? s.xy : before + jump * hash2(vec2(id) + uSeed).x;
     gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
     gl_PointSize = uPointSize;
   }`;
@@ -4483,9 +4617,21 @@ programs.partFade = makeProgram(header + `
   void main () { fragColor = vec4(uKeep); }`);
 
 // Anzeigen: Spuren-Bild → fertiges Bild
+// Darüber kommen die Zeichen der gesetzten Kräfte: Schwarzes Loch = schwarze Scheibe mit hellem Rand,
+// Magnet = Ring mit Plus oder Minus, Wind = Pfeil, Orbit = Punkt mit seiner Kreisbahn.
 programs.partShow = makeProgram(header + `
   uniform sampler2D uTrail;
   uniform float uExposure;     // Regler "Helligkeit"
+  #define MAXF 12
+  uniform int uCount;
+  uniform vec4 uF[MAXF];       // xy = Stelle, z = Reichweite, w = Stärke
+  uniform vec4 uG[MAXF];       // x = Art, yz = Windrichtung bzw. y = Vorzeichen des Magneten, w = Sichtbarkeit (0..1)
+  uniform int uSel, uHover;    // Nummer der ausgewählten Kraft und der Kraft unter der Maus (−1 = keine)
+  uniform float uAspect, uPx;  // uPx = Größe eines Bildpunkts in Bildhöhen (für glatte Kanten)
+  uniform float uHorizon;
+  uniform vec3 uTint;          // Farbe der Zeichen (aus der Palette)
+  // Linie der Breite w: 1 auf der Linie, weich auslaufend. dist = Abstand von der Linienmitte
+  float stroke (float dist, float w) { return 1.0 - smoothstep(w, w + 1.5 * uPx, dist); }
   void main () {
     vec3 c = max(texture(uTrail, vUv).rgb, 0.0) * uExposure;
     float L = max(c.r, max(c.g, c.b));
@@ -4496,6 +4642,33 @@ programs.partShow = makeProgram(header + `
     // sehr dichte Stellen: heller als 1,0 (das lässt der Bloom leuchten) und im Kern ein wenig weißer
     float hot = smoothstep(4.0, 60.0, L);
     col = mix(col, vec3(M), 0.4 * hot) * (1.0 + 0.9 * hot);
+
+    for (int i = 0; i < MAXF; i++) {
+      if (i >= uCount) break;
+      vec4 F = uF[i], G = uG[i];
+      vec2 q = (vUv - F.xy) * vec2(uAspect, 1.0);
+      float r = length(q), R = F.z, a;
+      float focus = i == uHover ? 1.0 : i == uSel ? 0.55 : 0.0;
+      int kind = int(G.x + 0.5);
+      if (kind == 1) {
+        float rh = uHorizon * R;
+        col *= mix(1.0, smoothstep(rh - 2.0 * uPx, rh, r), G.w);              // schwarze Scheibe
+        a = stroke(abs(r - rh), 0.0012);
+      } else if (kind == 0) {
+        a = stroke(abs(r - 0.02), 0.001);                                       // Ring
+        a = max(a, stroke(max(abs(q.x) - 0.009, abs(q.y)), 0.0012));            // waagrechter Strich
+        if (G.y > 0.0) a = max(a, stroke(max(abs(q.y) - 0.009, abs(q.x)), 0.0012));   // senkrechter Strich → Plus
+      } else if (kind == 2) {
+        vec2 t = vec2(dot(q, G.yz), dot(q, vec2(-G.z, G.y)));                   // q in Pfeilrichtung gedreht
+        a = stroke(max(abs(t.x + 0.006) - 0.018, abs(t.y)), 0.0012);            // Schaft
+        a = max(a, stroke(max(0.012 - t.x, abs(t.y) - (0.03 - t.x) * 0.55), 0.0));    // Spitze
+      } else {
+        a = max(stroke(r, 0.004), 0.4 * stroke(abs(r - R), 0.0008));            // Punkt und Kreisbahn
+      }
+      // die Reichweite als feiner Kreis, solange die Kraft ausgewählt ist oder die Maus auf sie zeigt
+      a = max(a, focus * 0.4 * stroke(abs(r - R), 0.0008));
+      col = mix(col, mix(vec3(0.92), uTint, 0.3) * (0.7 + 0.5 * focus), a * G.w * (0.65 + 0.35 * focus));
+    }
     fragColor = vec4(col + vec3(0.003, 0.004, 0.008), 1.0);
   }`);
 
@@ -4533,6 +4706,121 @@ function ensurePartBuffers() {
     }
     part.trail = fresh;
   }
+  const g = resolution(PARTICLES.GRID);
+  if (!part.grid || part.grid.w !== g.w || part.grid.h !== g.h) {
+    if (part.grid) part.grid.free();
+    part.grid = createDoubleFBO(g.w, g.h, gl.R16F, gl.RED);
+  }
+}
+
+// Dichte-Raster neu füllen: leeren, alle Partikel hineinzählen, zweimal weichzeichnen
+function updatePartGrid() {
+  const g = part.grid;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, g.write.fbo);
+  gl.viewport(0, 0, g.w, g.h);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE);
+  let u = use('partGrid');
+  gl.uniform1i(u.uState, part.state.read.attach(0));
+  gl.uniform1i(u.uSide, part.side);
+  gl.bindVertexArray(part.vao);
+  gl.drawArrays(gl.POINTS, 0, part.side * part.side);
+  gl.bindVertexArray(null);
+  gl.disable(gl.BLEND);
+  g.swap();
+  u = use('partGridBlur');
+  gl.uniform2fv(u.uTexel, g.texel);
+  for (let i = 0; i < 2; i++) {
+    gl.uniform1i(u.uTexture, g.read.attach(0));
+    blit(g.write);
+    g.swap();
+  }
+}
+
+// ----- gesetzte Kräfte -----
+// Eine Kraft: { t: Art (Eintrag aus FORCE_TYPES), x, y: Stelle (0..1), s: Stärke, r: Reichweite, a: Windrichtung in Grad,
+// sC/rC/aC: die Werte, mit denen gerade gerechnet wird (laufen den Reglern weich hinterher),
+// level: 0..1 (blendet beim Setzen weich ein, beim Löschen weich aus), dead: wird gerade gelöscht }
+const FORCE_TYPES = [
+  { name: 'Schwarzes Loch', kind: 1, help: 'saugt Partikel in einer Spirale ein und verschluckt sie' },
+  { name: 'Magnet +',       kind: 0, sign: 1,  help: 'zieht an – wie die Maus, bleibt aber an seiner Stelle' },
+  { name: 'Magnet −',       kind: 0, sign: -1, help: 'stößt ab und hält eine Blase frei' },
+  { name: 'Wind',           kind: 2, help: 'bläst alles in seiner Umgebung in eine Richtung' },
+  { name: 'Orbit',          kind: 3, help: 'fängt Partikel ein und lässt sie auf einem Ring kreisen' },
+];
+const forceData = { F: new Float32Array(PARTICLES.MAX_FORCES * 4), G: new Float32Array(PARTICLES.MAX_FORCES * 4) };
+
+function addForce(type, x, y) {
+  part.forces = part.forces.filter(f => !f.dead || part.forces.length < PARTICLES.MAX_FORCES);   // Platz schaffen
+  if (part.forces.length >= PARTICLES.MAX_FORCES) { toast(`Mehr als ${PARTICLES.MAX_FORCES} Kräfte gehen nicht`); return; }
+  const t = FORCE_TYPES[type];
+  const f = { t, x: clampNum(x, 0.03, 0.97), y: clampNum(y, 0.03, 0.97), level: 0, dead: false,
+              s: PARAMS.forceStrength.target, r: PARAMS.forceRange.target, a: PARAMS.forceDir.target };
+  f.sC = f.s; f.rC = f.r; f.aC = f.a;
+  part.forces.push(f);
+  selectForce(f);
+  audioTock(false);
+  toast(t.name + ' gesetzt');
+}
+function removeForce(f) {
+  if (!f || f.dead) return;
+  f.dead = true;
+  if (part.sel === f) part.sel = null;
+  if (part.hover === f) part.hover = null;
+  if (part.drag && part.drag.f === f) part.drag = null;
+  updateForceUi();
+  audioTock(true);
+  toast(f.t.name + ' gelöscht');
+}
+function clearForces() {
+  if (!part.forces.some(f => !f.dead)) return;
+  for (const f of part.forces) f.dead = true;
+  part.hover = part.drag = null;
+  selectForce(null);
+  audioClear();
+  toast('Alle Kräfte gelöscht');
+}
+// Auswählen: die Regler zeigen danach die Werte dieser Kraft (und verstellen sie)
+function selectForce(f) {
+  part.sel = f;
+  if (f) { PARAMS.forceStrength.target = f.s; PARAMS.forceRange.target = f.r; PARAMS.forceDir.target = f.a; }
+  updateForceUi();
+}
+// Kraft, die (höchstens GRAB entfernt) am nächsten an der Bildstelle a liegt
+function forceAt(a) {
+  const aspect = canvas.width / canvas.height;
+  let best = null, bestD = PARTICLES.GRAB;
+  for (const f of part.forces) {
+    const d = Math.hypot((f.x - a[0]) * aspect, f.y - a[1]);
+    if (!f.dead && d < bestD) { best = f; bestD = d; }
+  }
+  return best;
+}
+// einmal pro Bild: Werte weich nachführen, gelöschte Kräfte nach dem Ausblenden entfernen, Daten für die Shader füllen
+function updateForces(dt) {
+  const k = 1 - Math.exp(-8 * dt), kl = 1 - Math.exp(-5 * dt);
+  for (const f of part.forces) {
+    f.level += ((f.dead ? 0 : 1) - f.level) * kl;
+    f.sC += (f.s - f.sC) * k; f.rC += (f.r - f.rC) * k; f.aC += (f.a - f.aC) * k;
+  }
+  if (part.forces.some(f => f.dead && f.level < 0.01)) part.forces = part.forces.filter(f => !(f.dead && f.level < 0.01));
+  part.forces.forEach((f, i) => {
+    const kind = f.t.kind, a = f.aC * Math.PI / 180, s = f.sC * f.level;
+    forceData.F.set([f.x, f.y, f.rC,
+      kind === 0 ? s * f.t.sign * PARTICLES.MAGNET : kind === 1 ? s * PARTICLES.HOLE : kind === 2 ? s * PARTICLES.WIND : s * PARTICLES.ORBIT_SPEED], i * 4);
+    forceData.G.set([kind,
+      kind === 0 ? f.t.sign : kind === 2 ? Math.cos(a) : PARTICLES.ORBIT_PULL * f.level,
+      kind === 2 ? Math.sin(a) : 0, f.level], i * 4);
+  });
+}
+// Kräfte an einen Shader übergeben (Rechnen und Anzeigen benutzen dieselben Daten)
+function bindForces(u) {
+  gl.uniform1i(u.uCount, part.forces.length);
+  gl.uniform4fv(u['uF[0]'], forceData.F);
+  gl.uniform4fv(u['uG[0]'], forceData.G);
+  gl.uniform1f(u.uHorizon, PARTICLES.HORIZON);
 }
 
 // ----- einmal pro Bild: rechnen -----
@@ -4546,14 +4834,23 @@ function updateParticles(dt) {
     const k = 1 - Math.exp(-PARTICLES.FOLLOW * dt);          // sonst läuft sie der Maus weich hinterher
     f.x += (src[0] - f.x) * k; f.y += (src[1] - f.y) * k;
   }
-  const want = part.pointer ? 1 : src ? autoplay.level : 0;
+  // (zeigt die Maus auf eine gesetzte Kraft oder verschiebt sie, ruht ihre eigene Kraft)
+  const want = part.hover || part.drag ? 0 : part.pointer ? 1 : src ? autoplay.level : 0;
   f.level += (want - f.level) * (1 - Math.exp(-PARTICLES.LEVEL * dt));        // weich ein- und ausblenden
   const wantDir = part.held ? -part.pull : part.pull;
   part.dir += (wantDir - part.dir) * (1 - Math.exp(-7 * dt));                // Anziehen ↔ Abstoßen wechselt weich
 
+  updateForces(dt);
+  updatePartGrid();
   part.time += dt * (1 - 0.4 * calm);
   gl.disable(gl.BLEND);
   const u = use('partStep');
+  bindForces(u);
+  gl.uniform1i(u.uGrid, part.grid.read.attach(1));
+  gl.uniform2fv(u.uGridTexel, part.grid.texel);
+  gl.uniform1f(u.uGridNorm, part.grid.w * part.grid.h / (part.side * part.side));
+  gl.uniform1f(u.uPressure, PARTICLES.PRESSURE);
+  gl.uniform1f(u.uCrowd, PARTICLES.CROWD);
   gl.uniform1i(u.uState, part.state.read.attach(0));
   gl.uniform1f(u.uDt, dt);
   gl.uniform1f(u.uAspect, canvas.width / canvas.height);
@@ -4577,8 +4874,10 @@ function updateParticles(dt) {
   }
   part.phase += 0.012 * dt * (1 - 0.6 * calm);               // Farben wandern langsam über die Palette
   cursorEl.style.setProperty('--brush', paletteColor(part.phase + 0.3));
-  cursorEl.style.setProperty('--size', '26px');
-  document.body.classList.toggle('part-repel', wantDir < 0);
+  const grab = !!(part.hover || part.drag);
+  cursorEl.style.setProperty('--size', grab ? '40px' : '26px');
+  document.body.classList.toggle('part-repel', wantDir < 0 && !grab);
+  document.body.classList.toggle('part-grab', grab);
 }
 
 // ----- einmal pro Bild: zeichnen -----
@@ -4623,6 +4922,12 @@ function drawParticles(target, dt) {
   u = use('partShow');
   gl.uniform1i(u.uTrail, t.attach(0));
   gl.uniform1f(u.uExposure, PARAMS.partGlow.current);
+  bindForces(u);
+  gl.uniform1i(u.uSel, part.forces.indexOf(part.sel));
+  gl.uniform1i(u.uHover, part.forces.indexOf(part.drag ? part.drag.f : part.hover));
+  gl.uniform1f(u.uAspect, canvas.width / canvas.height);
+  gl.uniform1f(u.uPx, 1 / gl.drawingBufferHeight);
+  gl.uniform3f(u.uTint, currentPalette[0], currentPalette[1], currentPalette[2]);
   blit(target);
 }
 
@@ -4637,17 +4942,33 @@ function partPointerMove(e) {
   showCursor(e.clientX, e.clientY);
   if (part.pointer) part.move += Math.hypot((a[0] - part.pointer[0]) * Math.min(r.width / r.height, 1), (a[1] - part.pointer[1]) * Math.min(r.height / r.width, 1));
   part.pointer = a;
+  if (part.drag) {                                           // gegriffene Kraft folgt der Maus
+    part.drag.f.x = clampNum(a[0] + part.drag.ox, 0.03, 0.97);
+    part.drag.f.y = clampNum(a[1] + part.drag.oy, 0.03, 0.97);
+  } else part.hover = forceAt(a);
   lastPaint = performance.now();
   hideHint();
 }
 function partPointerDown(e) {
-  part.pointer = partMouse(e);
+  const a = part.pointer = partMouse(e);
   showCursor(e.clientX, e.clientY);
+  const f = part.hover = forceAt(a);
+  if (f) {                                                   // auf einer gesetzten Kraft: greifen – oder löschen (Rechtsklick)
+    if (e.button === 2) { removeForce(f); return; }
+    part.drag = { f, ox: f.x - a[0], oy: f.y - a[1] };
+    selectForce(f);
+    cursorScale = 0.8;
+    audioTock(false);
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* nicht schlimm: Ziehen endet dann am Fensterrand */ }
+    return;
+  }
+  if (e.button !== 0) return;
   part.held = true;                                          // solange gehalten: Kraft wirkt umgekehrt
   cursorScale = 0.7;
   audioTock(part.pull > 0);
 }
 function partPointerUp(e) {
+  part.drag = null;
   if (!part.held) return;
   part.held = false;
   if (e && e.pointerType === 'touch') part.pointer = null;   // Finger weg → Kraft blendet aus
@@ -4655,7 +4976,17 @@ function partPointerUp(e) {
 // Maus verlässt die Zeichenfläche: Wechselt sie nur aufs Panel, bleibt die Kraft an ihrer Stelle stehen (so sieht
 // man beim Verstellen der Regler, was sie bewirken); verlässt sie das Fenster, blendet die Kraft weich aus.
 function partPointerLeave(e) {
+  if (!part.drag) part.hover = null;
   if (!e || !e.relatedTarget) part.pointer = null;
+}
+// Mausrad über einer gesetzten Kraft: Reichweite ändern
+function partWheel(e) {
+  const f = part.hover;
+  if (!f) return;
+  const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;   // Zeilen/Seiten → Pixel
+  f.r = clampNum(f.r * Math.exp(-clampNum(d, -300, 300) * 0.0012), 0.05, 0.6);
+  selectForce(f);
+  lastPaint = performance.now();
 }
 function setPartPull(dir, silent) {
   part.pull = dir;
@@ -4673,6 +5004,11 @@ function partScatter() {
 function partKey(e) {
   if (e.code === 'KeyR') setPartPull(-part.pull);
   if (e.code === 'Space') { partScatter(); e.preventDefault(); }
+  // 1–5: Kraft an der Mausposition setzen (ohne Maus im Bild: in der Bildmitte)
+  const digit = /^Digit([1-9])$/.exec(e.code);
+  if (digit && Number(digit[1]) <= FORCE_TYPES.length) addForce(Number(digit[1]) - 1, ...(part.pointer || [0.5, 0.5]));
+  if (e.code === 'Delete' || e.code === 'Backspace') removeForce(part.hover || part.sel);
+  if (e.code === 'KeyX') clearForces();
 }
 // Auto-Play: eine unsichtbare Kraft wandert auf einer weichen Schleifenbahn durchs Bild
 function partAutoplay() {
@@ -4692,25 +5028,59 @@ bindSlider('partSize',    PARAMS.partSize,    v => v.toFixed(2) + '×');
 bindSlider('partGlow',    PARAMS.partGlow,    v => Math.round(v * 100) + ' %');
 setPartPull(1, true);
 
+// Kräfte: Knöpfe entstehen aus FORCE_TYPES; ein Klick setzt die Kraft nahe der Bildmitte (dann an ihre Stelle ziehen)
+const forceBox = $('forceTools');
+FORCE_TYPES.forEach((t, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.title = t.name + ': ' + t.help;
+  btn.innerHTML = `<span>${t.name}</span><kbd>${i + 1}</kbd>`;
+  btn.addEventListener('click', () => { addForce(i, 0.5 + rand(-0.12, 0.12), 0.5 + rand(-0.12, 0.12)); btn.blur(); });
+  forceBox.appendChild(btn);
+});
+$('forceDelete').addEventListener('click', e => { removeForce(part.sel); e.currentTarget.blur(); });
+$('forceClear').addEventListener('click', e => { clearForces(); e.currentTarget.blur(); });
+// Die drei Regler gelten für die ausgewählte Kraft; ist keine ausgewählt, legen sie die Werte der nächsten fest
+function bindForceSlider(id, key, format) {
+  const param = PARAMS[id];
+  bindSlider(id, param, format, {
+    onInput: v => { if (part.sel) part.sel[key] = v; },
+    onReset: () => { param.target = param.def; if (part.sel) part.sel[key] = param.def; toast('Standardwert'); },
+  });
+}
+bindForceSlider('forceStrength', 's', v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindForceSlider('forceRange',    'r', v => Math.round(v * 100) + ' %');
+bindForceSlider('forceDir',      'a', v => ['rechts →', 'oben rechts ↗', 'oben ↑', 'oben links ↖', 'links ←', 'unten links ↙', 'unten ↓', 'unten rechts ↘'][Math.round((v + 360) % 360 / 45) % 8]);
+function updateForceUi() {
+  const f = part.sel, n = part.forces.filter(x => !x.dead).length;
+  $('forceDirRow').classList.toggle('off', !(f && f.t.kind === 2));
+  $('forceDelete').classList.toggle('unused', !f);
+  $('forceInfo').textContent = f ? `Ausgewählt: ${f.t.name} – ${f.t.help}. (${n} von ${PARTICLES.MAX_FORCES} gesetzt)`
+    : n ? `${n} von ${PARTICLES.MAX_FORCES} gesetzt. Klick auf eine Kraft im Bild wählt sie aus.`
+    : 'Noch keine Kraft gesetzt. Die Regler gelten für die nächste.';
+}
+updateForceUi();
+
 MODES.push({
   id: 'particles', name: 'Partikel',
-  hint: 'Maus = Partikel anziehen · Maustaste halten = abstoßen · <b>R</b> = umkehren · <b>Tab</b> = Modus wechseln',
+  hint: 'Maus = Partikel anziehen · Maustaste halten = abstoßen · <b>1</b>–<b>5</b> = Kraft setzen · <b>Tab</b> = Modus wechseln',
   autoplayHint: 'Auto-Play · Bewege die Maus, um die Partikel selbst zu lenken',
   enter() {
     $('paletteSection').classList.remove('unused');          // Palette und Bloom wirken hier immer
     $('bloomSection').classList.remove('unused');
   },
-  leave() { part.held = false; document.body.classList.remove('part-repel'); },
+  leave() { part.held = false; part.drag = part.hover = null; document.body.classList.remove('part-repel', 'part-grab'); },
   update: updateParticles,
   draw: drawParticles,
   bloomShare: () => 1,
-  autoplayStart() { part.pointer = null; part.held = false; },
+  autoplayStart() { part.pointer = null; part.held = false; part.drag = part.hover = null; },
   autoplayStop() {},
   autoplay: partAutoplay,
   pointerMove: partPointerMove,
   pointerDown: partPointerDown,
   pointerUp: partPointerUp,
   pointerLeave: partPointerLeave,
+  wheel: partWheel,
   key: partKey,
   qualityInfo() {
     ensurePartBuffers();
