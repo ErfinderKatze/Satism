@@ -565,12 +565,12 @@ const CONFIG = {
 // fscale = Mandelbrot-Modus: Auflösung des Fraktals als Vielfaches der Bildschirmauflösung (über 1 = Supersampling),
 // iter = Mandelbrot-Modus: Obergrenze für die Rechendurchgänge pro Bildpunkt
 const QUALITY = [
-  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4, fscale: 0.5, iter: 300 },
-  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2, fscale: 0.75, iter: 500 },
-  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2, fscale: 1, iter: 800 },
-  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 1200 },
-  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 2000, heavy: true },
-  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 3000, heavy: true },
+  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4, fscale: 0.5, iter: 2000 },
+  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2, fscale: 0.75, iter: 3000 },
+  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2, fscale: 1, iter: 4500 },
+  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 6000 },
+  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 8000, heavy: true },
+  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 10000, heavy: true },
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
@@ -3326,36 +3326,117 @@ MODES.push({
 // Zwei Schritte pro Bild (beide auf der Grafikkarte):
 //   1) Zählen  (fracData):  teuer – läuft nur, wenn sich Ausschnitt, Julia-Form oder Detailgrad geändert haben
 //   2) Färben  (fracColor): billig – läuft immer, deshalb können die Farben wandern, auch wenn das Bild stillsteht
+//
+// Tiefer Zoom ("Perturbation" = Störungsrechnung): Die Grafikkarte rechnet nur mit 32-Bit-Zahlen (ca. 7 Stellen).
+// Ab etwa 20.000-fachem Zoom liegen benachbarte Bildpunkte enger beieinander, als sich damit unterscheiden lässt.
+// Lösung: EIN Punkt (der Bezugspunkt, meist die Bildmitte) wird im JavaScript mit sehr vielen Stellen gerechnet – seine
+// "Bezugsbahn" (alle z-Werte nacheinander) geht als Textur an die Grafikkarte. Jeder Bildpunkt rechnet dann nur noch
+// seinen winzigen ABSTAND zu dieser Bahn aus. Winzige Zahlen kann die Grafikkarte sehr genau darstellen (7 Stellen
+// bezogen auf den Abstand, nicht auf die ganze Zahl) – deshalb bleibt das Bild in jeder Tiefe scharf.
+// Diese Rechnung kostet pro Durchgang etwa 3- bis 5-mal so viel wie die direkte. Zwei Abkürzungen halten sie flüssig:
+//   - Bei flachem Zoom (bis ca. 1.800-fach) rechnet die Grafikkarte direkt wie früher (Shader fracPlain).
+//   - In der Tiefe laufen alle Bildpunkte anfangs fast gleich. Diese gemeinsamen ersten Durchgänge werden übersprungen:
+//     Eine Näherungsformel (drei Glieder einer Reihe, im JavaScript gerechnet) liefert den Abstand nach N Durchgängen
+//     direkt – die Grafikkarte rechnet nur den Rest ("Series Approximation", siehe fracSeries).
+//   - Hat sich ein Bildpunkt weit von der Bezugsbahn entfernt (Abstand > 0,01), sind auch seine Nachbarn längst weit
+//     auseinander – ab dann genügt wieder die direkte, schnelle Rechnung.
 const FRACTAL = {
   LZ_MIN: -0.5,             // am weitesten herausgezoomt (Zoom als natürlicher Logarithmus, 0 = Übersicht)
-  LZ_MAX: Math.log(2e4),    // tiefster Zoom: darunter reichen die 32-Bit-Zahlen der Grafikkarte nicht mehr (Bild wird klötzchenhaft)
+  LZ_MAX: Math.log(1e30),   // tiefster Zoom: 10^30-fach (darunter werden selbst die Abstände zu klein für 32-Bit-Zahlen)
   WHEEL: 0.0028,            // Zoom pro Scroll-Einheit (ein Mausrad-Raster ≈ 100 → ca. 1,3-fach)
   CLICK_ZOOM: 0.9,          // Zoom pro Klick (ca. 2,5-fach)
   ZOOM_EASE: 9,             // wie schnell der Zoom seinem Ziel folgt (größer = direkter)
   FRICTION: 4.5,            // wie schnell das Nachlaufen nach dem Ziehen ausklingt
   MORPH_SECONDS: 1.1,       // Dauer der Verwandlung Mandelbrot ↔ Julia
-  FLY_IN: 0.5,              // Zoom-Fahrt: Tempo hinein (pro Sekunde, natürlicher Logarithmus → ca. 1,65-fach pro Sekunde)
-  FLY_OUT: 1.2,             // Zoom-Fahrt: Tempo heraus
+  FLY_IN: 0.6,              // Zoom-Fahrt: Tempo hinein (pro Sekunde, natürlicher Logarithmus → ca. 1,8-fach pro Sekunde)
+  FLY_OUT: 1.5,             // Zoom-Fahrt: Tempo heraus
+  SPOT_BUDGET: 800,         // Zoom-Fahrt: so tief hinein, bis ein Bildpunkt im Schnitt etwa so viele Durchgänge braucht …
+  SPOT_LZ_MAX: 46,          // … höchstens aber bis 10^20-fach
+  MAX_ITER: 24000,          // absolute Obergrenze der Durchgänge (so lang kann eine Bezugsbahn in der Textur sein)
   HOLD_SECONDS: 4,          // Zoom-Fahrt: so lange bleibt sie am Ziel, bevor es weitergeht
   JULIA_RADIUS: 0.7885,     // Auto-Play im Julia-Bild: c wandert auf einem Kreis mit diesem Radius um den Ursprung
+  FIXED_BITS: 200,          // Positionen in der Zahlenebene: ganze Zahlen (BigInt) mit so vielen Binärstellen hinter dem Komma (≈ 60 Dezimalstellen)
+  PLAIN_LZ: 7.5,            // bis zu diesem Zoom (ca. 1.800-fach) rechnet die Grafikkarte direkt (schneller); darüber mit Bezugsbahn
+                            // (gemessen: bei 8.000-fach weicht die direkte Rechnung schon um bis zu einem halben Bildpunkt ab)
+  SERIES_Q: 0.035,          // Abkürzung in der Tiefe: so klein müssen die höheren Glieder der Näherungsformel bleiben
+  DOUBLE_ZOOM_BITS: 26,     // bis zu diesem Zoom (2^26 ≈ 67 Millionen-fach) reichen für die Bezugsbahn normale JavaScript-Zahlen
+  REF_WIDTH: 1024,          // Bezugsbahn-Textur: Punkte pro Zeile …
+  REF_ROWS: 48,             // … und Zeilen (zwei Bahnen mit je bis zu 24.576 Punkten)
 };
 
-// Schöne Stellen: Punkte genau auf dem Rand der Menge (dort hört das Muster beim Hineinzoomen nie auf).
-// x, y = Position in der Zahlenebene, lz = wie tief die Zoom-Fahrt dort hineinfährt (natürlicher Logarithmus)
+// ----- Zahlen mit vielen Stellen -----
+// Positionen in der Zahlenebene werden als BigInt gespeichert: Wert = BigInt / 2^FIXED_BITS ("Festkommazahl").
+// Normale JavaScript-Zahlen (16 Stellen) reichen nur bis etwa 10^13-fachem Zoom.
+const FX_BITS = BigInt(FRACTAL.FIXED_BITS), FX_INV = Math.pow(2, -FRACTAL.FIXED_BITS);
+// normale Zahl → Festkommazahl
+function fx(d) {
+  if (d === 0 || !isFinite(d)) return 0n;
+  const k = 52 - Math.floor(Math.log2(Math.abs(d)));           // so weit schieben, dass alle 53 Binärstellen vor dem Komma stehen
+  const m = BigInt(Math.round(d * Math.pow(2, k))), s = FRACTAL.FIXED_BITS - k;
+  return s >= 0 ? m << BigInt(s) : m >> BigInt(-s);
+}
+// Festkommazahl → normale Zahl (gerundet; für Abstände und Anzeigen)
+const fxNum = b => Number(b) * FX_INV;
+
+// Schöne Stellen: Punkte genau auf dem Rand der Menge (dort hört das Muster beim Hineinzoomen nie auf) und die Mitte
+// eines Mini-Mandelbrots. x, y = ungefähre Position; k, p beschreiben die Bahn des Punkts: nach k Schritten mündet sie
+// in einen Kreislauf der Länge p. Daraus wird die Position beim Start auf alle 60 Stellen genau nachgerechnet
+// (refineSpot) – sonst läge sie tief im Bild daneben. lz = wie tief die Zoom-Fahrt hineinfährt (natürlicher
+// Logarithmus); fehlt die Angabe, wird sie berechnet: Manche Stellen brauchen pro Zoomstufe viel mehr Durchgänge als
+// andere (Dreifach-Spirale ≈ 66 je Einheit, Elefanten-Tal ≈ 1) – die teuren fahren deshalb weniger tief.
 const SPOTS = [
-  { name: 'Seepferdchen-Tal',  x: -0.7756837680090538,  y: 0.1364673682946901,  lz: 9.6 },
-  { name: 'Elefanten-Tal',     x: 0.3239958899199433,   y: 0.0435970999465609,  lz: 9.6 },
-  { name: 'Verzweigung',       x: -0.1010963638456222,  y: 0.9562865108091415,  lz: 9.6 },
-  { name: 'Dreifach-Spirale',  x: -0.06725900792385113, y: 0.6637217446205802,  lz: 9.6 },
-  { name: 'Vierfach-Spirale',  x: 0.30087554632329117,  y: 0.4858645541333637,  lz: 9.6 },
-  { name: 'Zepter',            x: -1.2555819767538616,  y: 0.4020388592658135,  lz: 9.6 },
-  { name: 'Mini-Mandelbrot',   x: -1.7548776662466927,  y: 0,                   lz: 3.5 },
+  { name: 'Seepferdchen-Tal',  x: -0.7756837680090538,  y: 0.1364673682946901,  k: 24, p: 1 },
+  { name: 'Elefanten-Tal',     x: 0.3239958899199433,   y: 0.0435970999465609,  k: 23, p: 2 },
+  { name: 'Verzweigung',       x: -0.1010963638456222,  y: 0.9562865108091415,  k: 4,  p: 1 },
+  { name: 'Dreifach-Spirale',  x: -0.06725900792385113, y: 0.6637217446205802,  k: 48, p: 3 },
+  { name: 'Vierfach-Spirale',  x: 0.30087554632329117,  y: 0.4858645541333637,  k: 21, p: 4 },
+  { name: 'Zepter',            x: -1.2555819767538616,  y: 0.4020388592658135,  k: 5,  p: 2 },
+  { name: 'Mini-Mandelbrot',   x: -1.7548776662466927,  y: 0,                   k: 0,  p: 3, lz: 3.5 },
 ];
+// Position einer Stelle auf volle Genauigkeit bringen: Newton-Verfahren für die Gleichung z(k+p) = z(k)
+// (z(n) = n-mal z → z² + c ab z = 0). Jeder Durchlauf verdoppelt die Zahl der richtigen Stellen.
+function refineSpot(s) {
+  const mul = (ax, ay, bx, by) => [(ax * bx - ay * by) >> FX_BITS, (ax * by + ay * bx) >> FX_BITS];
+  const one = 1n << FX_BITS;
+  let cx = fx(s.x), cy = fx(s.y);
+  for (let round = 0; round < 7; round++) {
+    let zx = 0n, zy = 0n, dx = 0n, dy = 0n, zkx = 0n, zky = 0n, dkx = 0n, dky = 0n;   // z und seine Ableitung nach c
+    for (let n = 0; n < s.k + s.p; n++) {
+      if (n === s.k) { zkx = zx; zky = zy; dkx = dx; dky = dy; }
+      const d = mul(zx, zy, dx, dy), z = mul(zx, zy, zx, zy);
+      dx = 2n * d[0] + one; dy = 2n * d[1];
+      zx = z[0] + cx; zy = z[1] + cy;
+    }
+    const gx = zx - zkx, gy = zy - zky, hx = dx - dkx, hy = dy - dky, den = hx * hx + hy * hy;
+    if (den === 0n) break;
+    cx -= ((gx * hx + gy * hy) << FX_BITS) / den;            // c ← c − g / h (komplexe Division)
+    cy -= ((gy * hx - gx * hy) << FX_BITS) / den;
+  }
+  // Zieltiefe der Zoom-Fahrt: Beim Hineinzoomen um den Faktor |λ| kommen p Durchgänge dazu (λ = "Streckfaktor" des
+  // Kreislaufs: Produkt aus 2·z über seine p Punkte). rate = Durchgänge pro Zoom-Einheit (natürlicher Logarithmus).
+  if (s.lz === undefined) {
+    let zx = 0, zy = 0, lx = 1, ly = 0;
+    for (let n = 0; n < s.k + s.p; n++) {
+      if (n >= s.k) { const t = 2 * (lx * zx - ly * zy); ly = 2 * (lx * zy + ly * zx); lx = t; }
+      const t = zx * zx - zy * zy + s.x;
+      zy = 2 * zx * zy + s.y; zx = t;
+    }
+    const rate = s.p / Math.log(Math.max(Math.hypot(lx, ly), 1.0001));
+    s.lz = Math.max(8, Math.min(FRACTAL.SPOT_LZ_MAX, (FRACTAL.SPOT_BUDGET - s.k) / rate));
+  }
+  // Sicherheitsnetz: liegt das Ergebnis nicht dicht bei der Ausgangsposition, bleibt es bei dieser
+  const ok = Math.hypot(fxNum(cx) - s.x, fxNum(cy) - s.y) < 1e-9;
+  s.x = ok ? cx : fx(s.x);
+  s.y = ok ? cy : fx(s.y);
+}
+SPOTS.forEach(refineSpot);
+const FRAC_HOME = { M: { x: fx(-0.6), y: 0n, lz: 0 }, J: { x: 0n, y: 0n, lz: 0 } };    // die beiden Übersichten
 
 const frac = {
-  M: { x: -0.6, y: 0, lz: 0, lzT: 0 },    // Mandelbrot-Ausschnitt: Bildmitte, Zoom (lz) und Zoom-Ziel (lzT)
-  J: { x: 0, y: 0, lz: 0, lzT: 0 },       // Julia-Ausschnitt
-  c: [-0.8, 0.156], cT: [-0.8, 0.156],    // Julia-Parameter c und sein Ziel (c läuft weich hinterher)
+  M: { x: fx(-0.6), y: 0n, lz: 0, lzT: 0 },   // Mandelbrot-Ausschnitt: Bildmitte (Festkommazahlen), Zoom (lz) und Zoom-Ziel (lzT)
+  J: { x: 0n, y: 0n, lz: 0, lzT: 0 },         // Julia-Ausschnitt
+  c: [fx(-0.8), fx(0.156)],                // Julia-Parameter c …
+  cT: [fx(-0.8), fx(0.156)],               // … und sein Ziel (c läuft weich hinterher)
   julia: false,                            // Julia-Bild gewählt?
   frozen: false,                           // Julia: Form festgehalten (die Maus verändert c nicht)
   k: 0,                                    // 0 = Mandelbrot, 1 = Julia; dazwischen läuft die Verwandlung
@@ -3369,6 +3450,7 @@ const frac = {
   theta: 0,                                // Auto-Play im Julia-Bild: Winkel von c auf seiner Kreisbahn
   phase: 0,                                // wandernde Farbverschiebung
   dataKey: '', miniKey: '', busy: false,   // wurde in diesem Bild neu gezählt?
+  skip: 0,                                 // so viele Durchgänge wurden beim letzten Zählen übersprungen (siehe fracSeries)
   infoTimer: 0, lastLz: 0, limitToast: 0,
 };
 const clampNum = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -3379,7 +3461,7 @@ const fracBaseHeight = () => Math.max(2.7, 3.5 / fracAspect());
 const fracHeight = V => fracBaseHeight() * Math.exp(-V.lz);
 const fracView = () => frac.julia ? frac.J : frac.M;
 // Punkt der Zahlenebene, der im Ausschnitt V an der Bildstelle a liegt (a = Abstand von der Bildmitte in Bildhöhen)
-const fracPoint = (V, a) => [V.x + a[0] * fracHeight(V), V.y + a[1] * fracHeight(V)];
+const fracPoint = (V, a) => [V.x + fx(a[0] * fracHeight(V)), V.y + fx(a[1] * fracHeight(V))];
 // Mausposition → Abstand von der Bildmitte in Bildhöhen (x nach rechts, y nach oben)
 function fracMouse(e) {
   const r = canvas.getBoundingClientRect();
@@ -3387,8 +3469,16 @@ function fracMouse(e) {
 }
 
 // ----- Shader -----
-// 1) Zählen: schreibt pro Bildpunkt den "glatten" Zähler (keine Stufen zwischen den Farbbändern), −1 = gehört zur Menge
-programs.fracData = makeProgram(header + `
+// 1a) Zählen bei flachem Zoom: direkte Rechnung z → z² + c. Schreibt pro Bildpunkt den "glatten" Zähler
+//     (keine Stufen zwischen den Farbbändern), −1 = gehört zur Menge.
+const fracBulbGLSL = `
+  // Die große "Herzform" und der Kreis links daneben gehören sicher zur Menge → dort nicht erst lange rechnen
+  bool inBulbs (vec2 c) {
+    float q = (c.x - 0.25) * (c.x - 0.25) + c.y * c.y;
+    return q * (q + (c.x - 0.25)) < 0.25 * c.y * c.y || (c.x + 1.0) * (c.x + 1.0) + c.y * c.y < 0.0625;
+  }
+`;
+programs.fracPlain = makeProgram(header + fracBulbGLSL + `
   uniform vec2 uCenterM, uSpanM;   // Mandelbrot-Ausschnitt: Bildmitte und Größe in der Zahlenebene
   uniform vec2 uCenterJ, uSpanJ;   // Julia-Ausschnitt
   uniform vec2 uC;                 // Julia-Parameter c
@@ -3400,16 +3490,96 @@ programs.fracData = makeProgram(header + `
     vec2 z = uK * (uCenterJ + p * uSpanJ);
     vec2 c = mix(uCenterM + p * uSpanM, uC, uK);
     float s = -1.0;
-    // Die große "Herzform" und der Kreis links daneben gehören sicher zur Menge → nicht erst lange rechnen
-    float q = (c.x - 0.25) * (c.x - 0.25) + c.y * c.y;
-    bool inside = uBulb > 0.5 && (q * (q + (c.x - 0.25)) < 0.25 * c.y * c.y || (c.x + 1.0) * (c.x + 1.0) + c.y * c.y < 0.0625);
-    if (!inside) {
+    if (!(uBulb > 0.5 && inBulbs(c))) {
       float zz = 0.0;
       int i = 0;
+      // Kreislauf-Erkennung: Punkte in der Menge laufen meist in einen Kreislauf. Trifft z EXAKT einen früher gemerkten
+      // Wert (zs), wiederholt sich ab da alles – der Punkt bricht nie aus, der Rest muss nicht mehr gerechnet werden.
+      // Gemerkt wird in immer größeren Abständen (nach 8, 16, 32 … Durchgängen). Das Ergebnis bleibt genau dasselbe.
+      vec2 zs = vec2(1e9);
+      int mark = 8;
       for (; i < uMaxIter; i++) {
         z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
         zz = dot(z, z);
         if (zz > 65536.0) break;
+        if (z == zs) { i = uMaxIter; break; }
+        if (i == mark) { zs = z; mark += mark; }
+      }
+      if (i < uMaxIter) s = max(float(i) + 1.0 - log2(log2(zz) / 16.0), 0.0);
+    }
+    fragColor = vec4(s, 0.0, 0.0, 1.0);
+  }`);
+
+// 1b) Zählen bei tiefem Zoom: derselbe Zähler, aber über den Abstand zur Bezugsbahn gerechnet.
+//    Gerechnet wird nicht z selbst, sondern d = Abstand von z zur Bezugsbahn Z (aus der Textur uRef):
+//        z = Z + d,   neues d = (2·Z + d)·d + dc        (dc = Abstand des Bildpunkts vom Bezugspunkt)
+//    Das ist genau dieselbe Rechnung z → z² + c, nur umgestellt. Kommt z dem Nullpunkt näher, als d groß ist, wird
+//    "neu angesetzt" (Rebasing): d = z, und es geht am Anfang der Bahn B weiter (die bei z = 0 beginnt). Das hält d
+//    immer klein und damit genau. Bahn A startet am Bezugspunkt des Bildes, Bahn B bei 0 (Mandelbrot: A = B).
+programs.fracData = makeProgram(header + fracBulbGLSL + `
+  precision highp int;
+  uniform sampler2D uRef;          // Bezugsbahnen: je Punkt (Realteil, Imaginärteil), 1024 Punkte pro Zeile
+  uniform int uLenA, uLenB;        // Anzahl der Punkte von Bahn A und Bahn B
+  uniform int uRowB;               // Zeile, in der Bahn B beginnt
+  uniform vec2 uOffM, uSpanM;      // Mandelbrot-Ausschnitt: Abstand der Bildmitte vom Bezugspunkt und Größe in der Zahlenebene
+  uniform vec2 uOffJ, uSpanJ;      // Julia-Ausschnitt
+  uniform vec2 uCref;              // c des Bezugspunkts (nur für die Abkürzung unten)
+  uniform float uK;                // 0 = Mandelbrot, 1 = Julia, dazwischen: beide Rechnungen gehen fließend ineinander über
+  uniform int uMaxIter;            // höchstens so viele Durchgänge
+  uniform float uBulb;             // 1 = Abkürzung für die beiden großen Flächen der Mandelbrot-Menge benutzen
+  uniform int uSkip;               // so viele Durchgänge werden übersprungen (0 = keine) …
+  uniform vec2 uS1, uS2, uS3;      // … mit dieser Näherungsformel: d = q·(S1 + q·(S2 + q·S3))
+  uniform vec2 uQOff, uQSpan;      //     q = Abstand des Bildpunkts vom Bezugspunkt in Bildhöhen
+  vec2 refAt (int m, int row) { return texelFetch(uRef, ivec2(m & 1023, row + (m >> 10)), 0).rg; }
+  vec2 cmul (vec2 a, vec2 b) { return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x); }   // komplexe Multiplikation
+  void main () {
+    vec2 p = vUv - 0.5;
+    vec2 dc = (1.0 - uK) * (uOffM + p * uSpanM);     // Abstand dieses Bildpunkts vom Bezugspunkt: Anteil an c …
+    vec2 d = uK * (uOffJ + p * uSpanJ);              // … und am Startwert z
+    float s = -1.0;
+    if (!(uBulb > 0.5 && inBulbs(uCref + dc))) {
+      int m = 0, row = 0, len = uLenA;               // Stelle auf der Bezugsbahn
+      int i = 0;
+      if (uSkip > 0) {                               // gemeinsamen Anfang überspringen
+        vec2 q = uQOff + p * uQSpan;
+        d = cmul(q, uS1 + cmul(q, uS2 + cmul(q, uS3)));
+        m = uSkip; i = uSkip;
+      }
+      vec2 Z = refAt(m, 0), z;
+      float zz = 0.0;
+      bool far = false;
+      // Kreislauf-Erkennung wie in fracPlain: hier wiederholt sich alles, sobald Abstand d UND Wert der Bezugsbahn
+      // exakt gleich einem früher gemerkten Stand sind (die Bezugsbahn läuft im Inneren selbst in einen Kreislauf)
+      vec2 ds = vec2(1e9), Zs = vec2(1e9), zs = vec2(1e9);
+      int mark = max(8, 2 * i);
+      for (; i < uMaxIter; i++) {
+        vec2 t = 2.0 * Z + d;
+        d = cmul(t, d) + dc;
+        m++;
+        Z = refAt(m, row);
+        z = Z + d;
+        zz = dot(z, z);
+        if (zz > 65536.0) break;
+        // (Vergleiche über den größeren der beiden Anteile statt über Quadrate: winzige Zahlen würden quadriert zu 0)
+        float dm = max(abs(d.x), abs(d.y));
+        // weit weg von der Bezugsbahn: ab hier direkt weiterrechnen (siehe unten)
+        if (dm > 0.01) { far = true; i++; break; }
+        // neu ansetzen: z ist kleiner als der Abstand d geworden – oder die Bezugsbahn ist zu Ende
+        if (max(abs(z.x), abs(z.y)) < dm || m >= len - 1) { d = z; m = 0; row = uRowB; len = uLenB; Z = vec2(0.0); }
+        if (d == ds && Z == Zs) { i = uMaxIter; break; }
+        if (i == mark) { ds = d; Zs = Z; mark += mark; }
+      }
+      if (far) {
+        // direkte Rechnung z → z² + c für den Rest (c = Bezugspunkt + Abstand; die 7 Stellen reichen jetzt aus)
+        vec2 c = uCref + dc;
+        mark = max(8, 2 * i);
+        for (; i < uMaxIter; i++) {
+          z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+          zz = dot(z, z);
+          if (zz > 65536.0) break;
+          if (z == zs) { i = uMaxIter; break; }
+          if (i == mark) { zs = z; mark += mark; }
+        }
       }
       if (i < uMaxIter) s = max(float(i) + 1.0 - log2(log2(zz) / 16.0), 0.0);
     }
@@ -3519,25 +3689,198 @@ function ensureFracBuffers() {
   frac.dataKey = frac.miniKey = '';
 }
 
-// So viele Durchgänge braucht ein Ausschnitt ungefähr: je tiefer der Zoom, desto mehr. Die Qualitätsstufe setzt die
-// Obergrenze (QUALITY[].iter), der Regler "Details" multipliziert das Ergebnis.
+// So viele Durchgänge sind höchstens erlaubt: je tiefer der Zoom, desto mehr (großzügig bemessen – teuer sind nur
+// Bildpunkte, die bis zum Schluss nicht ausbrechen). Die Qualitätsstufe setzt die Obergrenze (QUALITY[].iter), der
+// Regler "Details" multipliziert das Ergebnis. Reicht es nicht, bleiben Stellen schwarz, die eigentlich bunt wären.
 function fracIterations(lz, base) {
-  const need = base + 30 * Math.pow(Math.max(lz, 0) / Math.LN2, 1.25);
-  return Math.round(Math.min(need, QUALITY[qualityLevel].iter) * PARAMS.fracDetail.current);
+  const need = base + 40 * Math.pow(Math.max(lz, 0) / Math.LN2, 1.4);
+  return Math.min(FRACTAL.MAX_ITER, Math.round(Math.min(need, QUALITY[qualityLevel].iter) * PARAMS.fracDetail.current));
 }
 
-// Schritt 1: zählen. k = 0 Mandelbrot … 1 Julia
+// ----- Bezugsbahn (im JavaScript gerechnet, als Textur an die Grafikkarte) -----
+// Bahn eines Punkts: z, z² + c, (z² + c)² + c … bis sie ausbricht oder n Schritte erreicht sind.
+// Schreibt (Realteil, Imaginärteil) fortlaufend nach out ab Stelle o und gibt die Anzahl der Punkte zurück.
+// Fassung mit normalen JavaScript-Zahlen (schnell, reicht bis ca. 67 Millionen-fachem Zoom):
+function orbitDouble(zx, zy, cx, cy, n, out, o, out64) {
+  let i = 0;
+  while (true) {
+    out[o + 2 * i] = zx; out[o + 2 * i + 1] = zy;
+    if (out64) { out64[2 * i] = zx; out64[2 * i + 1] = zy; }
+    i++;
+    if (i > n || zx * zx + zy * zy > 1e6) return i;
+    const t = zx * zx - zy * zy + cx;
+    zy = 2 * zx * zy + cy; zx = t;
+  }
+}
+// Fassung mit vielen Stellen (BigInt-Festkommazahlen mit "bits" Binärstellen hinter dem Komma) für tiefen Zoom:
+function orbitBig(zx, zy, cx, cy, bits, n, out, o, out64) {
+  const B = BigInt(bits), B1 = BigInt(bits - 1), inv = Math.pow(2, -bits);
+  let i = 0;
+  while (true) {
+    const x = Number(zx) * inv, y = Number(zy) * inv;
+    out[o + 2 * i] = x; out[o + 2 * i + 1] = y;
+    if (out64) { out64[2 * i] = x; out64[2 * i + 1] = y; }
+    i++;
+    if (i > n || x * x + y * y > 1e6) return i;
+    const t = ((zx * zx - zy * zy) >> B) + cx;
+    zy = ((zx * zy) >> B1) + cy; zx = t;
+  }
+}
+
+const fracRef = {
+  tex: gl.createTexture(),
+  buf: new Float32Array(FRACTAL.REF_WIDTH * FRACTAL.REF_ROWS * 2),
+  orbit: new Float64Array(FRACTAL.REF_WIDTH * FRACTAL.REF_ROWS),   // Bahn A noch einmal in voller JavaScript-Genauigkeit (für fracSeries)
+  valid: false,
+  mx: 0n, my: 0n, jx: 0n, jy: 0n,   // Bezugspunkt im Mandelbrot- und im Julia-Ausschnitt (Festkommazahlen)
+  cx: 0n, cy: 0n, k: -1,            // Julia-Parameter und Mischung, für die die Bahnen gerechnet wurden
+  lzM: 0, lzJ: 0,                   // Zoomtiefe, für die die Stellenzahl ausgelegt ist
+  cap: 0, open: false,              // gerechnete Schritte; open = eine Bahn endete an dieser Grenze (nicht durch Ausbrechen)
+  lenA: 2, lenB: 2, rowB: 0,        // Länge der Bahnen und Zeile, in der Bahn B beginnt
+  cref: [0, 0],                     // c des Bezugspunkts als normale Zahl
+  ms: 0, count: 0,                  // Messwerte: Rechenzeit der letzten Bezugsbahn (ms) und Anzahl der Neuberechnungen
+};
+gl.bindTexture(gl.TEXTURE_2D, fracRef.tex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG32F, FRACTAL.REF_WIDTH, FRACTAL.REF_ROWS, 0, gl.RG, gl.FLOAT, null);
+
+// Sorgt dafür, dass die Bezugsbahnen zum Bild passen (k = 0 Mandelbrot … 1 Julia), und rechnet sie nur dann neu,
+// wenn es nötig ist: Bezugspunkt zu weit von der Bildmitte, mehr Durchgänge nötig, deutlich tieferer Zoom oder
+// andere Julia-Form. Gibt den Abstand der beiden Bildmitten von ihrem Bezugspunkt zurück.
+function fracPrepareRef(k, maxIter) {
+  const f = frac, r = fracRef, useM = k < 1, useJ = k > 0;
+  const hM = fracHeight(f.M), hJ = fracHeight(f.J), reach = 0.75 * Math.max(fracAspect(), 1);
+  const offsets = () => ({ M: [fxNum(f.M.x - r.mx), fxNum(f.M.y - r.my)], J: [fxNum(f.J.x - r.jx), fxNum(f.J.y - r.jy)] });
+  const off = offsets();
+  const stale = !r.valid || r.k !== k
+    || (useJ && (r.cx !== f.c[0] || r.cy !== f.c[1]))
+    || (useM && (Math.hypot(off.M[0], off.M[1]) > reach * hM || f.M.lz > r.lzM + 14))
+    || (useJ && (Math.hypot(off.J[0], off.J[1]) > reach * hJ || f.J.lz > r.lzJ + 14))
+    || (r.open && maxIter > r.cap);
+  if (!stale) return off;
+
+  const t0 = performance.now();
+  // Bezugspunkt = Bildmitte. Während eines Flugs hinein: gleich das Ziel, und Stellenzahl und Länge der Bahn für die
+  // Zieltiefe auslegen – dann muss unterwegs nicht neu gerechnet werden (das würde jedes Mal kurz ruckeln).
+  let px = f.M.x, py = f.M.y, lzM = f.M.lz, cap = Math.ceil(maxIter * 1.25) + 50;
+  const fl = f.flight;
+  if (fl && fl.phase === 'in' && fl.V === f.M && k === 0 && fl.spot.lz > f.M.lz) {
+    px = fl.spot.x; py = fl.spot.y; lzM = fl.spot.lz;
+    cap = Math.max(cap, fracIterations(lzM, 100) + 50);
+  }
+  cap = Math.min(cap, FRACTAL.REF_WIDTH * FRACTAL.REF_ROWS / 2 - 2);
+  const zoomBits = Math.max(useM ? lzM : 0, useJ ? f.J.lz : 0) / Math.LN2;
+  const buf = r.buf, rowFloats = FRACTAL.REF_WIDTH * 2;
+  let lenA, lenB = 0, oB = 0;
+  if (zoomBits <= FRACTAL.DOUBLE_ZOOM_BITS) {
+    // flacher Zoom: normale Zahlen genügen. Bezugspunkte genau auf diese Zahlen runden, damit Bahn und Abstände zusammenpassen
+    const mx = fxNum(px), my = fxNum(py), jx = fxNum(f.J.x), jy = fxNum(f.J.y);
+    r.mx = fx(mx); r.my = fx(my); r.jx = fx(jx); r.jy = fx(jy);
+    const cx = (1 - k) * mx + k * fxNum(f.c[0]), cy = (1 - k) * my + k * fxNum(f.c[1]);
+    r.cref = [cx, cy];
+    lenA = orbitDouble(k * jx, k * jy, cx, cy, cap, buf, 0, r.orbit);
+    if (useJ) { oB = Math.ceil(lenA / FRACTAL.REF_WIDTH) * rowFloats; lenB = orbitDouble(0, 0, cx, cy, cap, buf, oB); }
+  } else {
+    // tiefer Zoom: so viele Binärstellen, wie der Zoom braucht, plus 48 Stellen Reserve
+    const bits = Math.min(FRACTAL.FIXED_BITS, Math.round(zoomBits) + 48), sh = BigInt(FRACTAL.FIXED_BITS - bits);
+    const mx = px >> sh, my = py >> sh, jx = f.J.x >> sh, jy = f.J.y >> sh;
+    r.mx = mx << sh; r.my = my << sh; r.jx = jx << sh; r.jy = jy << sh;
+    const one = 1099511627776n, kf = BigInt(Math.round(k * 1099511627776));       // k als Festkommazahl mit 40 Binärstellen
+    const cx = (mx * (one - kf) + (f.c[0] >> sh) * kf) >> 40n, cy = (my * (one - kf) + (f.c[1] >> sh) * kf) >> 40n;
+    r.cref = [Number(cx) * Math.pow(2, -bits), Number(cy) * Math.pow(2, -bits)];
+    lenA = orbitBig((jx * kf) >> 40n, (jy * kf) >> 40n, cx, cy, bits, cap, buf, 0, r.orbit);
+    if (useJ) { oB = Math.ceil(lenA / FRACTAL.REF_WIDTH) * rowFloats; lenB = orbitBig(0n, 0n, cx, cy, bits, cap, buf, oB); }
+  }
+  // Mandelbrot (k = 0): Bahn A beginnt selbst bei 0 → sie dient auch als Bahn B
+  Object.assign(r, {
+    valid: true, k, cx: f.c[0], cy: f.c[1], lzM, lzJ: f.J.lz, cap,
+    lenA, lenB: useJ ? lenB : lenA, rowB: useJ ? oB / rowFloats : 0,
+    open: lenA > cap || (useJ && lenB > cap),
+  });
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, r.tex);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, FRACTAL.REF_WIDTH, r.rowB + Math.ceil(r.lenB / FRACTAL.REF_WIDTH), gl.RG, gl.FLOAT, buf);
+  r.ms = performance.now() - t0;
+  r.count++;
+  return offsets();
+}
+
+// Abkürzung in der Tiefe ("Series Approximation"): Solange alle Bildpunkte dicht bei der Bezugsbahn bleiben, lässt sich
+// ihr Abstand d nach n Durchgängen als Formel des Start-Abstands q schreiben:  d ≈ S1·q + S2·q² + S3·q³.
+// Die drei Zahlen S1..S3 (komplex) wachsen von Durchgang zu Durchgang nach festen Regeln mit. Es wird so weit
+// vorgerechnet, wie die Formel genau genug bleibt (die höheren Glieder müssen klein gegen das erste sein) – diese
+// Durchgänge spart sich die Grafikkarte für jeden einzelnen Bildpunkt. q = Abstand vom Bezugspunkt in Bildhöhen,
+// qOff = Abstand der Bildmitte vom Bezugspunkt, h = Bildhöhe in der Zahlenebene, julia = Start-Abstand statt c-Abstand.
+function fracSeries(qOff, h, julia, maxIter) {
+  const o = fracRef.orbit, last = Math.min(fracRef.lenA - 2, maxIter - 1);
+  const R = Math.hypot(qOff[0], qOff[1]) + 0.5 * Math.hypot(fracAspect(), 1);     // größter Abstand im Bild
+  const q1 = FRACTAL.SERIES_Q / R, q2 = q1 * q1, add = julia ? 0 : h;
+  let ax = julia ? h : 0, ay = 0, bx = 0, by = 0, cx = 0, cy = 0, n = 0;
+  const best = { skip: 0, s1: [0, 0], s2: [0, 0], s3: [0, 0] };
+  while (n < last) {
+    const zx = 2 * o[2 * n], zy = 2 * o[2 * n + 1];
+    // neue Glieder: S1' = 2Z·S1 (+h), S2' = 2Z·S2 + S1², S3' = 2Z·S3 + 2·S1·S2
+    const nax = zx * ax - zy * ay + add, nay = zx * ay + zy * ax;
+    const nbx = zx * bx - zy * by + ax * ax - ay * ay, nby = zx * by + zy * bx + 2 * ax * ay;
+    const ncx = zx * cx - zy * cy + 2 * (ax * bx - ay * by), ncy = zx * cy + zy * cx + 2 * (ax * by + ay * bx);
+    ax = nax; ay = nay; bx = nbx; by = nby; cx = ncx; cy = ncy; n++;
+    const a = Math.hypot(ax, ay);
+    // Schluss, sobald die Formel ungenau würde oder die Bahn sich dem Ausbrechen nähert
+    if (Math.hypot(bx, by) > q1 * a || Math.hypot(cx, cy) > q2 * a || o[2 * n] * o[2 * n] + o[2 * n + 1] * o[2 * n + 1] > 4) break;
+    best.skip = n; best.s1 = [ax, ay]; best.s2 = [bx, by]; best.s3 = [cx, cy];
+  }
+  return best;
+}
+
+// Schritt 1: zählen. k = 0 Mandelbrot … 1 Julia. Flacher Zoom: direkt; tiefer Zoom: über die Bezugsbahn.
 function fracRenderData(target, k, maxIter) {
   const f = frac, aspect = fracAspect(), hM = fracHeight(f.M), hJ = fracHeight(f.J);
+  const bulb = k === 0 && f.M.lz < 6 ? 1 : 0;                // nur bei flachem Zoom: dort ist c noch genau genug bekannt
+  const deep = (k < 1 && f.M.lz > FRACTAL.PLAIN_LZ) || (k > 0 && f.J.lz > FRACTAL.PLAIN_LZ);
+  f.skip = 0;
+  if (!deep) {
+    const u = use('fracPlain');
+    gl.uniform2f(u.uCenterM, fxNum(f.M.x), fxNum(f.M.y));
+    gl.uniform2f(u.uSpanM, hM * aspect, hM);
+    gl.uniform2f(u.uCenterJ, fxNum(f.J.x), fxNum(f.J.y));
+    gl.uniform2f(u.uSpanJ, hJ * aspect, hJ);
+    gl.uniform2f(u.uC, fxNum(f.c[0]), fxNum(f.c[1]));
+    gl.uniform1f(u.uK, k);
+    gl.uniform1i(u.uMaxIter, maxIter);
+    gl.uniform1f(u.uBulb, bulb);
+    blit(target);
+    return;
+  }
+  const off = fracPrepareRef(k, maxIter), r = fracRef;
+  // Abkürzung nur für reines Mandelbrot- oder reines Julia-Bild (während der Verwandlung gäbe es zwei Start-Abstände)
+  const julia = k === 1, h = julia ? hJ : hM, o = julia ? off.J : off.M;
+  const qOff = [o[0] / h, o[1] / h];
+  const ser = k === 0 || k === 1 ? fracSeries(qOff, h, julia, maxIter) : { skip: 0, s1: [0, 0], s2: [0, 0], s3: [0, 0] };
+  f.skip = ser.skip;
   const u = use('fracData');
-  gl.uniform2f(u.uCenterM, f.M.x, f.M.y);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, r.tex);
+  gl.uniform1i(u.uRef, 0);
+  gl.uniform1i(u.uLenA, r.lenA);
+  gl.uniform1i(u.uLenB, r.lenB);
+  gl.uniform1i(u.uRowB, r.rowB);
+  gl.uniform2f(u.uOffM, off.M[0], off.M[1]);
   gl.uniform2f(u.uSpanM, hM * aspect, hM);
-  gl.uniform2f(u.uCenterJ, f.J.x, f.J.y);
+  gl.uniform2f(u.uOffJ, off.J[0], off.J[1]);
   gl.uniform2f(u.uSpanJ, hJ * aspect, hJ);
-  gl.uniform2f(u.uC, f.c[0], f.c[1]);
+  gl.uniform2f(u.uCref, r.cref[0], r.cref[1]);
   gl.uniform1f(u.uK, k);
   gl.uniform1i(u.uMaxIter, maxIter);
-  gl.uniform1f(u.uBulb, k === 0 ? 1 : 0);
+  gl.uniform1f(u.uBulb, bulb);
+  gl.uniform1i(u.uSkip, ser.skip);
+  gl.uniform2f(u.uS1, ser.s1[0], ser.s1[1]);
+  gl.uniform2f(u.uS2, ser.s2[0], ser.s2[1]);
+  gl.uniform2f(u.uS3, ser.s3[0], ser.s3[1]);
+  gl.uniform2f(u.uQOff, qOff[0], qOff[1]);
+  gl.uniform2f(u.uQSpan, aspect, 1);
   blit(target);
 }
 // kleinsten Zähler des Ausschnitts bestimmen (winziges Zähl-Bild → Minimum) und in stat ablegen
@@ -3571,7 +3914,11 @@ function drawFractal(target) {
   // Neu zählen nur, wenn sich etwas geändert hat – steht das Bild still, kostet es fast nichts
   const key = [f.M.x, f.M.y, f.M.lz, f.J.x, f.J.y, f.J.lz, f.c[0], f.c[1], k, maxIter, fracAspect()].join();
   f.busy = key !== f.dataKey;
-  if (f.busy) { f.dataKey = key; fracRenderData(fracData, k, maxIter); fracMeasure(fracStat, k, maxIter); }
+  if (f.busy) {
+    f.dataKey = key;
+    fracRenderData(fracData, k, maxIter);
+    fracMeasure(fracStat, k, maxIter);
+  }
   fracColorize(fracData, fracStat, fracColorBuf || target);
   if (fracColorBuf) {                       // andere Größe als der Bildschirm → weich hinein skalieren
     const u = use('scale');
@@ -3583,13 +3930,17 @@ function drawFractal(target) {
   // Julia-Bild: kleine Karte unten links mit dem Mandelbrot-Ausschnitt und der Stelle von c
   if (k < 0.01) return;
   const miniKey = [f.M.x, f.M.y, f.M.lz, iterM, fracAspect()].join();
-  if (miniKey !== f.miniKey) { f.miniKey = miniKey; fracRenderData(miniData, 0, iterM); fracMeasure(miniStat, 0, iterM); }
+  if (miniKey !== f.miniKey) {
+    f.miniKey = miniKey;
+    fracRenderData(miniData, 0, iterM);     // (bei tiefem Zoom rechnet das kurz eine eigene Bezugsbahn für die Karte)
+    fracMeasure(miniStat, 0, iterM);
+  }
   fracColorize(miniData, miniStat, miniColor);
   const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, hM = fracHeight(f.M);
   const w = Math.round(Math.min(H * 0.26 * W / H, W * 0.34)), h = Math.round(w * H / W), m = Math.round(H * 0.025);
   const u = use('fracMini');
   gl.uniform1i(u.uTexture, miniColor.attach(0));
-  gl.uniform2f(u.uMark, 0.5 + (f.c[0] - f.M.x) / (hM * W / H), 0.5 + (f.c[1] - f.M.y) / hM);
+  gl.uniform2f(u.uMark, 0.5 + fxNum(f.c[0] - f.M.x) / (hM * W / H), 0.5 + fxNum(f.c[1] - f.M.y) / hM);
   gl.uniform1f(u.uAspect, W / H);
   gl.uniform1f(u.uAlpha, k);
   gl.enable(gl.BLEND);
@@ -3608,7 +3959,7 @@ function fracZoomBy(amount, anchor) {
   V.lzT = clampNum(V.lzT + amount, FRACTAL.LZ_MIN, FRACTAL.LZ_MAX);
   if (V.lzT >= FRACTAL.LZ_MAX && amount > 0 && performance.now() - frac.limitToast > 4000) {
     frac.limitToast = performance.now();
-    toast('Tiefer geht es hier noch nicht');
+    toast('Tiefer geht es nicht – das ist 10³⁰-facher Zoom');
   }
   lastPaint = performance.now();
 }
@@ -3622,8 +3973,8 @@ function setJulia(on) {
     f.frozen = false;
     if (f.mouse && !autoplay.active) f.cT = fracPoint(f.M, f.mouse);
     f.c = [f.cT[0], f.cT[1]];
-    f.theta = Math.atan2(f.c[1], f.c[0]);
-    Object.assign(f.J, { x: 0, y: 0, lz: 0, lzT: 0 });
+    f.theta = Math.atan2(fxNum(f.c[1]), fxNum(f.c[0]));
+    Object.assign(f.J, { x: 0n, y: 0n, lz: 0, lzT: 0 });
   }
   updateFracUi();
   toast(on ? 'Julia-Set – die Maus wählt die Form' : 'Mandelbrot');
@@ -3649,7 +4000,7 @@ function fracGoToSpot(i) {
 function fracHome() {
   const f = frac;
   f.spot = -1;
-  fracFlyTo(f.julia ? { x: 0, y: 0, lz: 0 } : { x: -0.6, y: 0, lz: 0 }, fracView());
+  fracFlyTo(f.julia ? FRAC_HOME.J : FRAC_HOME.M, fracView());
   audioClear();
   updateFracUi();
   toast('Zurück zur Übersicht');
@@ -3722,19 +4073,20 @@ function updateFractal(dt) {
   if (f.drag) {
     const h = fracHeight(V), mx = f.dragMove[0], my = f.dragMove[1], k = 1 - Math.exp(-25 * dt);
     f.dragMove = [0, 0];
-    V.x -= mx * h; V.y -= my * h;
+    V.x -= fx(mx * h); V.y -= fx(my * h);
     f.vel[0] += (mx / dt - f.vel[0]) * k;                    // Tempo der Hand, leicht geglättet
     f.vel[1] += (my / dt - f.vel[1]) * k;
     audio.brushLevel = Math.max(audio.brushLevel, Math.min(Math.hypot(mx, my) / dt / 3, 1) * 0.5);
     audio.energy = Math.min(1, audio.energy + Math.hypot(mx, my) * 0.3);
   } else if (Math.hypot(f.vel[0], f.vel[1]) > 0.002) {
     const h = fracHeight(V), d = Math.exp(-FRACTAL.FRICTION * dt);
-    V.x -= f.vel[0] * h * dt; V.y -= f.vel[1] * h * dt;
+    V.x -= fx(f.vel[0] * h * dt); V.y -= fx(f.vel[1] * h * dt);
     f.vel[0] *= d; f.vel[1] *= d;
   }
   // der Ausschnitt bleibt in der Nähe der Menge (sonst verliert man sich im leeren Raum)
-  V.x = clampNum(V.x, f.julia ? -2.2 : -2.6, f.julia ? 2.2 : 1.4);
-  V.y = clampNum(V.y, f.julia ? -2.2 : -1.7, f.julia ? 2.2 : 1.7);
+  const x = fxNum(V.x), y = fxNum(V.y), xMin = f.julia ? -2.2 : -2.6, xMax = f.julia ? 2.2 : 1.4, yMax = f.julia ? 2.2 : 1.7;
+  if (x < xMin || x > xMax) V.x = fx(clampNum(x, xMin, xMax));
+  if (Math.abs(y) > yMax) V.y = fx(clampNum(y, -yMax, yMax));
 
   if (f.flight) updateFracFlight(dt, slow);
   else if (Math.abs(V.lzT - V.lz) > 1e-5) {
@@ -3742,14 +4094,15 @@ function updateFractal(dt) {
     const h0 = fracHeight(V);
     V.lz += (V.lzT - V.lz) * (1 - Math.exp(-FRACTAL.ZOOM_EASE * dt));
     const h1 = fracHeight(V);
-    V.x += f.anchor[0] * (h0 - h1); V.y += f.anchor[1] * (h0 - h1);
+    V.x += fx(f.anchor[0] * (h0 - h1)); V.y += fx(f.anchor[1] * (h0 - h1));
     byHand = true;
   }
 
-  // Verwandlung Mandelbrot ↔ Julia und weiches Nachlaufen von c
+  // Verwandlung Mandelbrot ↔ Julia und weiches Nachlaufen von c (ist der Rest unsichtbar klein, sitzt c genau auf dem Ziel)
   f.k = clampNum(f.k + (f.julia ? 1 : -1) * dt / FRACTAL.MORPH_SECONDS, 0, 1);
-  const ck = 1 - Math.exp(-14 * dt);
-  f.c[0] += (f.cT[0] - f.c[0]) * ck; f.c[1] += (f.cT[1] - f.c[1]) * ck;
+  const cdx = fxNum(f.cT[0] - f.c[0]), cdy = fxNum(f.cT[1] - f.c[1]), ck = 1 - Math.exp(-14 * dt);
+  if (Math.hypot(cdx, cdy) < Math.min(fracHeight(f.M), fracHeight(f.J)) * 1e-7) f.c = [f.cT[0], f.cT[1]];
+  else { f.c[0] += fx(cdx * ck); f.c[1] += fx(cdy * ck); }
 
   // Ton: Zoomtiefe → Tonhöhe; Julia-Form verändern klingt wie Malen (je schneller, desto höher und lauter)
   audioZoom(V.lz, (V.lz - f.lastLz) / dt, dt, byHand, f.anchor[0] / fracAspect() * 2);
@@ -3774,7 +4127,7 @@ function updateFractal(dt) {
 }
 // Zoom als Text: 12,5× … 3 400× … 1,2 · 10⁸×
 function fracZoomText(lz) {
-  const e = Math.floor(lz / Math.LN10);
+  const e = Math.floor(lz / Math.LN10 + 0.022);              // (ab 9,95 zeigt die nächste Zehnerpotenz "1,0" statt "10,0")
   if (e < 6) { const z = Math.exp(lz); return (z < 100 ? z.toFixed(1).replace('.', ',') : Math.round(z).toLocaleString('de-DE')) + '×'; }
   return Math.exp(lz - e * Math.LN10).toFixed(1).replace('.', ',') + ' · 10<sup>' + e + '</sup>×';
 }
@@ -3785,7 +4138,7 @@ function updateFracFlight(dt, slow) {
   const f = frac, fl = f.flight, V = fl.V, S = fl.spot;
   let want = 0;
   if (fl.phase === 'out') {
-    const h = fracHeight(V), sx = (S.x - V.x) / h, sy = (S.y - V.y) / h;
+    const h = fracHeight(V), sx = fxNum(S.x - V.x) / h, sy = fxNum(S.y - V.y) / h;
     const floor = Math.min(0, S.lz);                           // weiter heraus als bis zur Übersicht geht es nicht
     if (Math.hypot(sx, sy) < 0.3 || V.lz <= floor + 0.02) { fl.phase = 'in'; fl.s = [sx, sy]; }
     else want = -Math.min(FRACTAL.FLY_OUT, (V.lz - floor) * 1.5 + 0.1);   // kurz vor der Übersicht abbremsen
@@ -3797,7 +4150,7 @@ function updateFracFlight(dt, slow) {
   if (fl.phase !== 'in') return;
   const d = Math.exp(-1.3 * dt), h = fracHeight(V);
   fl.s[0] *= d; fl.s[1] *= d;
-  V.x = S.x - fl.s[0] * h; V.y = S.y - fl.s[1] * h;
+  V.x = S.x - fx(fl.s[0] * h); V.y = S.y - fx(fl.s[1] * h);
   if (Math.abs(S.lz - V.lz) < 0.02 && Math.hypot(fl.s[0], fl.s[1]) < 0.01) {     // angekommen
     f.flight = null;
     f.hold = FRACTAL.HOLD_SECONDS;
@@ -3812,7 +4165,7 @@ function fracAutoplay(dt) {
   if (!autoplay.active) return;
   if (f.julia) {
     f.theta += 0.1 * dt * (1 - 0.4 * PARAMS.calm.current);
-    f.cT = [FRACTAL.JULIA_RADIUS * Math.cos(f.theta), FRACTAL.JULIA_RADIUS * Math.sin(f.theta)];
+    f.cT = [fx(FRACTAL.JULIA_RADIUS * Math.cos(f.theta)), fx(FRACTAL.JULIA_RADIUS * Math.sin(f.theta))];
     return;
   }
   if (f.flight) return;
@@ -3844,7 +4197,7 @@ function updateFracUi() {
   [...spotBox.children].forEach((b, i) => b.classList.toggle('active', i === frac.spot && !frac.julia));
   $('fracHelp').textContent = frac.julia
     ? 'Die Maus wählt die Form: Der Punkt unter ihr im Mandelbrot-Bild (kleine Karte unten links) bestimmt das Julia-Set. Klick = Form festhalten oder lösen, Scrollen = Zoom, Ziehen = Verschieben.'
-    : 'Scrollen = Zoom · Ziehen = Verschieben · Klick = hinein · Rechtsklick = heraus';
+    : 'Scrollen = Zoom · Ziehen = Verschieben · Klick = hinein · Rechtsklick = heraus. Wird das Bild tief drinnen schwarz: Regler „Details“ erhöhen.';
 }
 bindSlider('fracDensity', PARAMS.fracDensity, v => v.toFixed(2) + '×');
 bindSlider('fracSpeed',   PARAMS.fracSpeed,   v => v === 0 ? 'still' : Math.round(v * 100) + ' %');
@@ -3867,7 +4220,7 @@ MODES.push({
   draw: drawFractal,
   bloomShare: () => 1,
   idle: () => !frac.busy,                                    // Bild steht still → es wird gerade nichts Teures gerechnet
-  autoplayStart() { frac.hold = 0; frac.frozen = false; frac.theta = Math.atan2(frac.cT[1], frac.cT[0]); },
+  autoplayStart() { frac.hold = 0; frac.frozen = false; frac.theta = Math.atan2(fxNum(frac.cT[1]), fxNum(frac.cT[0])); },
   autoplayStop() { frac.flight = null; },
   autoplay: fracAutoplay,
   pointerMove: fracPointerMove,
