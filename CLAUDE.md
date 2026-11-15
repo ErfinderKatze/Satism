@@ -15,7 +15,7 @@ Ein **Chill-Modus ohne Ziel** ist wichtiger als ein klassisches Spiel mit Punkte
 ## Technische Leitlinien
 - Web-Technik: HTML, JavaScript, WebGL2 – **kein Framework**, keine Build-Tools. Später Desktop-App (Tauri oder Electron).
 - Alles Rechenintensive auf die GPU (Shader).
-- Mehrere Modi in einer App: **Fluid** und **Mandelbrot** sind umgesetzt, Partikel folgt später (Abschnitt „Modi“ unten).
+- Mehrere Modi in einer App: **Fluid**, **Mandelbrot** und **Partikel** (Abschnitte „Modi“ und „Partikel-Modus“ unten).
 - Jede Eingabe muss innerhalb eines Frames sichtbar werden. Bewegungen und Parameteränderungen immer weich
   interpolieren (Easing, Trägheit).
 - FPS-Zähler und einstellbare Qualitätsstufe (Auflösung, Partikelzahl) für schwächere Geräte.
@@ -28,8 +28,9 @@ Ein **Chill-Modus ohne Ziel** ist wichtiger als ein klassisches Spiel mit Punkte
 **Fluid:** ✅ Farbe mit der Maus malen, die verwirbelt (Stable Fluids nach Jos Stam). ✅ Regler für Viskosität,
 Wirbelstärke, Schwerkraft, Verblassen. ✅ Hindernisse zeichnen, um die die Flüssigkeit herumfließt.
 
-**Partikel:** ⬜ Anziehung/Abstoßung durch die Maus. ⬜ Kräfte wie schwarze Löcher, Magnete, Wind, Orbits.
-⬜ Schwarmverhalten, Trails und Glow. ⬜ Explosionen bei Klick.
+**Partikel:** ✅ Anziehung/Abstoßung durch die Maus. ✅ Kräfte wie schwarze Löcher, Magnete, Wind, Orbits.
+✅ Trails und Glow. ✅ Explosionen bei Klick. ⬜ Schwarmverhalten (Flocking). ⬜ Farbe nach Tempo/Alter, eigener
+Partikel-Klang, richtiges Auto-Play.
 
 **Mandelbrot:** ✅ Zoom per Scrollen/Ziehen mit Trägheit, ✅ Julia-Sets live mit Mausposition, ✅ animierte Farbpaletten,
 ✅ automatische Zoom-Fahrt zu schönen Stellen, ✅ tiefer Zoom bis 10³⁰-fach (Bezugsbahn statt Float32-Grenze).
@@ -37,7 +38,7 @@ Wirbelstärke, Schwerkraft, Verblassen. ✅ Hindernisse zeichnen, um die die Fl�
 
 **Modusübergreifend:** ✅ Paletten-Presets (Neon, Sunset, Ozean, Lava …) mit sanftem Überblenden. ⬜ Presets/Szenarien
 speichern und teilen. ✅ Idle-Modus/Screensaver (Auto-Play). ⬜ Screenshot-, Wallpaper- und Video-Export. ⬜ Optional kleine
-Sammelziele („entdecke 10 Muster“). ✅ Moduswechsel Fluid/Mandelbrot (⬜ Partikel), ⬜ Desktop-App (Tauri oder Electron).
+Sammelziele („entdecke 10 Muster“). ✅ Moduswechsel Fluid/Mandelbrot/Partikel, ⬜ Desktop-App (Tauri oder Electron).
 
 **Satisfying-Faktoren:** ✅ Audio-Feedback per Web Audio API (selbst synthetisiert, Pentatonik, Lautstärke/Tonhöhe abhängig
 von Geschwindigkeit, ✅ im Mandelbrot-Modus von der Zoomtiefe; ⬜ Partikelzahl kommt mit dem Partikel-Modus). ✅ Lofi-Musik (generativ: Akkorde,
@@ -49,13 +50,16 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 
 ## Aktueller Stand
 - Alles in **einer Datei**: `index.html` (HTML, CSS, JavaScript, GLSL-Shader). Öffnen per Doppelklick im Browser.
-- **Zwei Modi in einer App:** Fluid und Mandelbrot. Umschalten mit `Tab` (Umschalt + `Tab` = zurück) oder im
+- **Drei Modi in einer App:** Fluid, Mandelbrot und Partikel. Umschalten mit `Tab` (Umschalt + `Tab` = zurück) oder im
   Panel-Abschnitt „Modus“, mit weicher Überblendung (0,8 s). Panel, Paletten, Bloom, Flacker-Reduktion, Qualität, FPS,
   Ton und Auto-Play gibt es nur einmal – sie gelten für beide Modi (Abschnitt „Modi“ unten). Ein Modus, der nicht zu
   sehen ist, kostet nichts und behält seinen Zustand.
 - **Mandelbrot-Modus** (Abschnitt unten): Zoom per Scrollen/Klick, Ziehen mit Trägheit, Julia-Sets live per Maus
   (Taste `J`), wandernde Farben in der aktiven Palette, 7 „schöne Stellen“ mit Flug dorthin, Zoom-Fahrt als Auto-Play,
   Töne passend zur Zoomtiefe, scharf bis 10³⁰-fachem Zoom.
+- **Partikel-Modus** (Abschnitt unten, Stand nach Schritt 3 von 5): bis 2,1 Millionen Partikel auf der GPU, Maus zieht
+  an/stößt ab, Spuren und Glow, platzierbare Kräfte (Schwarzes Loch, Magnet +/−, Wind, Orbit), Explosion bei Klick.
+  Noch offen: Schwarmverhalten (Schritt 4), Farbe nach Tempo/Alter, eigener Klang, richtiges Auto-Play (Schritt 5).
 - Fluid-Modus nach Stable Fluids auf der GPU (WebGL2 + `EXT_color_buffer_float`): Vorticity Confinement (Wirbel),
   Viskosität (Jacobi-Diffusion), Druck-Lösung (Jacobi), Gradienten-Subtraktion, Advektion.
 - Farbe wird als „Dichte + Position auf der Palette“ gespeichert (R = Dichte, G/B = Dichte·cos/sin des Palettenwinkels);
@@ -104,7 +108,12 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - Bedienung Mandelbrot: Scrollen = Zoom zur Maus, Ziehen = verschieben, Klick = hinein, Rechtsklick = heraus,
   `↑`/`↓` = Zoom, `J` = Julia-Set an/aus (dort: Maus wählt die Form, Klick = Form festhalten/lösen), `1`–`7` = Flug zu
   einer schönen Stelle, `←`/`→` = vorige/nächste Stelle, Leertaste = zurück zur Übersicht.
-- Noch nicht umgesetzt: Partikel-Modus, Presets speichern/teilen, Export, Desktop-App.
+- Bedienung Partikel: Maus bewegen = Kraft folgt der Maus, Klick = Explosion, Maustaste halten = Kraft umgekehrt,
+  `R` = Anziehen ↔ Abstoßen, Leertaste = neu verteilen, `1`–`5` = Kraft an der Maus setzen (Schwarzes Loch, Magnet +,
+  Magnet −, Wind, Orbit), gesetzte Kraft ziehen = verschieben, Rechtsklick oder `Entf` = löschen, `X` = alle löschen,
+  Mausrad über einer Kraft = Reichweite.
+- Noch nicht umgesetzt: Partikel Schritt 4/5 (Schwarm, Farbe nach Tempo/Alter, Klang, Auto-Play), Presets
+  speichern/teilen, Export, Desktop-App.
 - Testen: Die Seite läuft per Doppelklick. Zum automatischen Prüfen (FPS, GPU-Zeit per `EXT_disjoint_timer_query_webgl2`,
   alle Stufen × alle Looks) wurde sie über einen kleinen lokalen Server geladen (`python -m http.server`). Innerhalb
   eines Seitenaufrufs ist die Simulation bei gleichem Ablauf bitgenau wiederholbar (Prüfsumme der Farb-Textur) – gut für
@@ -433,7 +442,8 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   wird mit überblendet. Währenddessen laufen `update` und `draw` beider Modi. Wechsel zurück mitten in der
   Überblendung läuft von der aktuellen Stelle rückwärts. Beim Wechsel: leises Wischen, Hinweis des Modus für 6 s,
   Auto-Qualität pendelt sich neu ein.
-- **Neuer Modus (z. B. Partikel) = ein Objekt in `MODES` + Panel-Abschnitte mit `data-mode="…"`.** Mehr ist nicht nötig.
+- **Neuer Modus = ein Objekt in `MODES` + Panel-Abschnitte mit `data-mode="…"`.** Mehr ist nicht nötig (so wurde der
+  Partikel-Modus eingehängt, ohne Fluid oder Mandelbrot anzufassen).
 - Fluid als Modus: `updateFluid` (Pinsel, Cursor, `step`), `drawFluid` (Looks, Hindernisse), `fluidBloomShare`,
   `fluidAutoplay`, `fluidPointerDown`, `fluidKey` – der Inhalt dieser Funktionen ist unverändert.
 - Geprüft: 12 Looks × 6 Stufen fehlerfrei mit 57–60 FPS; Prüfsumme der Farb-Textur und fertige Bilder (7 Looks mit
@@ -518,3 +528,114 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Mini-Mandelbrot bildfüllend: 23 FPS auf Ultra) – dort greift keine Abkürzung, die Auto-Qualität senkt die Stufe.
   Während der Verwandlung Mandelbrot ↔ Julia aus großer Tiefe wird die Bezugsbahn in jedem Bild neu gerechnet
   (gemessen 56 FPS, zwei Bilder über 25 ms).
+
+## Partikel-Modus (Stand nach Schritt 3 von 5)
+- **Ausbauplan:** 1 Grundsystem ✅ · 2 Kräfte ✅ · 3 Explosionen ✅ · 4 Schwarmverhalten (Ausrichtung, Abstand,
+  Zusammenhalt) ⬜ · 5 Look und Gefühl (Farbe nach Tempo/Alter mit Paletten, eigener Klang, Auto-Play mit unsichtbaren
+  Kräften, Panel-Feinschliff) ⬜. Commits: `f07c1e4`, `63afdbc`, `b70d80e`.
+- Code: Abschnitt `// ---------- Partikel-Modus ----------` in `index.html` (vor `// ----- Moduswechsel -----`),
+  Konstanten in `PARTICLES`, Zustand in `part`, Modus-Objekt `MODES.push({ id: 'particles', … })`.
+
+### Technik
+- **Zustand auf der GPU:** Jedes Partikel ist ein Bildpunkt einer RGBA32F-Textur (`part.state`, Doppelpuffer, NEAREST):
+  xy = Position (0..1), zw = Tempo. Seitenlänge `QUALITY[].pside` = 192/320/512/724/1024/1448 → 37 Tsd., 102 Tsd.,
+  262 Tsd., 524 Tsd., 1,05 Mio., 2,1 Mio. Partikel. Beim Stufenwechsel übernimmt `partResize` die vorhandenen Partikel
+  (neue werden zufällig verteilt), `partInit` verteilt neu (Leertaste).
+- **Rechnen** (`partStep`, ein Vollbild-Durchgang über die Zustands-Textur): Kräfte → Tempo → Position. Einheiten sind
+  „Bildhöhen“ (seitenverhältnis-korrigiert), damit Kreise rund bleiben. Das Tempo nähert sich mit
+  `v = Wind + (v − Wind) · exp(−Bremsung · dt)` einem Mediums-Tempo an (Bremsung = `5 · 0,02^Trägheit`) – das ist die
+  „Trägheit“. Ein Strömungsfeld (Regler „Strömung“) aus weichem Rauschen schiebt die Partikel nur mit
+  (`p += (v + Strömung) · dt`, kein Einfluss aufs Tempo), wirbelfrei aus einem Potenzial berechnet, am Rand ausgeblendet.
+  Weiche Wand 5 % vor dem Rand (`WALL`) plus Abprallen (`BOUNCE`).
+- **Zeichnen:** Punkte per `gl_VertexID` (leeres VAO, kein Vertex-Puffer), additiv in den Spuren-Puffer
+  (`part.trail`, RGBA16F). Spuren: Der Puffer wird jedes Bild multiplikativ abgedunkelt (`partFade`,
+  `blendFunc(ZERO, SRC_COLOR)`), Lebensdauer = `Spuren² · 2,5` s. **Bewegungsunschärfe:** Jeder Punkt wird an einer
+  zufälligen Stelle auf seiner Strecke vom letzten zum neuen Ort gezeichnet (Sprünge > 0,2, z. B. nach dem Verschlucken,
+  ausgenommen) → durchgehende Linien statt Perlenketten. Punktgröße = `clamp(0,8 · √(Bildpunkte/Partikel); 1,2; 2,6) ·
+  Größe`; die Helligkeit pro Partikel ist so normiert, dass das Bild bei jeder Partikelzahl/Größe/Spurlänge gleich hell
+  wirkt. Farbe vorläufig: `palette(Phase + Zufall · 0,06 + Wolke + Tempo · 0,45)`, Wolke = Rauschen der Position.
+- **Anzeigen** (`partShow`): Farbtreue Tonwert-Kompression (`L / (1 + L)`, Farbton bleibt) mit Überschuss > 1 in sehr
+  dichten Bereichen → nur dort Glow über den gemeinsamen Bloom. Darüber die Zeichen der gesetzten Kräfte und der
+  Explosionsblitz. Der Rest (Flacker-Bremse, Bloom) ist der gemeinsame `render()`-Weg.
+- **Zufall:** PCG-Ganzzahl-Hash (`partHashGLSL`, `floatBitsToUint`) statt des üblichen `sin`-Hashs.
+- **Maus-Kraft** = ein Magnet, der der Maus weich folgt (`FOLLOW` 16/s) und weich ein-/ausblendet (`LEVEL`). Anziehen:
+  `Abstand · Stärke · exp(0,5 − 0,5·r²/R²) / R`, mit einem **Kern** pro Partikel (0,15…1,55 · R, zufällig), in dem die
+  Anziehung in Abstoßung kippt, plus leichter Drehung (`SWIRL`) → kreisende Wolke wie eine Galaxienscheibe. Abstoßen:
+  begrenzte Blase `(1 − r²/R²)²`, Radius = Reichweite × 1,2. Umschalten: `R`, Panel-Knöpfe, oder Maustaste halten
+  (solange gehalten umgekehrt; weicher Wechsel). Zeigt die Maus auf eine gesetzte Kraft, ruht die Maus-Kraft.
+- **Gesetzte Kräfte** (`FORCE_TYPES`, höchstens `MAX_FORCES` = 12, Uniform-Felder `uF[12]`/`uG[12]`, `bindForces` – von
+  Rechnen und Anzeigen gemeinsam genutzt): **Schwarzes Loch** (1/r² weich begrenzt, Kreisbahn-Wind × 0,85 → Spirale;
+  innerhalb `HORIZON` · R wird das Partikel verschluckt und taucht zufällig irgendwo neu auf), **Magnet +/−** (wie die
+  Maus), **Wind** (bläst in eine Richtung, Regler „Windrichtung“), **Orbit** (zieht auf einen Ring mit Radius
+  R · (0,8…1,2) und lässt die Partikel darauf kreisen). Regler Stärke/Reichweite/Windrichtung gelten für die ausgewählte
+  Kraft (ist keine ausgewählt: Werte für die nächste). Zeichen: schwarze Scheibe mit Ring, Ring mit +/−, Pfeil, Punkt mit
+  Kreis; Reichweiten-Kreis, solange ausgewählt oder unter der Maus.
+- **Gedränge** (Dichte-Raster): Partikel wissen nichts voneinander. Damit Kräfte sie nicht alle auf einen grellen Punkt
+  ziehen, wird vor jedem Schritt gezählt, wie viele in jedem Feld eines groben Rasters liegen (`partGrid`: jedes Partikel
+  als Punkt additiv in eine R16F-Textur, 128 Felder an der kurzen Seite, danach 2× weichgezeichnet). Über dem Doppelten
+  des Durchschnitts (`CROWD`) drückt es die Partikel auseinander: `−∇ log(1 + Überschuss) · PRESSURE` (wie ein Gas).
+  **Dieses Raster ist auch die Grundlage für Schritt 4** (Schwarm: dort zusätzlich Tempo-Summen pro Feld sammeln).
+- **Explosionen** (höchstens `MAX_BLASTS` = 4, `uBlast[4]`, `bindBlasts`): Druckwelle als Ring, der mit `BLAST_SPEED`
+  (1,6 Bildhöhen/s) nach außen läuft, breiter und schwächer wird (`exp(−t/0,4)`) und die Partikel nach außen
+  schleudert; ab ≈ 0,5 s holt eine sanfte Kraft sie zurück (weit entfernte stärker), nach 3,2 s ist alles vorbei.
+  Anzeige: kurzer Blitz im Zentrum plus feiner Ring auf der Welle. Regler „Explosion (Klick)“ 0–250 % (0 = aus).
+- **Flacker-Reduktion:** Explosion schwächer (× 0,7), Blitz und Ring breiter, langsamer und × 0,2 so hell, Partikel-Uhr
+  langsamer; dazu die gemeinsame Helligkeits-Bremse.
+- **Panel:** Abschnitt „Partikel“ (Anziehen/Abstoßen, Kraft, Reichweite, Explosion, Trägheit, Strömung, Spuren, Größe,
+  Leuchten, Knopf „Neu verteilen“) und „Kräfte“ (Knöpfe aus `FORCE_TYPES`, Stärke, Reichweite, Windrichtung, Infozeile,
+  Löschen, Alle löschen). Panel-Knöpfe setzen die Kraft nahe der Bildmitte.
+
+### Messwerte (1920×1080, 12 Kräfte + 4 Explosionen gleichzeitig)
+| Stufe | Partikel | Bild gesamt | Rechnen (GPU) | Zeichnen (GPU) |
+|---|---|---|---|---|
+| Niedrig | 36.864 | 1,22 ms | 0,08 ms | 0,59 ms |
+| Mittel | 102.400 | 1,54 ms | 0,15 ms | 0,77 ms |
+| Hoch | 262.144 | 2,22 ms | 0,35 ms | 1,53 ms |
+| Ultra | 524.176 | 3,01 ms | 0,63 ms | 1,74 ms |
+| Extrem | 1.048.576 | 4,94 ms | 1,29 ms | 2,79 ms |
+| Maximum | 2.096.704 | 8,24 ms | 2,43 ms | 4,16 ms |
+- Alle Stufen 60 FPS, GL-Fehler 0, keine ungültigen Partikel (NaN/außerhalb), 21 Moduswechsel fehlerfrei. Ohne Kräfte:
+  Maximum ≈ 5,6 ms. Flacker-Reduktion bei Explosion: größter Helligkeitssprung pro Bild 0,49 → 0,043, Anteil
+  Bildpunkte mit Sprung > 10 %: 10,4 % → 0 %. Fluid-Prüfsumme (häufigster Wert) unverändert.
+
+### Grenzen
+- Maximum mit vielen Kräften (8,2 ms) liegt über dem 144-Hz-Budget (6,9 ms) → die Auto-Qualität geht dort auf Extrem.
+  FPS wurden nur in der 60-Hz-Vorschau gemessen, nicht am 144-Hz-Monitor.
+- Klang: nur die vorhandenen Klänge (`audioPaint`, `audioClick`, `audioTock`, `audioClear`) wiederverwendet, nicht
+  angehört. Auto-Play: nur eine unsichtbare Kraft auf einer Pinselbahn (`partAutoplay`). Farbe: vorläufig (Schritt 5).
+- In einem fast quadratischen Fenster reicht die Anziehung über fast das ganze Bild.
+- Das Gedränge ist grob (Rasterfeld ≈ 1/128 Bildhöhe): Partikel stoßen sich nicht einzeln ab, sehr feine Strukturen
+  bleiben möglich.
+
+### Stabilität – worauf achten
+- Ohne Gegenkraft fällt das System in einen Punkt oder eine Linie zusammen (Bremsung + Anziehung = alles kommt zur
+  Ruhe am selben Ort). Dagegen helfen drei Dinge zusammen: Kern pro Partikel, Drehung (Swirl) und das Gedränge. Bei
+  neuen Kräften prüfen, ob sie nicht wieder einen Sammelpunkt erzeugen.
+- Strömung nie als Beschleunigung einbauen (siehe unten), Rand-Kräfte weich halten.
+- `partBlast`, Kräfte und Maus nutzen dieselben Einheiten; Tempo wird auf `MAX_SPEED` begrenzt – das verhindert, dass
+  starke Kräfte/Explosionen Partikel durch die Wand oder ins Unendliche schießen.
+- Explosionen erst nach dem Rechenschritt altern lassen (`updateBlasts` nach `swap`), sonst fehlt der erste Stoß.
+
+### Ausprobiert und verworfen
+- **Strömung als Kraft aufs Tempo:** Partikel sammelten sich durch ihre Trägheit in dünnen Fäden und an den Wänden →
+  jetzt reines Mitschieben ohne Trägheit, wirbelfreies Feld.
+- **Magnet ohne Kern/Drehung:** alles kollabierte zu einem grellen Punkt. **Mit mehreren Kräften** kollabierte es trotz
+  Kern wieder → Gedränge eingeführt.
+- **Abstoßen ohne Grenze:** fegte das ganze Bild leer, Partikel klebten an den Wänden → begrenzte Blase und weiche Wand.
+- **`sin`-Hash:** sichtbare Gittermuster → PCG-Hash. **Punkt nur am neuen Ort:** Spuren wie Perlenketten →
+  Bewegungsunschärfe.
+- **Helligkeit:** zuerst zu dunkel im Ruhezustand bzw. weiß ausgebrannte Kerne → `BRIGHT` 0,5, farbtreue
+  Tonwert-Kompression, Grundhelligkeit 0,75.
+
+### Testen
+- Lokaler Server (`python -m http.server`, in diesem Chat Port 8791, Name `satisim-b` in `.claude/launch.json`),
+  Seite mit `?v=N` neu laden (Cache). Hilfen in `.claude/` (nicht im Repo): `p-harness.js` (`__p.cost(n)` = ms pro Bild
+  inkl. GPU-Wartezeit, `__p.stats()` = ungültige Partikel), `p-setup.js` (Auto-Play/Auto-Qualität aus, Partikel-Modus,
+  `__crop` für Ausschnitt in echter Pixelgröße, `__sweep` führt die Maus, `__errors`), `run-p1.js` (alle Stufen: Bildkosten,
+  GPU-Zeit per Timer-Query, FPS, GL-Fehler, 21 Moduswechsel, Fluid-Prüfsumme; `window.__pre` für Vorbereitung wie
+  Kräfte setzen). Ergebnis in `window.__res`.
+- Ist die Vorschau verdeckt, ist `requestAnimationFrame` gedrosselt → FPS dann nicht messbar, stattdessen `__p.cost`.
+- Fluid unverändert: `.claude/ab.js` mit alter Fassung (`.claude/old.html`) vergleichen – die Prüfsumme streut,
+  verglichen wird der häufigste Wert aus ~12 Läufen.
+- Bedienung zusätzlich mit echten Maus-/Tasten-Eingaben im Browser geprüft (Tab, R, Leertaste, 1–5, Ziehen, Mausrad,
+  Rechtsklick, Klick). Verkleinerte Bildschirmfotos zeigen Partikel nur als Nebel → `__crop` benutzen.
