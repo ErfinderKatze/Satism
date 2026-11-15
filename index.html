@@ -99,6 +99,12 @@
   @keyframes secIn { from { opacity: 0; transform: translateY(8px); } }
   #modes, .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   #fracHome { width: 100%; margin-top: 8px; }
+  #modes { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  #modes .btn { justify-content: center; padding: 8px 2px; font-size: 11.5px; }
+  /* Partikel-Modus: schmaler Ring als Cursor; gestrichelt, solange die Maus abstößt */
+  #partScatter { width: 100%; }
+  body.mode-particles #cursor { border-width: 1.5px; box-shadow: 0 0 10px var(--brush, #fff); }
+  body.part-repel #cursor { border-style: dashed; }
   /* Mandelbrot-Modus: schmaler Ring als Cursor; gestrichelt, solange die Julia-Form festgehalten ist */
   body.mode-mandel #cursor { border-width: 1.5px; box-shadow: 0 0 8px var(--brush, #fff); }
   body.frac-frozen #cursor { border-style: dashed; box-shadow: none; }
@@ -471,6 +477,43 @@
     <button class="btn" id="fracHome"><span>Zurück zur Übersicht</span><kbd>Leertaste</kbd></button>
     <div class="sub">Ein Klick fliegt von selbst dorthin. Die Zoom-Fahrt (Taste <b>A</b> oder eine Weile nichts tun) besucht eine Stelle nach der anderen.</div>
   </div>
+  <div class="sec" data-mode="particles">
+    <h3>Partikel</h3>
+    <div id="partPull" class="grid2">
+      <button class="btn" data-pull="1"><span>Anziehen</span></button>
+      <button class="btn" data-pull="-1"><span>Abstoßen</span><kbd>R</kbd></button>
+    </div>
+    <div class="sub">Die Maus zieht die Partikel an oder stößt sie ab. Maustaste gedrückt halten = umgekehrt, solange du hältst.</div>
+    <div class="row" style="margin-top:12px">
+      <label for="partForce">Maus-Kraft <output id="partForceOut"></output></label>
+      <input id="partForce" type="range" min="0" max="3" step="0.01">
+    </div>
+    <div class="row">
+      <label for="partRange">Reichweite <output id="partRangeOut"></output></label>
+      <input id="partRange" type="range" min="0.05" max="0.6" step="0.01">
+    </div>
+    <div class="row">
+      <label for="partInertia">Trägheit <output id="partInertiaOut"></output></label>
+      <input id="partInertia" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="partFlow">Strömung <output id="partFlowOut"></output></label>
+      <input id="partFlow" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="partTrail">Spuren <output id="partTrailOut"></output></label>
+      <input id="partTrail" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="partSize">Größe <output id="partSizeOut"></output></label>
+      <input id="partSize" type="range" min="0.5" max="3" step="0.05">
+    </div>
+    <div class="row">
+      <label for="partGlow">Helligkeit <output id="partGlowOut"></output></label>
+      <input id="partGlow" type="range" min="0.3" max="3" step="0.05">
+    </div>
+    <button class="btn" id="partScatter"><span>Neu verteilen</span><kbd>Leertaste</kbd></button>
+  </div>
   <div class="sec" id="paletteSection">
     <h3>Farbpalette</h3>
     <div id="palettes"></div>
@@ -522,7 +565,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span>
   </div>
 </div>
 
@@ -564,18 +607,20 @@ const CONFIG = {
 // foamDiv = Schaum-Puffer (Look "Wasser") bei Bildschirmauflösung / foamDiv
 // fscale = Mandelbrot-Modus: Auflösung des Fraktals als Vielfaches der Bildschirmauflösung (über 1 = Supersampling),
 // iter = Mandelbrot-Modus: Obergrenze für die Rechendurchgänge pro Bildpunkt
+// pside = Partikel-Modus: Seitenlänge der Zustands-Textur (Anzahl der Partikel = pside × pside),
+// pscale = Partikel-Modus: Auflösung des Spuren-Bilds als Vielfaches der Bildschirmauflösung
 const QUALITY = [
-  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4, fscale: 0.5, iter: 2000 },
-  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2, fscale: 0.75, iter: 3000 },
-  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2, fscale: 1, iter: 4500 },
-  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 6000 },
-  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 8000, heavy: true },
-  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 10000, heavy: true },
+  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4, fscale: 0.5, iter: 2000, pside: 192, pscale: 0.5 },
+  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2, fscale: 0.75, iter: 3000, pside: 320, pscale: 0.75 },
+  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2, fscale: 1, iter: 4500, pside: 512, pscale: 1 },
+  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 6000, pside: 724, pscale: 1 },
+  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 8000, pside: 1024, pscale: 1, heavy: true },
+  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 10000, pside: 1448, pscale: 1, heavy: true },
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
 
-// Modi (Fluid, Mandelbrot, später Partikel). Die Liste wird weiter unten gefüllt – siehe Abschnitt "Modi".
+// Modi (Fluid, Mandelbrot, Partikel). Die Liste wird weiter unten gefüllt – siehe Abschnitt "Modi".
 const MODES = [];
 let modeIndex = 0;          // aktiver Modus (Index in MODES)
 let prevMode = 0;           // Modus, von dem gerade weggeblendet wird
@@ -631,6 +676,13 @@ const PARAMS = {
   fracGlow:    { target: 0.6,  current: 0.6,  def: 0.6  },  // Mandelbrot: Leuchten der Ränder (0 = aus)
   fracRelief:  { target: 0.5,  current: 0.5,  def: 0.5  },  // Mandelbrot: Relief = plastische Wirkung der Farbbänder (0 = aus)
   fracDetail:  { target: 1,    current: 1,    def: 1    },  // Mandelbrot: Details = Faktor auf die Rechendurchgänge
+  partForce:   { target: 1,    current: 1,    def: 1    },  // Partikel: Stärke der Maus-Kraft (0 = aus)
+  partRange:   { target: 0.22, current: 0.22, def: 0.22 },  // Partikel: Reichweite der Maus-Kraft (Anteil der Bildhöhe)
+  partInertia: { target: 0.35, current: 0.35, def: 0.35 },  // Partikel: Trägheit (0 = bleiben sofort stehen, 1 = gleiten fast ewig)
+  partFlow:    { target: 0.35, current: 0.35, def: 0.35 },  // Partikel: sanfte Strömung im Hintergrund (0 = aus)
+  partTrail:   { target: 0.35, current: 0.35, def: 0.35 },  // Partikel: Länge der Spuren (0 = keine)
+  partSize:    { target: 1,    current: 1,    def: 1    },  // Partikel: Punktgröße (Faktor)
+  partGlow:    { target: 1,    current: 1,    def: 1    },  // Partikel: Helligkeit (Faktor)
   bloomIntensity: { target: 1,    current: 1,    def: 1    },  // Bloom: Stärke des Glows (0 = aus)
   bloomThreshold: { target: 0.4,  current: 0.4,  def: 0.4  },  // Bloom: ab welcher Helligkeit (0..1) etwas leuchtet
   bloomSoftness:  { target: 0.8,  current: 0.8,  def: 0.8  },  // Bloom: wie weit der Glow ausstrahlt
@@ -1644,9 +1696,10 @@ function compile(type, src) {
 }
 
 const vs = compile(gl.VERTEX_SHADER, baseVertex);
-function makeProgram(src) {
+// vertex: eigener Vertex-Shader (Standard: das Vollbild-Rechteck)
+function makeProgram(src, vertex = vs) {
   const p = gl.createProgram();
-  gl.attachShader(p, vs);
+  gl.attachShader(p, vertex);
   gl.attachShader(p, compile(gl.FRAGMENT_SHADER, src));
   gl.bindAttribLocation(p, 0, 'aPos');
   gl.linkProgram(p);
@@ -1715,9 +1768,9 @@ function createFBO(w, h, internalFormat, format, type = gl.HALF_FLOAT, filter = 
   };
 }
 
-function createDoubleFBO(w, h, internalFormat, format, type) {
-  let a = createFBO(w, h, internalFormat, format, type);
-  let b = createFBO(w, h, internalFormat, format, type);
+function createDoubleFBO(w, h, internalFormat, format, type, filter) {
+  let a = createFBO(w, h, internalFormat, format, type, filter);
+  let b = createFBO(w, h, internalFormat, format, type, filter);
   return {
     w, h, texel: a.texel,
     get read() { return a; },
@@ -2429,8 +2482,8 @@ canvas.addEventListener('wheel', e => {
   const mode = MODES[modeIndex];
   if (mode.wheel) { mode.wheel(e); e.preventDefault(); }
 }, { passive: false });
-canvas.addEventListener('pointerleave', () => {
-  MODES[modeIndex].pointerLeave();
+canvas.addEventListener('pointerleave', e => {
+  MODES[modeIndex].pointerLeave(e);
   cursorEl.classList.remove('on');
   lastPaint = -1e9;                     // Oberfläche sofort wieder voll sichtbar
 });
@@ -4230,6 +4283,439 @@ MODES.push({
   wheel: fracWheel,
   key: fracKey,
   qualityInfo(q) { ensureFracBuffers(); return `Fraktal ${fracData.w}×${fracData.h} · bis ${q.iter} Durchgänge`; },
+});
+
+// ---------- Partikel-Modus ----------
+// Sehr viele leuchtende Punkte, die von Kräften bewegt werden. Alles läuft auf der Grafikkarte:
+//   - Zustand: eine Textur, in der JEDER Bildpunkt ein Partikel ist (Rot/Grün = Position 0..1 im Bild, Blau/Alpha =
+//     Tempo in Bildhöhen pro Sekunde). 32-Bit-Zahlen, damit auch winzige Bewegungen nicht verloren gehen.
+//   - Rechnen (partStep): ein Shader liest den alten Zustand und schreibt den neuen (Kräfte → Tempo → Position).
+//   - Zeichnen (partDraw): für jedes Partikel ein Punkt; der Shader holt sich dessen Position aus der Zustands-Textur.
+//     Gezeichnet wird "additiv" (Helligkeiten zählen sich zusammen) in ein Spuren-Bild, das in jedem Bild etwas
+//     dunkler wird – so entstehen Spuren, die sanft verblassen.
+//   - Anzeigen (partShow): Spuren-Bild → fertiges Bild. Die Helligkeit wird weich begrenzt, ohne dass die Farbe
+//     ausbleicht; sehr dichte Stellen werden heller als 1,0 – die lässt der vorhandene Bloom leuchten.
+const PARTICLES = {
+  FORCE: 5,          // Maus-Kraft bei 100 %: Beschleunigung am Rand der Reichweite (Bildhöhen pro Sekunde²)
+  MAX_SPEED: 5,      // schneller wird kein Partikel (Bildhöhen pro Sekunde)
+  FLOW: 0.9,         // Strömung bei 100 %: Tempo in Bildhöhen pro Sekunde (mal Steigung des Rauschens, typisch 0,7)
+  BOUNCE: 0.55,      // so viel Tempo bleibt beim Abprallen am Bildrand übrig
+  WALL: 8,           // weiche Wand: größte Beschleunigung direkt am Bildrand (Bildhöhen pro Sekunde²)
+  FOLLOW: 16,        // wie schnell die Kraft der Maus folgt (größer = direkter)
+  LEVEL: 3.5,        // wie schnell die Kraft ein- und ausblendet
+  BRIGHT: 0.5,       // Helligkeit, wenn die Partikel gleichmäßig über das Bild verteilt sind (bei Helligkeit 100 %)
+  KICK: 2.5,         // "Neu verteilen": größtes Tempo des zufälligen Stoßes
+  SWIRL: 0.06,       // Wirbel um die Maus: Dreh-Tempo am Rand der Reichweite, als Anteil der Maus-Kraft
+};
+
+const part = {
+  state: null,            // Zustands-Textur (Doppelpuffer): Position und Tempo aller Partikel
+  side: 0,                // Seitenlänge der Zustands-Textur → Anzahl der Partikel = side × side
+  trail: null,            // Spuren-Bild
+  vao: gl.createVertexArray(),   // leere Punktliste: die Punkte holen ihre Position selbst aus der Zustands-Textur
+  pointer: null,          // Mausposition [x, y] (0..1) – bleibt stehen, wenn die Maus aufs Panel wechselt; null = keine
+  held: false,            // Maustaste gedrückt → die Kraft wirkt umgekehrt
+  pull: 1,                // gewählte Richtung: 1 = anziehen, −1 = abstoßen
+  dir: 1,                 // tatsächliche Richtung (läuft weich hinterher, auch durch die Null)
+  force: { x: 0.5, y: 0.5, level: 0 },   // die Kraft selbst: folgt der Maus mit etwas Trägheit, blendet weich ein und aus
+  auto: null,             // Auto-Play: Stelle der unsichtbaren Kraft
+  kick: 0,                // > 0: im nächsten Bild bekommen alle Partikel einen zufälligen Stoß ("Neu verteilen")
+  phase: Math.random(),   // wandernde Farbverschiebung
+  time: 0,                // Uhr der Strömung
+  move: 0,                // Strecke, die die Maus seit dem letzten Bild zurückgelegt hat (für den Ton)
+};
+
+// ----- Shader -----
+const partHashGLSL = `
+  // zwei Zufallszahlen 0..1 aus einer Position. Rechnet mit ganzen Zahlen ("PCG"): gründlich durchgemischt, ohne die
+  // sichtbaren Muster, die die übliche Sinus-Formel bei so vielen Partikeln hinterlässt.
+  uint pcg (uint v) {
+    uint s = v * 747796405u + 2891336453u;
+    uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
+    return (w >> 22u) ^ w;
+  }
+  vec2 hash2 (vec2 p) {
+    uvec2 q = floatBitsToUint(p);
+    uint a = pcg(q.x ^ pcg(q.y)), b = pcg(a + 0x9e3779b9u);
+    return vec2(a, b) * (1.0 / 4294967296.0);
+  }
+`;
+
+// Start: jedes Partikel an eine zufällige Stelle, ohne Tempo
+programs.partInit = makeProgram(header + partHashGLSL + `
+  uniform float uSeed;
+  void main () { fragColor = vec4(hash2(gl_FragCoord.xy + uSeed), 0.0, 0.0); }`);
+
+// Andere Qualitätsstufe = andere Partikelzahl: die vorhandenen Partikel werden übernommen. Kommen welche dazu,
+// sind es Kopien – ein kleiner zufälliger Versatz sorgt dafür, dass sie nicht genau aufeinander liegen.
+programs.partResize = makeProgram(header + partHashGLSL + `
+  uniform sampler2D uState;
+  uniform float uJitter;
+  void main () {
+    vec4 s = texture(uState, vUv);
+    vec2 a = hash2(gl_FragCoord.xy) - 0.5, b = hash2(gl_FragCoord.yx + 7.0) - 0.5;
+    fragColor = vec4(clamp(s.xy + a * uJitter, 0.0, 1.0), s.zw + b * uJitter * 4.0);
+  }`);
+
+// Rechnen: ein Schritt für alle Partikel. Gerechnet wird in "Bildhöhen" (x-Abstände mal Seitenverhältnis),
+// damit Kreise rund bleiben und sich alles in jedem Fensterformat gleich anfühlt.
+programs.partStep = makeProgram(header + noiseGLSL + partHashGLSL + `
+  uniform sampler2D uState;
+  uniform float uDt, uAspect, uTime;
+  uniform vec4 uMouse;        // xy = Stelle (0..1), z = Stärke (+ zieht an, − stößt ab), w = Reichweite (Bildhöhen)
+  uniform float uDrag;        // Reibung pro Sekunde (klein = träge, gleitet lange)
+  uniform float uFlow;        // Tempo der Hintergrund-Strömung
+  uniform float uMaxSpeed, uBounce;
+  uniform float uWall;        // Stärke der weichen Wand kurz vor dem Bildrand
+  uniform float uKick;        // > 0: einmaliger zufälliger Stoß ("Neu verteilen")
+  uniform float uSwirl;       // wie stark sich die Umgebung der Maus mitdreht
+  // Strömung: sanft wanderndes Rauschen als "Höhenkarte"; die Partikel fließen an den Höhenlinien entlang.
+  // So eine Strömung hat nirgends Quellen oder Senken – die Partikel bleiben gleichmäßig verteilt, statt zu verklumpen.
+  // Zum Bildrand hin wird die Karte flach (edge), dadurch fließt dort nichts in die Wand hinein.
+  float flowPot (vec2 uv) {
+    vec2 q = uv * vec2(uAspect, 1.0) * 2.2;
+    vec2 edge = smoothstep(0.0, 0.1, uv) * smoothstep(0.0, 0.1, 1.0 - uv);
+    return (noise(q + vec2(0.0, uTime * 0.13)) + 0.5 * noise(q * 2.3 + vec2(5.2 - uTime * 0.1, 1.3))) * edge.x * edge.y;
+  }
+  void main () {
+    ivec2 id = ivec2(gl_FragCoord.xy);
+    vec4 s = texelFetch(uState, id, 0);
+    vec2 p = s.xy, v = s.zw, asp = vec2(uAspect, 1.0);
+    vec2 rnd = hash2(vec2(id) + 0.5);          // zwei feste Zufallszahlen pro Partikel: jedes reagiert etwas anders
+    vec2 acc = vec2(0.0);
+
+    // Maus: am stärksten im Abstand "Reichweite", zur Mitte hin sanft auf null; weiter draußen klingt die Kraft schnell
+    // ab (beim Dreifachen der Reichweite ist sie fast weg) – Partikel in der Ferne treiben ungestört weiter.
+    // Beim Anziehen stößt ein Kern in der Mitte wieder ab: jedes Partikel hat dadurch seinen eigenen Lieblings-Abstand
+    // zur Maus (je Partikel verschieden groß, bis etwa zur Reichweite). Zusammen mit dem Wirbel unten entsteht eine
+    // kreisende Scheibe wie eine kleine Galaxie – statt dass alle Partikel auf einem einzigen Punkt landen.
+    // Abstoßen wirkt dagegen NUR innerhalb der Reichweite (am stärksten in der Mitte, am Rand null): um die Maus
+    // entsteht eine leere Blase genau in dieser Größe, statt dass das ganze Bild leergefegt wird.
+    vec2 d = (uMouse.xy - p) * asp;
+    float r2 = dot(d, d), R = uMouse.w, reach;
+    if (uMouse.z >= 0.0) {
+      float core = R * (0.15 + 1.4 * rnd.x);
+      reach = exp(0.5 - 0.5 * r2 / (R * R)) / R;
+      // jedes Partikel reagiert verschieden stark: die meisten kräftig, einige wenige kaum – die bleiben als
+      // ruhiger Hintergrund zurück, wenn die Maus den Rest mitreißt
+      acc += d * (uMouse.z * reach * (1.0 - 1.5 * exp(-r2 / (core * core))) * mix(0.15, 1.3, sqrt(rnd.y)));
+    } else {
+      float x = max(0.0, 1.0 - r2 / (R * R));
+      reach = x * x / R;
+      acc += d * (uMouse.z * 1.2 * x * x / max(sqrt(r2), 1e-4));
+    }
+
+    // Wirbel um die Maus: die "Luft" dreht sich dort mit – innen schneller als außen, das zieht die Wolke zu Spiralen
+    vec2 wind = vec2(d.y, -d.x) * (reach * uMouse.z * uSwirl);
+
+    // Hintergrund-Strömung: trägt die Partikel einfach mit (ohne Trägheit – sonst würden sie aus den Wirbeln
+    // herausgeschleudert und sich zu dünnen Fäden sammeln)
+    const float e = 0.012;
+    vec2 ex = vec2(e / uAspect, 0.0), ey = vec2(0.0, e);
+    vec2 flow = vec2(flowPot(p + ey) - flowPot(p - ey), flowPot(p - ex) - flowPot(p + ex)) / (2.0 * e * 2.2) * uFlow;
+
+    // Weiche Wand: kurz vor dem Bildrand (5 % der Bildhöhe) werden die Partikel sanft zurückgedrückt. Ohne sie
+    // blieben weggeschleuderte Partikel für immer am Rand kleben, denn dort steht die Strömung still.
+    vec2 lo = max(1.0 - p * asp / 0.05, 0.0), hi = max(1.0 - (1.0 - p) * asp / 0.05, 0.0);
+    acc += (lo * lo - hi * hi) * uWall;
+
+    if (uKick > 0.0) {
+      vec2 h = hash2(vec2(id) + fract(uTime) * 61.0);
+      v += vec2(cos(6.2832 * h.x), sin(6.2832 * h.x)) * sqrt(h.y) * uKick;
+    }
+
+    v += acc * uDt;
+    v = wind + (v - wind) * exp(-uDrag * uDt);   // Reibung: das Tempo nähert sich dem der (mitdrehenden) Luft an
+    float sp = length(v);
+    if (sp > uMaxSpeed) v *= uMaxSpeed / sp;
+    p += (v + flow) * uDt / asp;
+    // am Bildrand prallen die Partikel ab und verlieren dabei etwas Tempo
+    if (p.x < 0.0) { p.x = -p.x; v.x = abs(v.x) * uBounce; }
+    if (p.x > 1.0) { p.x = 2.0 - p.x; v.x = -abs(v.x) * uBounce; }
+    if (p.y < 0.0) { p.y = -p.y; v.y = abs(v.y) * uBounce; }
+    if (p.y > 1.0) { p.y = 2.0 - p.y; v.y = -abs(v.y) * uBounce; }
+    fragColor = vec4(clamp(p, 0.0, 1.0), v);
+  }`);
+
+// Zeichnen: ein Punkt pro Partikel. Der Punkt mit der Nummer gl_VertexID liest seine Position aus der Zustands-Textur.
+// Schnelle Partikel springen von Bild zu Bild mehrere Bildpunkte weit – ihre Spur wäre eine Perlenkette. Deshalb wird
+// jeder Punkt an eine zufällige Stelle des Wegstücks gesetzt, das das Partikel seit dem letzten Bild zurückgelegt hat
+// (alte Position aus uPrev): über viele Bilder und Partikel ergibt das eine durchgehende, weiche Spur.
+// Farbe: große, langsam wandernde Farbwolken über dem Bild, dazu das Tempo (schnell = weiter auf der Palette, heller).
+const partVertex = `#version 300 es
+  precision highp float;
+  precision highp sampler2D;
+  ` + paletteGLSL + noiseGLSL + partHashGLSL + `
+  uniform sampler2D uState;
+  uniform sampler2D uPrev;     // Zustand im Bild davor
+  uniform float uSeed;         // in jedem Bild eine andere Zufallszahl
+  uniform int uSide;           // Seitenlänge der Zustands-Textur
+  uniform float uPointSize;    // Punktgröße in Bildpunkten des Spuren-Bilds
+  uniform float uEnergy;       // Helligkeit eines Partikels
+  uniform float uPhase;        // wandernde Farbverschiebung
+  uniform float uAspect;
+  out vec3 vColor;
+  void main () {
+    ivec2 id = ivec2(gl_VertexID % uSide, gl_VertexID / uSide);
+    vec4 s = texelFetch(uState, id, 0);
+    float k = 1.0 - exp(-length(s.zw) * 1.3);                   // Tempo 0..1
+    float seed = hash2(vec2(id) + 0.5).x;
+    float cloud = noise(s.xy * vec2(uAspect, 1.0) * 1.4 + vec2(uPhase * 4.0, -uPhase * 2.5));
+    vColor = palette(uPhase + seed * 0.06 + cloud + k * 0.45) * (uEnergy * (0.75 + 1.05 * k));
+    vec2 pos = mix(texelFetch(uPrev, id, 0).xy, s.xy, hash2(vec2(id) + uSeed).x);
+    gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+    gl_PointSize = uPointSize;
+  }`;
+programs.partDraw = makeProgram(`#version 300 es
+  precision highp float;
+  in vec3 vColor;
+  uniform float uSoft;         // 0 = winziger Punkt (ein Bildpunkt), 1 = weiches rundes Scheibchen
+  out vec4 fragColor;
+  void main () {
+    vec2 q = gl_PointCoord * 2.0 - 1.0;
+    float a = max(0.0, 1.0 - dot(q, q));
+    fragColor = vec4(vColor * mix(1.0, a * a, uSoft), 1.0);
+  }`, compile(gl.VERTEX_SHADER, partVertex));
+
+// Spuren verblassen lassen: das ganze Spuren-Bild wird mit uKeep (knapp unter 1) malgenommen
+programs.partFade = makeProgram(header + `
+  uniform float uKeep;
+  void main () { fragColor = vec4(uKeep); }`);
+
+// Anzeigen: Spuren-Bild → fertiges Bild
+programs.partShow = makeProgram(header + `
+  uniform sampler2D uTrail;
+  uniform float uExposure;     // Regler "Helligkeit"
+  void main () {
+    vec3 c = max(texture(uTrail, vUv).rgb, 0.0) * uExposure;
+    float L = max(c.r, max(c.g, c.b));
+    // Helligkeit weich begrenzen (dichte Wolken sind über 100-mal heller als einzelne Partikel) – alle drei Farbkanäle
+    // gemeinsam, damit die Farbe erhalten bleibt statt auszubleichen
+    float M = L / (1.0 + L);
+    vec3 col = c * (M / max(L, 1e-4));
+    // sehr dichte Stellen: heller als 1,0 (das lässt der Bloom leuchten) und im Kern ein wenig weißer
+    float hot = smoothstep(4.0, 60.0, L);
+    col = mix(col, vec3(M), 0.4 * hot) * (1.0 + 0.9 * hot);
+    fragColor = vec4(col + vec3(0.003, 0.004, 0.008), 1.0);
+  }`);
+
+// ----- Puffer -----
+// Werden erst angelegt, wenn der Modus zum ersten Mal gebraucht wird, und passen sich Qualitätsstufe und Fenster an
+function ensurePartBuffers() {
+  const q = QUALITY[qualityLevel], W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+  const side = Math.min(q.pside, maxTextureSize);
+  gl.disable(gl.BLEND);
+  if (side !== part.side) {
+    const fresh = createDoubleFBO(side, side, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+    if (part.state) {                          // Stufe gewechselt: vorhandene Partikel übernehmen (kein Neustart)
+      const u = use('partResize');
+      gl.uniform1i(u.uState, part.state.read.attach(0));
+      gl.uniform1f(u.uJitter, side > part.side ? 0.012 : 0);
+      blit(fresh.read); blit(fresh.write);     // beide Hälften gleich füllen (die zweite gilt als "Bild davor")
+      part.state.free();
+    } else {
+      const u = use('partInit');
+      gl.uniform1f(u.uSeed, Math.random() * 100);
+      blit(fresh.read); blit(fresh.write);
+    }
+    part.state = fresh;
+    part.side = side;
+  }
+  const w = Math.max(1, Math.round(W * q.pscale)), h = Math.max(1, Math.round(H * q.pscale));
+  if (!part.trail || part.trail.w !== w || part.trail.h !== h) {
+    const fresh = createFBO(w, h, gl.RGBA16F, gl.RGBA);
+    if (part.trail) {                          // altes Spuren-Bild in die neue Größe übernehmen
+      const u = use('scale');
+      gl.uniform1i(u.uTexture, part.trail.attach(0));
+      gl.uniform1f(u.value, 1);
+      blit(fresh);
+      part.trail.free();
+    }
+    part.trail = fresh;
+  }
+}
+
+// ----- einmal pro Bild: rechnen -----
+function updateParticles(dt) {
+  ensurePartBuffers();
+  const f = part.force, calm = PARAMS.calm.current;
+  // Die Kraft sitzt an der Maus – im Auto-Play an der Stelle der unsichtbaren Kraft
+  const src = part.pointer || (autoplay.level > 0.01 ? part.auto : null);
+  if (src) {
+    if (f.level < 0.02) { f.x = src[0]; f.y = src[1]; }      // Kraft war aus → sie setzt gleich an der neuen Stelle an
+    const k = 1 - Math.exp(-PARTICLES.FOLLOW * dt);          // sonst läuft sie der Maus weich hinterher
+    f.x += (src[0] - f.x) * k; f.y += (src[1] - f.y) * k;
+  }
+  const want = part.pointer ? 1 : src ? autoplay.level : 0;
+  f.level += (want - f.level) * (1 - Math.exp(-PARTICLES.LEVEL * dt));        // weich ein- und ausblenden
+  const wantDir = part.held ? -part.pull : part.pull;
+  part.dir += (wantDir - part.dir) * (1 - Math.exp(-7 * dt));                // Anziehen ↔ Abstoßen wechselt weich
+
+  part.time += dt * (1 - 0.4 * calm);
+  gl.disable(gl.BLEND);
+  const u = use('partStep');
+  gl.uniform1i(u.uState, part.state.read.attach(0));
+  gl.uniform1f(u.uDt, dt);
+  gl.uniform1f(u.uAspect, canvas.width / canvas.height);
+  gl.uniform1f(u.uTime, part.time);
+  gl.uniform4f(u.uMouse, f.x, f.y, PARAMS.partForce.current * PARTICLES.FORCE * f.level * part.dir, PARAMS.partRange.current);
+  gl.uniform1f(u.uDrag, 5 * Math.pow(0.02, PARAMS.partInertia.current));     // Trägheit 0..1 → Reibung 5 … 0,1 pro Sekunde
+  gl.uniform1f(u.uFlow, PARAMS.partFlow.current * PARTICLES.FLOW);
+  gl.uniform1f(u.uMaxSpeed, PARTICLES.MAX_SPEED);
+  gl.uniform1f(u.uBounce, PARTICLES.BOUNCE);
+  gl.uniform1f(u.uWall, PARTICLES.WALL);
+  gl.uniform1f(u.uKick, part.kick);
+  gl.uniform1f(u.uSwirl, PARTICLES.SWIRL);
+  blit(part.state.write);
+  part.state.swap();
+  part.kick = 0;
+
+  // Ton: die Maus bewegen klingt wie Malen (je schneller, desto höher und lauter)
+  if (part.move > 0) {
+    audioPaint(part.move / dt, part.move, part.pointer ? part.pointer[0] : 0.5);
+    part.move = 0;
+  }
+  part.phase += 0.012 * dt * (1 - 0.6 * calm);               // Farben wandern langsam über die Palette
+  cursorEl.style.setProperty('--brush', paletteColor(part.phase + 0.3));
+  cursorEl.style.setProperty('--size', '26px');
+  document.body.classList.toggle('part-repel', wantDir < 0);
+}
+
+// ----- einmal pro Bild: zeichnen -----
+function drawParticles(target, dt) {
+  ensurePartBuffers();
+  const t = part.trail, n = part.side * part.side;
+  // Spuren: Regler 0..1 → Lebensdauer 0 … 2,5 s. keep = so viel vom alten Bild bleibt nach diesem Bild übrig
+  const life = PARAMS.partTrail.current * PARAMS.partTrail.current * 2.5;
+  const keep = life > 0.004 ? Math.exp(-dt / life) : 0;
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ZERO, gl.SRC_COLOR);                         // altes Bild × keep
+  let u = use('partFade');
+  gl.uniform1f(u.uKeep, keep);
+  blit(t);
+
+  // Punktgröße: bei wenigen Partikeln größer, damit das Bild nicht leer wirkt (in Bildpunkten des Spuren-Bilds)
+  const size = clampNum(0.8 * Math.sqrt(t.w * t.h / n), 1.2, 2.6) * PARAMS.partSize.current;
+  const soft = clampNum(size - 1.5, 0, 1);
+  // Helligkeit pro Partikel: so gewählt, dass das Bild bei jeder Partikelzahl, Punktgröße und Spurlänge gleich hell
+  // ist (area = Fläche eines Punkts; ein weiches Scheibchen trägt nur gut ein Viertel seiner Fläche bei)
+  const area = size * size * (1 - 0.74 * soft);
+  const energy = Math.min(PARTICLES.BRIGHT * t.w * t.h / (n * area), 3) * (1 - keep);
+  gl.blendFunc(gl.ONE, gl.ONE);                                // additiv: Helligkeiten zählen sich zusammen
+  u = use('partDraw');
+  gl.uniform1i(u.uState, part.state.read.attach(0));
+  gl.uniform1i(u.uPrev, part.state.write.attach(1));          // der Puffer, in den zuletzt NICHT geschrieben wurde = altes Bild
+  gl.uniform1f(u.uSeed, Math.random() * 1000);
+  gl.uniform1i(u.uSide, part.side);
+  gl.uniform1f(u.uPointSize, size);
+  gl.uniform1f(u.uSoft, soft);
+  gl.uniform1f(u.uEnergy, energy);
+  gl.uniform1f(u.uPhase, part.phase);
+  gl.uniform1f(u.uAspect, canvas.width / canvas.height);
+  gl.uniform3fv(u['uPalette[0]'], currentPalette);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, t.fbo);
+  gl.viewport(0, 0, t.w, t.h);
+  gl.bindVertexArray(part.vao);
+  gl.drawArrays(gl.POINTS, 0, n);
+  gl.bindVertexArray(null);
+  gl.disable(gl.BLEND);
+
+  u = use('partShow');
+  gl.uniform1i(u.uTrail, t.attach(0));
+  gl.uniform1f(u.uExposure, PARAMS.partGlow.current);
+  blit(target);
+}
+
+// ----- Bedienung -----
+// Mausposition im Bild (0..1, y nach oben)
+function partMouse(e) {
+  const r = canvas.getBoundingClientRect();
+  return [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height];
+}
+function partPointerMove(e) {
+  const a = partMouse(e), r = canvas.getBoundingClientRect();
+  showCursor(e.clientX, e.clientY);
+  if (part.pointer) part.move += Math.hypot((a[0] - part.pointer[0]) * Math.min(r.width / r.height, 1), (a[1] - part.pointer[1]) * Math.min(r.height / r.width, 1));
+  part.pointer = a;
+  lastPaint = performance.now();
+  hideHint();
+}
+function partPointerDown(e) {
+  part.pointer = partMouse(e);
+  showCursor(e.clientX, e.clientY);
+  part.held = true;                                          // solange gehalten: Kraft wirkt umgekehrt
+  cursorScale = 0.7;
+  audioTock(part.pull > 0);
+}
+function partPointerUp(e) {
+  if (!part.held) return;
+  part.held = false;
+  if (e && e.pointerType === 'touch') part.pointer = null;   // Finger weg → Kraft blendet aus
+}
+// Maus verlässt die Zeichenfläche: Wechselt sie nur aufs Panel, bleibt die Kraft an ihrer Stelle stehen (so sieht
+// man beim Verstellen der Regler, was sie bewirken); verlässt sie das Fenster, blendet die Kraft weich aus.
+function partPointerLeave(e) {
+  if (!e || !e.relatedTarget) part.pointer = null;
+}
+function setPartPull(dir, silent) {
+  part.pull = dir;
+  for (const b of partPullBox.children) b.classList.toggle('active', Number(b.dataset.pull) === dir);
+  if (silent) return;
+  audioTock(dir < 0);
+  toast(dir > 0 ? 'Maus zieht an' : 'Maus stößt ab');
+}
+// alle Partikel bekommen einen zufälligen Stoß und verteilen sich neu über das Bild
+function partScatter() {
+  part.kick = PARTICLES.KICK;
+  audioClear();
+  toast('Neu verteilt');
+}
+function partKey(e) {
+  if (e.code === 'KeyR') setPartPull(-part.pull);
+  if (e.code === 'Space') { partScatter(); e.preventDefault(); }
+}
+// Auto-Play: eine unsichtbare Kraft wandert auf einer weichen Schleifenbahn durchs Bild
+function partAutoplay() {
+  part.auto = brushPos(autoplay.brushes[0], autoplay.time * 0.8);
+}
+
+// ----- Panel -----
+const partPullBox = $('partPull');
+for (const b of partPullBox.children) b.addEventListener('click', () => { setPartPull(Number(b.dataset.pull)); b.blur(); });
+$('partScatter').addEventListener('click', e => { partScatter(); e.currentTarget.blur(); });
+bindSlider('partForce',   PARAMS.partForce,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('partRange',   PARAMS.partRange,   v => Math.round(v * 100) + ' %');
+bindSlider('partInertia', PARAMS.partInertia, v => Math.round(v * 100) + ' %');
+bindSlider('partFlow',    PARAMS.partFlow,    v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('partTrail',   PARAMS.partTrail,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('partSize',    PARAMS.partSize,    v => v.toFixed(2) + '×');
+bindSlider('partGlow',    PARAMS.partGlow,    v => Math.round(v * 100) + ' %');
+setPartPull(1, true);
+
+MODES.push({
+  id: 'particles', name: 'Partikel',
+  hint: 'Maus = Partikel anziehen · Maustaste halten = abstoßen · <b>R</b> = umkehren · <b>Tab</b> = Modus wechseln',
+  autoplayHint: 'Auto-Play · Bewege die Maus, um die Partikel selbst zu lenken',
+  enter() {
+    $('paletteSection').classList.remove('unused');          // Palette und Bloom wirken hier immer
+    $('bloomSection').classList.remove('unused');
+  },
+  leave() { part.held = false; document.body.classList.remove('part-repel'); },
+  update: updateParticles,
+  draw: drawParticles,
+  bloomShare: () => 1,
+  autoplayStart() { part.pointer = null; part.held = false; },
+  autoplayStop() {},
+  autoplay: partAutoplay,
+  pointerMove: partPointerMove,
+  pointerDown: partPointerDown,
+  pointerUp: partPointerUp,
+  pointerLeave: partPointerLeave,
+  key: partKey,
+  qualityInfo() {
+    ensurePartBuffers();
+    return `${(part.side * part.side).toLocaleString('de-DE')} Partikel · Spuren-Bild ${part.trail.w}×${part.trail.h}`;
+  },
 });
 
 // ----- Moduswechsel -----
