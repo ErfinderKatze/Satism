@@ -489,7 +489,7 @@
       <button class="btn" data-pull="1"><span>Anziehen</span></button>
       <button class="btn" data-pull="-1"><span>Abstoßen</span><kbd>R</kbd></button>
     </div>
-    <div class="sub">Die Maus zieht die Partikel an oder stößt sie ab. Maustaste gedrückt halten = umgekehrt, solange du hältst.</div>
+    <div class="sub">Die Maus zieht die Partikel an oder stößt sie ab. Klick = Explosion. Maustaste gedrückt halten = Kraft umgekehrt, solange du hältst.</div>
     <div class="row" style="margin-top:12px">
       <label for="partForce">Maus-Kraft <output id="partForceOut"></output></label>
       <input id="partForce" type="range" min="0" max="3" step="0.01">
@@ -497,6 +497,10 @@
     <div class="row">
       <label for="partRange">Reichweite <output id="partRangeOut"></output></label>
       <input id="partRange" type="range" min="0.05" max="0.6" step="0.01">
+    </div>
+    <div class="row">
+      <label for="partBlast">Explosion (Klick) <output id="partBlastOut"></output></label>
+      <input id="partBlast" type="range" min="0" max="2.5" step="0.01">
     </div>
     <div class="row">
       <label for="partInertia">Trägheit <output id="partInertiaOut"></output></label>
@@ -591,7 +595,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span>
   </div>
 </div>
 
@@ -709,6 +713,7 @@ const PARAMS = {
   partTrail:   { target: 0.35, current: 0.35, def: 0.35 },  // Partikel: Länge der Spuren (0 = keine)
   partSize:    { target: 1,    current: 1,    def: 1    },  // Partikel: Punktgröße (Faktor)
   partGlow:    { target: 1,    current: 1,    def: 1    },  // Partikel: Helligkeit (Faktor)
+  partBlast:   { target: 1,    current: 1,    def: 1    },  // Partikel: Stärke der Explosion bei Klick (0 = aus)
   forceStrength: { target: 1,   current: 1,   def: 1   },  // Partikel-Kräfte: Stärke der ausgewählten (bzw. nächsten) Kraft
   forceRange:    { target: 0.2, current: 0.2, def: 0.2 },  // Partikel-Kräfte: Reichweite (Anteil der Bildhöhe)
   forceDir:      { target: 0,   current: 0,   def: 0   },  // Partikel-Kräfte: Windrichtung in Grad (0 = rechts, 90 = oben)
@@ -4350,6 +4355,11 @@ const PARTICLES = {
   GRID: 128,         // Dichte-Raster: Felder entlang der kurzen Bildschirmseite
   PRESSURE: 0.25,    // Gedränge: wie stark sich dicht gepackte Partikel auseinanderdrücken
   CROWD: 2,          // … ab dieser Dichte (Vielfaches des Durchschnitts); darunter stören sie sich nicht
+  MAX_BLASTS: 4,     // so viele Explosionen können gleichzeitig laufen (muss zu MAXB in den Shadern passen)
+  BLAST_SECONDS: 3.2,// so lange wirkt eine Explosion (Druckwelle, danach Rückkehr)
+  BLAST_SPEED: 1.6,  // Tempo, mit dem die Druckwelle nach außen läuft (Bildhöhen pro Sekunde)
+  BLAST_KICK: 1.2,   // Explosion bei 100 %: Tempo, das die Druckwelle den Partikeln mitgibt
+  BLAST_BACK: 2,     // … und wie kräftig sie danach zur Mitte zurückgeholt werden
 };
 
 const part = {
@@ -4372,6 +4382,7 @@ const part = {
   sel: null,              // ausgewählte Kraft: für sie gelten die Regler Stärke / Reichweite / Windrichtung
   hover: null,            // Kraft, auf die die Maus gerade zeigt
   drag: null,             // Kraft, die gerade verschoben wird: { f, ox, oy }
+  blasts: [],             // laufende Explosionen: { x, y, t: Alter in Sekunden, s: Stärke }
 };
 
 // ----- Shader -----
@@ -4449,6 +4460,11 @@ programs.partStep = makeProgram(header + noiseGLSL + partHashGLSL + `
   uniform vec4 uF[MAXF];      // xy = Stelle (0..1), z = Reichweite (Bildhöhen), w = Stärke (Magnet: + zieht an, − stößt ab)
   uniform vec4 uG[MAXF];      // x = Art (0 Magnet, 1 Schwarzes Loch, 2 Wind, 3 Orbit), yz = Windrichtung
   uniform float uHorizon;     // Schwarzes Loch: Radius der verschluckenden Scheibe als Anteil der Reichweite
+  // Explosionen (höchstens MAXB gleichzeitig)
+  #define MAXB 4
+  uniform int uBlasts;
+  uniform vec4 uBlast[MAXB];  // xy = Stelle, z = Alter in Sekunden, w = Stärke
+  uniform float uBlastSpeed, uBlastKick, uBlastBack;
   // Gedränge
   uniform sampler2D uGrid;    // Dichte-Raster: Partikel pro Rasterfeld
   uniform vec2 uGridTexel;    // Größe eines Rasterfelds (0..1)
@@ -4535,6 +4551,20 @@ programs.partStep = makeProgram(header + noiseGLSL + partHashGLSL + `
     const float e = 0.012;
     vec2 ex = vec2(e / uAspect, 0.0), ey = vec2(0.0, e);
     vec2 flow = vec2(flowPot(p + ey) - flowPot(p - ey), flowPot(p - ex) - flowPot(p + ex)) / (2.0 * e * 2.2) * uFlow;
+
+    // Explosionen: Eine Druckwelle läuft als Ring nach außen (wird dabei breiter und schwächer) und schleudert die
+    // Partikel, über die sie hinwegläuft, vom Zentrum weg. Danach (ab etwa einer halben Sekunde) zieht eine sanfte
+    // Kraft sie wieder zur Mitte zurück – weit entfernte stärker als nahe, damit alle etwa gleichzeitig ankommen.
+    for (int i = 0; i < MAXB; i++) {
+      if (i >= uBlasts) break;
+      vec4 B = uBlast[i];
+      vec2 d = (p - B.xy) * asp;
+      float r = max(length(d), 1e-4), t = B.z;
+      float width = 0.05 + 0.12 * t, x = (r - uBlastSpeed * t) / width;
+      acc += d / r * (B.w * uBlastKick * uBlastSpeed / width * exp(-x * x) * exp(-t / 0.4));
+      float back = smoothstep(0.5, 1.3, t) * (1.0 - smoothstep(1.8, 3.2, t));
+      acc -= d * (B.w * uBlastBack * back * exp(-r * r / 0.8));
+    }
 
     // Gedränge: weg von den dichteren Nachbarfeldern (Druckgefälle über drei Rasterfelder)
     vec2 gx = vec2(uGridTexel.x * 1.5, 0.0), gy = vec2(0.0, uGridTexel.y * 1.5);
@@ -4630,6 +4660,11 @@ programs.partShow = makeProgram(header + `
   uniform float uAspect, uPx;  // uPx = Größe eines Bildpunkts in Bildhöhen (für glatte Kanten)
   uniform float uHorizon;
   uniform vec3 uTint;          // Farbe der Zeichen (aus der Palette)
+  #define MAXB 4
+  uniform int uBlasts;
+  uniform vec4 uBlast[MAXB];   // Explosionen: xy = Stelle, z = Alter in Sekunden, w = Stärke
+  uniform float uBlastSpeed;
+  uniform float uCalm;         // Schalter "Flackern reduzieren" (0..1): Blitz und Ring weicher und viel dunkler
   // Linie der Breite w: 1 auf der Linie, weich auslaufend. dist = Abstand von der Linienmitte
   float stroke (float dist, float w) { return 1.0 - smoothstep(w, w + 1.5 * uPx, dist); }
   void main () {
@@ -4668,6 +4703,17 @@ programs.partShow = makeProgram(header + `
       // die Reichweite als feiner Kreis, solange die Kraft ausgewählt ist oder die Maus auf sie zeigt
       a = max(a, focus * 0.4 * stroke(abs(r - R), 0.0008));
       col = mix(col, mix(vec3(0.92), uTint, 0.3) * (0.7 + 0.5 * focus), a * G.w * (0.65 + 0.35 * focus));
+    }
+    // Explosionen: kurzer Lichtblitz im Zentrum und ein feiner heller Ring, der mit der Druckwelle nach außen läuft
+    for (int i = 0; i < MAXB; i++) {
+      if (i >= uBlasts) break;
+      vec4 B = uBlast[i];
+      float r = length((vUv - B.xy) * vec2(uAspect, 1.0)), t = B.z;
+      float width = (0.004 + 0.02 * t) * (1.0 + 3.0 * uCalm), x = (r - uBlastSpeed * t) / width;
+      float ring = 0.5 * exp(-x * x) * exp(-t / 0.3);
+      float size = (0.03 + 0.3 * t) * (1.0 + uCalm);
+      float flash = 1.5 * exp(-r * r / (size * size)) * exp(-t / mix(0.09, 0.3, uCalm));
+      col += mix(vec3(1.0), uTint, 0.45) * ((ring + flash) * min(B.w, 1.6) * (1.0 - 0.8 * uCalm));
     }
     fragColor = vec4(col + vec3(0.003, 0.004, 0.008), 1.0);
   }`);
@@ -4815,6 +4861,28 @@ function updateForces(dt) {
       kind === 2 ? Math.sin(a) : 0, f.level], i * 4);
   });
 }
+// ----- Explosionen -----
+const blastData = new Float32Array(PARTICLES.MAX_BLASTS * 4);
+// Explosion an der Bildstelle (x, y) auslösen. "Flackern reduzieren": schwächere Welle, viel weicherer Blitz
+function partBlast(x, y) {
+  const s = PARAMS.partBlast.target, calm = PARAMS.calm.current;
+  if (s <= 0) return;
+  if (part.blasts.length >= PARTICLES.MAX_BLASTS) part.blasts.shift();       // die älteste macht Platz
+  part.blasts.push({ x, y, t: 0, s: s * (1 - 0.3 * calm) });
+  audioClick(x, y);
+  cursorScale = 1.9 - 0.7 * calm;
+}
+function updateBlasts(dt) {
+  for (const b of part.blasts) b.t += dt;
+  if (part.blasts.length && part.blasts[0].t > PARTICLES.BLAST_SECONDS) part.blasts = part.blasts.filter(b => b.t <= PARTICLES.BLAST_SECONDS);
+  part.blasts.forEach((b, i) => blastData.set([b.x, b.y, b.t, b.s], i * 4));
+}
+function bindBlasts(u) {
+  gl.uniform1i(u.uBlasts, part.blasts.length);
+  gl.uniform4fv(u['uBlast[0]'], blastData);
+  gl.uniform1f(u.uBlastSpeed, PARTICLES.BLAST_SPEED);
+}
+
 // Kräfte an einen Shader übergeben (Rechnen und Anzeigen benutzen dieselben Daten)
 function bindForces(u) {
   gl.uniform1i(u.uCount, part.forces.length);
@@ -4846,6 +4914,9 @@ function updateParticles(dt) {
   gl.disable(gl.BLEND);
   const u = use('partStep');
   bindForces(u);
+  bindBlasts(u);
+  gl.uniform1f(u.uBlastKick, PARTICLES.BLAST_KICK);
+  gl.uniform1f(u.uBlastBack, PARTICLES.BLAST_BACK);
   gl.uniform1i(u.uGrid, part.grid.read.attach(1));
   gl.uniform2fv(u.uGridTexel, part.grid.texel);
   gl.uniform1f(u.uGridNorm, part.grid.w * part.grid.h / (part.side * part.side));
@@ -4866,6 +4937,7 @@ function updateParticles(dt) {
   blit(part.state.write);
   part.state.swap();
   part.kick = 0;
+  updateBlasts(dt);                                          // (nach dem Rechnen: eine neue Explosion beginnt mit Alter 0)
 
   // Ton: die Maus bewegen klingt wie Malen (je schneller, desto höher und lauter)
   if (part.move > 0) {
@@ -4923,6 +4995,8 @@ function drawParticles(target, dt) {
   gl.uniform1i(u.uTrail, t.attach(0));
   gl.uniform1f(u.uExposure, PARAMS.partGlow.current);
   bindForces(u);
+  bindBlasts(u);
+  gl.uniform1f(u.uCalm, PARAMS.calm.current);
   gl.uniform1i(u.uSel, part.forces.indexOf(part.sel));
   gl.uniform1i(u.uHover, part.forces.indexOf(part.drag ? part.drag.f : part.hover));
   gl.uniform1f(u.uAspect, canvas.width / canvas.height);
@@ -4963,9 +5037,8 @@ function partPointerDown(e) {
     return;
   }
   if (e.button !== 0) return;
-  part.held = true;                                          // solange gehalten: Kraft wirkt umgekehrt
-  cursorScale = 0.7;
-  audioTock(part.pull > 0);
+  partBlast(a[0], a[1]);                                     // Klick = Explosion …
+  part.held = true;                                          // … und solange gehalten: Kraft wirkt umgekehrt
 }
 function partPointerUp(e) {
   part.drag = null;
@@ -5021,6 +5094,7 @@ for (const b of partPullBox.children) b.addEventListener('click', () => { setPar
 $('partScatter').addEventListener('click', e => { partScatter(); e.currentTarget.blur(); });
 bindSlider('partForce',   PARAMS.partForce,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('partRange',   PARAMS.partRange,   v => Math.round(v * 100) + ' %');
+bindSlider('partBlast',   PARAMS.partBlast,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('partInertia', PARAMS.partInertia, v => Math.round(v * 100) + ' %');
 bindSlider('partFlow',    PARAMS.partFlow,    v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('partTrail',   PARAMS.partTrail,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
@@ -5063,7 +5137,7 @@ updateForceUi();
 
 MODES.push({
   id: 'particles', name: 'Partikel',
-  hint: 'Maus = Partikel anziehen · Maustaste halten = abstoßen · <b>1</b>–<b>5</b> = Kraft setzen · <b>Tab</b> = Modus wechseln',
+  hint: 'Maus = Partikel anziehen · Klick = Explosion · halten = abstoßen · <b>1</b>–<b>5</b> = Kraft setzen · <b>Tab</b> = Modus',
   autoplayHint: 'Auto-Play · Bewege die Maus, um die Partikel selbst zu lenken',
   enter() {
     $('paletteSection').classList.remove('unused');          // Palette und Bloom wirken hier immer
