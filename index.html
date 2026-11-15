@@ -94,6 +94,7 @@
   #panel .sec:nth-child(15) { transition-delay: .56s; }
   #panel .sec:nth-child(16) { transition-delay: .6s; }
   #panel .sec:nth-child(17) { transition-delay: .64s; }
+  #panel .sec:nth-child(18) { transition-delay: .68s; }
   /* ---------- Modi ---------- */
   /* Abschnitte und Tastenkürzel mit data-mode="…" gehören zu einem Modus und sind nur dort zu sehen */
   /* (die Regel dafür wird im Skript aus der Modus-Liste erzeugt, siehe Abschnitt "Modi") */
@@ -159,7 +160,8 @@
 
   /* Looks */
   #looks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  #tools { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  #tools, #partColors { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  #partColors .btn { justify-content: center; }
   #clearObstacles { width: 100%; margin-top: 8px; }
   #looks button, .btn {
     display: flex; justify-content: space-between; align-items: center; gap: 6px; text-align: left;
@@ -512,18 +514,6 @@
       <label for="partFlow">Strömung <output id="partFlowOut"></output></label>
       <input id="partFlow" type="range" min="0" max="1" step="0.01">
     </div>
-    <div class="row">
-      <label for="partTrail">Spuren <output id="partTrailOut"></output></label>
-      <input id="partTrail" type="range" min="0" max="1" step="0.01">
-    </div>
-    <div class="row">
-      <label for="partSize">Größe <output id="partSizeOut"></output></label>
-      <input id="partSize" type="range" min="0.5" max="3" step="0.05">
-    </div>
-    <div class="row">
-      <label for="partGlow">Helligkeit <output id="partGlowOut"></output></label>
-      <input id="partGlow" type="range" min="0.3" max="3" step="0.05">
-    </div>
     <button class="btn" id="partScatter"><span>Neu verteilen</span><kbd>Leertaste</kbd></button>
   </div>
   <div class="sec" data-mode="particles">
@@ -568,6 +558,27 @@
     <div class="sub" id="forceInfo"></div>
     <button class="btn" id="forceDelete"><span>Ausgewählte Kraft löschen</span><kbd>Entf</kbd></button>
     <button class="btn" id="forceClear"><span>Alle Kräfte löschen</span><kbd>X</kbd></button>
+  </div>
+  <div class="sec" data-mode="particles">
+    <h3>Aussehen</h3>
+    <div id="partColors"></div>
+    <div class="sub" id="partColorHelp"></div>
+    <div class="row fold off" id="partLifeRow">
+      <label for="partLife">Lebensdauer <output id="partLifeOut"></output></label>
+      <input id="partLife" type="range" min="3" max="40" step="0.5">
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label for="partTrail">Spuren <output id="partTrailOut"></output></label>
+      <input id="partTrail" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="partSize">Größe <output id="partSizeOut"></output></label>
+      <input id="partSize" type="range" min="0.5" max="3" step="0.05">
+    </div>
+    <div class="row" style="margin-bottom:0">
+      <label for="partGlow">Helligkeit <output id="partGlowOut"></output></label>
+      <input id="partGlow" type="range" min="0.3" max="3" step="0.05">
+    </div>
   </div>
   <div class="sec" id="paletteSection">
     <h3>Farbpalette</h3>
@@ -620,7 +631,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span>
   </div>
 </div>
 
@@ -739,6 +750,8 @@ const PARAMS = {
   partSize:    { target: 1,    current: 1,    def: 1    },  // Partikel: Punktgröße (Faktor)
   partGlow:    { target: 1,    current: 1,    def: 1    },  // Partikel: Helligkeit (Faktor)
   partBlast:   { target: 1,    current: 1,    def: 1    },  // Partikel: Stärke der Explosion bei Klick (0 = aus)
+  partColor:   { target: 0,    current: 0,    def: 0    },  // Partikel: Farbe nach … 0 Wolken, 1 Tempo, 2 Alter (überblendet wird in part.colorW)
+  partLife:    { target: 12,   current: 12,   def: 12   },  // Partikel: Lebensdauer in Sekunden (nur für die Farbe nach Alter)
   swarm:       { target: 0,    current: 0,    def: 0    },  // Partikel: Schalter "Schwarmverhalten" (wird weich ein-/ausgeblendet)
   swarmAlign:  { target: 0.6,  current: 0.6,  def: 0.6  },  // Schwarm: Ausrichtung = wie stark sich Partikel der Richtung ihrer Nachbarn anpassen
   swarmSep:    { target: 0.5,  current: 0.5,  def: 0.5  },  // Schwarm: Abstand = wie stark sie dichtem Gedränge ausweichen
@@ -3111,7 +3124,7 @@ const audio = {
   sfxOn: true, musicOn: true, muted: false,
   energy: 0,          // 0..1: wie viel gerade gemalt wird (klingt über einige Sekunden ab) – die Musik reagiert darauf
   brushLevel: 0,      // 0..1: aktuelles Mal-Tempo für das Pinsel-Rauschen
-  travel: 0, lastNote: 0, lastIndex: -1, zoomStep: 0,
+  travel: 0, lastNote: 0, lastIndex: -1, zoomStep: 0, lastGather: 0, lastSwallow: 0,
   step: 0, nextStep: 0, melodyIndex: 10,
 };
 const audioReady = () => !!audio.ctx && audio.ctx.state !== 'closed';
@@ -3261,6 +3274,48 @@ function audioBurst() {
   audio.energy = Math.min(1, audio.energy + 0.08);
   if (!audioReady() || !audio.sfxOn || audio.muted) return;
   pluck(scaleFreq(Math.floor(rand(0, 6))), audio.ctx.currentTime, 0.07, rand(-0.6, 0.6), audio.sfxBus, 1.8);
+}
+
+// Explosion (Partikel-Modus): dumpfer Schlag (tiefer Ton, der schnell absinkt), dazu die Druckwelle als Rauschen, das von
+// hell nach dunkel gleitet, und zwei gezupfte Töne – der zweite etwas später, wenn die Partikel zurückkehren.
+// s = Stärke der Explosion (1 = 100 %)
+function audioBlast(x, y, s) {
+  audio.energy = Math.min(1, audio.energy + 0.25);
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  const t = audio.ctx.currentTime, v = Math.min(s, 2.5) / 2.5, soft = 1 - 0.5 * PARAMS.calm.current;
+  const boom = tone(140, t, { peak: (0.26 + 0.24 * v) * soft, attack: 0.004, decay: 0.45 });
+  boom.frequency.exponentialRampToValueAtTime(40, t + 0.22);
+  const wave = noiseHit(t, { type: 'lowpass', freq: 2800, q: 0.6, peak: (0.1 + 0.12 * v) * soft, decay: 0.9 });
+  wave.frequency.exponentialRampToValueAtTime(160, t + 0.7);
+  const i = Math.round(1 + y * 6);
+  pluck(scaleFreq(i), t, 0.15 * soft, x * 2 - 1, audio.sfxBus, 1.6);
+  pluck(scaleFreq(i + 4), t + 0.6, 0.07 * soft, x * 2 - 1, audio.sfxBus, 1.8);
+}
+// Sammeln (Partikel-Modus): Die Dichte der Partikel an der Maus bestimmt eine Stufe auf der Tonleiter. Bei jedem
+// Stufenwechsel erklingt ein leiser, tiefer gezupfter Ton – drängen sich mehr Partikel, steigt die Tonfolge, laufen
+// sie auseinander, fällt sie wieder. crowd = Dichte (1 = Durchschnitt)
+function audioGather(crowd, x) {
+  const step = Math.round(Math.log2(1 + Math.max(crowd - 1.5, 0)) * 2.5);
+  if (step === partStat.step) return;
+  const up = step > partStat.step;
+  partStat.step = step;
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  const t = audio.ctx.currentTime;
+  if (t - audio.lastGather < 0.14) return;                   // höchstens ~7 Töne pro Sekunde
+  audio.lastGather = t;
+  pluck(scaleFreq(Math.min(step, 12)) * 0.5, t, up ? 0.09 : 0.05, x * 2 - 1, audio.sfxBus, 1.5);
+}
+// Verschlucken (Partikel-Modus): ein leiser Tropfen, dessen Ton nach unten wegkippt. n = wie viele Stichproben verschluckt
+// wurden. Fallen nur wenige Partikel hinein, tropft es selten; bei vielen höchstens etwa viermal pro Sekunde, in
+// unregelmäßigen Abständen (sonst klänge es wie eine Maschine).
+function audioSwallow(n) {
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  const t = audio.ctx.currentTime;
+  if (t < audio.lastSwallow || Math.random() > 0.25 * n) return;
+  audio.lastSwallow = t + rand(0.2, 0.45);                   // frühester Zeitpunkt für den nächsten Tropfen
+  const f = scaleFreq(Math.floor(rand(5, 10)));
+  const drop = tone(f, t, { peak: Math.min(0.03 + 0.012 * n, 0.08), attack: 0.004, decay: 0.16 });
+  drop.frequency.exponentialRampToValueAtTime(f * 0.45, t + 0.14);
 }
 
 // Zoomen (Mandelbrot-Modus): gezupfte Töne, deren Höhe der Zoomtiefe folgt – Übersicht = hoch, tief im Bild = tief.
@@ -4366,6 +4421,12 @@ MODES.push({
 //     dunkler wird – so entstehen Spuren, die sanft verblassen.
 //   - Anzeigen (partShow): Spuren-Bild → fertiges Bild. Die Helligkeit wird weich begrenzt, ohne dass die Farbe
 //     ausbleicht; sehr dichte Stellen werden heller als 1,0 – die lässt der vorhandene Bloom leuchten.
+//   - Farbe (PART_COLORS): nach der Stelle im Bild ("Wolken"), nach dem Tempo oder nach dem Alter des Partikels –
+//     immer aus der aktiven Palette. Das Alter steht in einer eigenen Textur (partAge), die nur gerechnet wird,
+//     solange diese Farbe zu sehen ist.
+//   - Klang: Ein winziger Rechenschritt (partStat) misst nebenbei, wie schnell die Partikel sind, wie viele sich an
+//     der Maus sammeln und wie viele gerade verschluckt werden. Die Zahlen kommen ein paar Bilder später im
+//     JavaScript an (ohne die Grafikkarte aufzuhalten) und steuern Töne und Musik.
 const PARTICLES = {
   FORCE: 5,          // Maus-Kraft bei 100 %: Beschleunigung am Rand der Reichweite (Bildhöhen pro Sekunde²)
   MAX_SPEED: 5,      // schneller wird kein Partikel (Bildhöhen pro Sekunde)
@@ -4404,6 +4465,11 @@ const PARTICLES = {
   SAMPLES: 530000,   // ins Schwarm-Raster werden höchstens so viele Partikel gezählt (bei mehr: nur jedes zweite, vierte …)
   WANDER: 0.5,       // zufälliges Umherirren: Richtungsänderung pro Wurzel-Sekunde (Bogenmaß)
   MEANDER: 3,        // gemeinsames Schlängeln: größte Drehgeschwindigkeit (Bogenmaß pro Sekunde, mal 0,75)
+  // Farbe nach Alter
+  AGE_SYNC: 0.8,     // so schnell (pro Sekunde) gleicht ein Partikel sein Alter den "Geburtswellen" seiner Umgebung an
+  AGE_BLAST: 45,     // so schnell macht die Druckwelle einer Explosion die Partikel wieder jung
+  // Auto-Play
+  AUTO_GHOSTS: 2,    // so viele unsichtbare Kräfte wandern im Auto-Play zusätzlich durchs Bild
   TURN_ZONE: 0.16,   // so weit vor dem Bildrand (Bildhöhen) beginnt der Schwarm abzudrehen
   TURN: 3,           // … und so kräftig (Beschleunigung direkt am Rand)
 };
@@ -4433,6 +4499,13 @@ const part = {
   hover: null,            // Kraft, auf die die Maus gerade zeigt
   drag: null,             // Kraft, die gerade verschoben wird: { f, ox, oy }
   blasts: [],             // laufende Explosionen: { x, y, t: Alter in Sekunden, s: Stärke }
+  colorW: [1, 0, 0],      // Farbe: Anteile von Wolken / Tempo / Alter (laufen beim Wechsel weich zur gewählten Art)
+  age: null,              // Alter jedes Partikels (Doppelpuffer, 0 = eben geboren … 1 = Lebensende) – nur für die Farbe "Alter"
+  ageActive: false,       // wurde das Alter im letzten Bild gerechnet? (sonst wird es beim Einschalten neu verteilt)
+  ageTime: Math.random() * 100,   // Uhr der Geburtswellen
+  stat: null,             // 8×8 Bildpunkte mit Kennzahlen für den Ton (siehe partStat)
+  // Auto-Play: Richtung der unsichtbaren Maus-Kraft, unsichtbare Kräfte und Zeit bis zur nächsten sanften Explosion
+  autoPull: 1, autoPullTimer: 0, ghosts: [], nextBlast: 6,
 };
 
 // ----- Shader -----
@@ -4509,6 +4582,65 @@ programs.partGridBlur = makeProgram(header + `
     vec2 o = uTexel * 0.5;
     fragColor = 0.25 * (texture(uTexture, vUv + o) + texture(uTexture, vUv - o)
                       + texture(uTexture, vUv + vec2(o.x, -o.y)) + texture(uTexture, vUv + vec2(-o.x, o.y)));
+  }`);
+
+// Alter (nur für die Farbe "Alter"): Jedes Partikel wird älter, bis seine Lebensdauer um ist – dann wird es an Ort und
+// Stelle neu geboren (Alter wieder 0; beim Zeichnen verglimmt es kurz vorher und glimmt danach wieder auf).
+// Würde jedes Partikel für sich allein altern, hätten Nachbarn nach kurzer Zeit lauter verschiedene Farben – bei
+// Millionen Partikeln ergäbe das nur noch einen grauen Brei. Deshalb gibt es "Geburtswellen": Ein sanft geformtes
+// Wolkenmuster legt für jede Stelle im Bild fest, wie alt man dort gerade sein sollte (wave); die Partikel gleichen
+// ihr Alter langsam daran an. So wandern Geburts-Fronten als leuchtende Linien durchs Bild, und die Farben bleiben
+// in großen Flächen beisammen. Sofort neu geboren wird, wer von einem Schwarzen Loch verschluckt wurde oder wen die
+// Druckwelle einer Explosion trifft.
+programs.partAge = makeProgram(header + noiseGLSL + `
+  uniform sampler2D uAge, uState, uPrev;
+  uniform float uDt, uLife, uAspect, uTime;
+  uniform float uInit;         // 1 = Alter neu verteilen (Farbe "Alter" eben eingeschaltet oder Partikelzahl geändert)
+  uniform float uSync, uBlastAge;
+  #define MAXB 4
+  uniform int uBlasts;
+  uniform vec4 uBlast[MAXB];   // Explosionen: xy = Stelle, z = Alter in Sekunden, w = Stärke
+  uniform float uBlastSpeed;
+  void main () {
+    ivec2 id = ivec2(gl_FragCoord.xy);
+    vec4 s = texelFetch(uState, id, 0);
+    vec2 q = s.xy * vec2(uAspect, 1.0);
+    float wave = fract(uTime + 1.6 * noise(q * 1.3 + vec2(3.1, 7.7)) + 0.5 * noise(q * 2.9 - vec2(1.7, 4.3)));
+    float age = uInit > 0.5 ? wave : texelFetch(uAge, id, 0).r;
+    age += uDt / uLife;
+    age += uSync * uDt * sin(6.2832 * (wave - age)) / 6.2832;      // sanft zur Geburtswelle der Umgebung hin
+    age = min(fract(age), 0.999999);                               // Lebensende → neu geboren
+    vec2 jump = s.xy - texelFetch(uPrev, id, 0).xy;
+    if (dot(jump, jump) > 0.04) age = 0.0;                         // verschluckt und woanders aufgetaucht → neu geboren
+    for (int i = 0; i < MAXB; i++) {
+      if (i >= uBlasts) break;
+      vec4 B = uBlast[i];
+      float r = length((s.xy - B.xy) * vec2(uAspect, 1.0)), t = B.z;
+      float width = 0.05 + 0.12 * t, x = (r - uBlastSpeed * t) / width;
+      age *= exp(-uDt * uBlastAge * min(B.w, 1.5) * exp(-x * x) * exp(-t / 0.3));
+    }
+    fragColor = vec4(age, 0.0, 0.0, 1.0);
+  }`);
+
+// Kennzahlen für den Ton: 8×8 Bildpunkte, jeder mittelt über 64 Partikel (gleichmäßig aus der Zustands-Textur
+// herausgegriffen – 4096 Stichproben genügen für Mittelwerte). Rot = mittlere Geschwindigkeit, Grün = wie viele davon
+// seit dem letzten Bild verschluckt wurden, Blau = Dichte an der Maus-Kraft (1 = Durchschnitt).
+programs.partStat = makeProgram(header + `
+  uniform sampler2D uState, uPrev, uGrid;
+  uniform int uSide;
+  uniform vec2 uSpot;
+  uniform float uGridNorm;
+  void main () {
+    ivec2 cell = ivec2(gl_FragCoord.xy);
+    float speed = 0.0, gone = 0.0;
+    for (int j = 0; j < 8; j++) for (int i = 0; i < 8; i++) {
+      ivec2 id = (cell * 8 + ivec2(i, j)) * uSide / 64;
+      vec4 s = texelFetch(uState, id, 0);
+      vec2 jump = s.xy - texelFetch(uPrev, id, 0).xy;
+      speed += length(s.zw);
+      gone += dot(jump, jump) > 0.04 ? 1.0 : 0.0;
+    }
+    fragColor = vec4(speed / 64.0, gone, texture(uGrid, uSpot).r * uGridNorm, 1.0);
   }`);
 
 // Rechnen: ein Schritt für alle Partikel. Gerechnet wird in "Bildhöhen" (x-Abstände mal Seitenverhältnis),
@@ -4718,7 +4850,10 @@ programs.partStep = makeProgram(header + noiseGLSL + partHashGLSL + `
 // Schnelle Partikel springen von Bild zu Bild mehrere Bildpunkte weit – ihre Spur wäre eine Perlenkette. Deshalb wird
 // jeder Punkt an eine zufällige Stelle des Wegstücks gesetzt, das das Partikel seit dem letzten Bild zurückgelegt hat
 // (alte Position aus uPrev): über viele Bilder und Partikel ergibt das eine durchgehende, weiche Spur.
-// Farbe: große, langsam wandernde Farbwolken über dem Bild, dazu das Tempo (schnell = weiter auf der Palette, heller).
+// Farbe (uColorW = Anteile der drei Arten; beim Wechsel blenden sie weich über, gerechnet wird nur, was zu sehen ist):
+//   "Wolken": große, langsam wandernde Farbwolken über dem Bild, dazu etwas Tempo (schnell = weiter auf der Palette, heller)
+//   "Tempo":  langsam = Anfang der Palette und dunkel, schnell = weit auf der Palette und hell
+//   "Alter":  jung = Anfang der Palette und besonders hell, alt = weiter hinten; am Lebensende verglimmt das Partikel
 const partVertex = `#version 300 es
   precision highp float;
   precision highp sampler2D;
@@ -4731,14 +4866,33 @@ const partVertex = `#version 300 es
   uniform float uEnergy;       // Helligkeit eines Partikels
   uniform float uPhase;        // wandernde Farbverschiebung
   uniform float uAspect;
+  uniform vec3 uColorW;        // Farbe nach … x = Wolken, y = Tempo, z = Alter (Anteile, zusammen 1)
+  uniform sampler2D uAge;      // Alter jedes Partikels (0 = eben geboren … 1 = Lebensende)
+  uniform float uCalm;         // Schalter "Flackern reduzieren": Neugeborene leuchten weniger grell auf
   out vec3 vColor;
   void main () {
     ivec2 id = ivec2(gl_VertexID % uSide, gl_VertexID / uSide);
     vec4 s = texelFetch(uState, id, 0);
-    float k = 1.0 - exp(-length(s.zw) * 1.3);                   // Tempo 0..1
+    float speed = length(s.zw);
     float seed = hash2(vec2(id) + 0.5).x;
-    float cloud = noise(s.xy * vec2(uAspect, 1.0) * 1.4 + vec2(uPhase * 4.0, -uPhase * 2.5));
-    vColor = palette(uPhase + seed * 0.06 + cloud + k * 0.45) * (uEnergy * (0.75 + 1.05 * k));
+    float wCloud = uColorW.x, wSpeed = uColorW.y, wAge = uColorW.z;
+    vec3 c = vec3(0.0);
+    if (wCloud > 0.0) {
+      float k = 1.0 - exp(-speed * 1.3);                         // Tempo 0..1
+      float cloud = noise(s.xy * vec2(uAspect, 1.0) * 1.4 + vec2(uPhase * 4.0, -uPhase * 2.5));
+      c += palette(uPhase + seed * 0.06 + cloud + k * 0.45) * ((0.75 + 1.05 * k) * wCloud);
+    }
+    if (wSpeed > 0.0) {
+      float k = 1.0 - exp(-speed * 2.2);                         // Tempo 0..1 (empfindlicher: auch gemächliche Partikel zeigen Farbe)
+      c += palette(uPhase + seed * 0.04 + k * 0.8) * ((0.45 + 1.7 * k) * wSpeed);
+    }
+    if (wAge > 0.0) {
+      // (jedes Partikel ist ein klein wenig früher oder später dran – so wird aus der Geburts-Front ein Funkeln statt einer harten Linie)
+      float age = fract(texelFetch(uAge, id, 0).r + (seed - 0.5) * 0.06);
+      float glow = smoothstep(0.0, 0.03, age) * (1.0 - smoothstep(0.9, 1.0, age));    // glimmt auf … verglimmt
+      c += palette(uPhase + seed * 0.04 + age * 0.7) * ((0.18 + (0.65 + 1.6 * (1.0 - 0.7 * uCalm) * exp(-age * 6.0)) * glow) * wAge);
+    }
+    vColor = c * uEnergy;
     vec2 before = texelFetch(uPrev, id, 0).xy, jump = s.xy - before;
     // (ein großer Sprung heißt: von einem Schwarzen Loch verschluckt und woanders aufgetaucht – kein Wegstück)
     vec2 pos = dot(jump, jump) > 0.04 ? s.xy : before + jump * hash2(vec2(id) + uSeed).x;
@@ -4937,7 +5091,8 @@ function updatePartGrid(swarm) {
 // ----- gesetzte Kräfte -----
 // Eine Kraft: { t: Art (Eintrag aus FORCE_TYPES), x, y: Stelle (0..1), s: Stärke, r: Reichweite, a: Windrichtung in Grad,
 // sC/rC/aC: die Werte, mit denen gerade gerechnet wird (laufen den Reglern weich hinterher),
-// level: 0..1 (blendet beim Setzen weich ein, beim Löschen weich aus), dead: wird gerade gelöscht }
+// level: 0..1 (blendet beim Setzen weich ein, beim Löschen weich aus), dead: wird gerade gelöscht,
+// ghost: unsichtbare Kraft des Auto-Play (wirkt wie jede andere, ist aber nicht zu sehen und nicht zu greifen) }
 const FORCE_TYPES = [
   { name: 'Schwarzes Loch', kind: 1, help: 'saugt Partikel in einer Spirale ein und verschluckt sie' },
   { name: 'Magnet +',       kind: 0, sign: 1,  help: 'zieht an – wie die Maus, bleibt aber an seiner Stelle' },
@@ -4948,7 +5103,9 @@ const FORCE_TYPES = [
 const forceData = { F: new Float32Array(PARTICLES.MAX_FORCES * 4), G: new Float32Array(PARTICLES.MAX_FORCES * 4) };
 
 function addForce(type, x, y) {
-  part.forces = part.forces.filter(f => !f.dead || part.forces.length < PARTICLES.MAX_FORCES);   // Platz schaffen
+  // Platz schaffen: zuerst weichen Kräfte, die gerade ausblenden, dann die unsichtbaren des Auto-Play
+  part.forces = part.forces.filter(f => !f.dead || part.forces.length < PARTICLES.MAX_FORCES);
+  if (part.forces.length >= PARTICLES.MAX_FORCES) part.forces = part.forces.filter(f => !f.ghost);
   if (part.forces.length >= PARTICLES.MAX_FORCES) { toast(`Mehr als ${PARTICLES.MAX_FORCES} Kräfte gehen nicht`); return; }
   const t = FORCE_TYPES[type];
   const f = { t, x: clampNum(x, 0.03, 0.97), y: clampNum(y, 0.03, 0.97), level: 0, dead: false,
@@ -4989,7 +5146,7 @@ function forceAt(a) {
   let best = null, bestD = PARTICLES.GRAB;
   for (const f of part.forces) {
     const d = Math.hypot((f.x - a[0]) * aspect, f.y - a[1]);
-    if (!f.dead && d < bestD) { best = f; bestD = d; }
+    if (!f.dead && !f.ghost && d < bestD) { best = f; bestD = d; }
   }
   return best;
 }
@@ -5007,19 +5164,22 @@ function updateForces(dt) {
       kind === 0 ? s * f.t.sign * PARTICLES.MAGNET : kind === 1 ? s * PARTICLES.HOLE : kind === 2 ? s * PARTICLES.WIND : s * PARTICLES.ORBIT_SPEED], i * 4);
     forceData.G.set([kind,
       kind === 0 ? f.t.sign : kind === 2 ? Math.cos(a) : PARTICLES.ORBIT_PULL * f.level,
-      kind === 2 ? Math.sin(a) : 0, f.level], i * 4);
+      kind === 2 ? Math.sin(a) : 0, f.ghost ? 0 : f.level], i * 4);
   });
 }
 // ----- Explosionen -----
 const blastData = new Float32Array(PARTICLES.MAX_BLASTS * 4);
 // Explosion an der Bildstelle (x, y) auslösen. "Flackern reduzieren": schwächere Welle, viel weicherer Blitz
-function partBlast(x, y) {
-  const s = PARAMS.partBlast.target, calm = PARAMS.calm.current;
-  if (s <= 0) return;
+function pushBlast(x, y, s) {
   if (part.blasts.length >= PARTICLES.MAX_BLASTS) part.blasts.shift();       // die älteste macht Platz
-  part.blasts.push({ x, y, t: 0, s: s * (1 - 0.3 * calm) });
-  audioClick(x, y);
-  cursorScale = 1.9 - 0.7 * calm;
+  part.blasts.push({ x, y, t: 0, s: s * (1 - 0.3 * PARAMS.calm.current) });
+}
+function partBlast(x, y) {
+  const s = PARAMS.partBlast.target;
+  if (s <= 0) return;
+  pushBlast(x, y, s);
+  audioBlast(x, y, s);
+  cursorScale = 1.9 - 0.7 * PARAMS.calm.current;
 }
 function updateBlasts(dt) {
   for (const b of part.blasts) b.t += dt;
@@ -5040,6 +5200,104 @@ function bindForces(u) {
   gl.uniform1f(u.uHorizon, PARTICLES.HORIZON);
 }
 
+// ----- Alter (für die Farbe "Alter") -----
+function updatePartAge(dt) {
+  const side = part.side;
+  let init = !part.ageActive;                                // eben eingeschaltet → Alter nach den Geburtswellen verteilen
+  if (!part.age || part.age.w !== side) {
+    if (part.age) part.age.free();
+    // (32-Bit-Zahlen: bei hoher Bildrate wächst das Alter pro Bild um weniger, als 16 Bit unterscheiden können)
+    part.age = createDoubleFBO(side, side, gl.R32F, gl.RED, gl.FLOAT, gl.NEAREST);
+    init = true;
+  }
+  part.ageActive = true;
+  const life = Math.max(PARAMS.partLife.current, 1);
+  part.ageTime += dt / life * (1 - 0.4 * PARAMS.calm.current);
+  gl.disable(gl.BLEND);
+  const u = use('partAge');
+  gl.uniform1i(u.uAge, part.age.read.attach(0));
+  gl.uniform1i(u.uState, part.state.read.attach(1));
+  gl.uniform1i(u.uPrev, part.state.write.attach(2));        // Zustand im Bild davor (siehe drawParticles)
+  gl.uniform1f(u.uDt, dt);
+  gl.uniform1f(u.uLife, life);
+  gl.uniform1f(u.uAspect, canvas.width / canvas.height);
+  gl.uniform1f(u.uTime, part.ageTime);
+  gl.uniform1f(u.uInit, init ? 1 : 0);
+  gl.uniform1f(u.uSync, PARTICLES.AGE_SYNC);
+  gl.uniform1f(u.uBlastAge, PARTICLES.AGE_BLAST);
+  bindBlasts(u);
+  blit(part.age.write);
+  part.age.swap();
+}
+
+// ----- Kennzahlen für den Ton -----
+// Die Grafikkarte direkt nach Zahlen zu fragen, hält sie auf (sie muss erst alles fertig rechnen). Deshalb wird die
+// Antwort in einen Zwischenspeicher geschrieben und erst abgeholt, wenn sie fertig ist – meist ein, zwei Bilder später.
+const partStat = {
+  buffer: null, sync: null, data: new Float32Array(8 * 8 * 4),
+  speed: 0,        // mittlere Geschwindigkeit der Partikel (Bildhöhen pro Sekunde)
+  gone: 0,         // wie viele der 4096 Stichproben seit der letzten Abfrage verschluckt wurden
+  crowdNow: 0,     // Dichte an der Maus-Kraft (1 = Durchschnitt), letzte Messung
+  crowd: 0,        // … und geglättet
+  step: 0,         // letzte gespielte Stufe des "Sammel-Klangs"
+};
+function readPartStats(spot) {
+  if (partStat.sync) {                                       // läuft noch eine Abfrage? fertig → abholen
+    const state = gl.clientWaitSync(partStat.sync, 0, 0);
+    if (state === gl.TIMEOUT_EXPIRED) return false;
+    gl.deleteSync(partStat.sync);
+    partStat.sync = null;
+    if (state === gl.WAIT_FAILED) return false;
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, partStat.buffer);
+    gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, partStat.data);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+    let speed = 0, gone = 0;
+    for (let i = 0; i < partStat.data.length; i += 4) { speed += partStat.data[i]; gone += partStat.data[i + 1]; }
+    partStat.speed = speed / 64;
+    partStat.gone = gone;
+    partStat.crowdNow = partStat.data[2];
+    return true;
+  }
+  // neue Abfrage anstoßen
+  if (!part.stat) part.stat = createFBO(8, 8, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+  if (!partStat.buffer) {
+    partStat.buffer = gl.createBuffer();
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, partStat.buffer);
+    gl.bufferData(gl.PIXEL_PACK_BUFFER, partStat.data.byteLength, gl.STREAM_READ);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+  }
+  gl.disable(gl.BLEND);
+  const u = use('partStat');
+  gl.uniform1i(u.uState, part.state.read.attach(0));
+  gl.uniform1i(u.uPrev, part.state.write.attach(1));
+  gl.uniform1i(u.uGrid, part.gridNow.read.attach(2));
+  gl.uniform1i(u.uSide, part.side);
+  gl.uniform2f(u.uSpot, spot.x, spot.y);
+  gl.uniform1f(u.uGridNorm, part.gridNow.w * part.gridNow.h / part.gridCount);
+  blit(part.stat);
+  gl.bindBuffer(gl.PIXEL_PACK_BUFFER, partStat.buffer);
+  gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.FLOAT, 0);
+  gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+  partStat.sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+  gl.flush();
+  return false;
+}
+// Klang der Partikel: läuft nur, wenn der Ton an ist (sonst wird auch nichts gemessen)
+//   - Musik: viel Bewegung (Schwarm, Explosionen) öffnet sie, wie sonst das Malen
+//   - Sammeln: Je mehr Partikel sich an der Maus drängen, desto höher steigt eine leise Tonfolge – und fällt wieder,
+//     wenn sie auseinanderlaufen
+//   - Verschlucken: Fallen Partikel in ein Schwarzes Loch, tropft es leise und tief
+function updatePartSound(dt, force, dir) {
+  if (!audioReady() || audio.ctx.state !== 'running' || audio.muted || !(audio.sfxOn || audio.musicOn)) return;
+  if (!readPartStats(force)) return;
+  audio.energy = Math.max(audio.energy, Math.min(0.75, partStat.speed * 1.4));
+  if (partStat.gone > 0) audioSwallow(partStat.gone);
+  // (nur solange die Maus-Kraft anzieht; die Dichte läuft weich nach, damit einzelne Ausreißer keine Töne auslösen)
+  const crowd = force.level > 0.3 && dir > 0 ? partStat.crowdNow : 0;
+  partStat.crowd += (crowd - partStat.crowd) * 0.25;
+  audioGather(partStat.crowd, force.x);
+}
+
 // ----- einmal pro Bild: rechnen -----
 function updateParticles(dt) {
   ensurePartBuffers();
@@ -5054,7 +5312,8 @@ function updateParticles(dt) {
   // (zeigt die Maus auf eine gesetzte Kraft oder verschiebt sie, ruht ihre eigene Kraft)
   const want = part.hover || part.drag ? 0 : part.pointer ? 1 : src ? autoplay.level : 0;
   f.level += (want - f.level) * (1 - Math.exp(-PARTICLES.LEVEL * dt));        // weich ein- und ausblenden
-  const wantDir = part.held ? -part.pull : part.pull;
+  // (im Auto-Play bestimmt die App die Richtung – die Einstellung des Nutzers bleibt, wie sie ist)
+  const wantDir = !part.pointer && src ? part.autoPull : part.held ? -part.pull : part.pull;
   part.dir += (wantDir - part.dir) * (1 - Math.exp(-7 * dt));                // Anziehen ↔ Abstoßen wechselt weich
 
   updateForces(dt);
@@ -5100,13 +5359,21 @@ function updateParticles(dt) {
   blit(part.state.write);
   part.state.swap();
   part.kick = 0;
+  // Farbe: die Anteile der drei Arten laufen weich zur gewählten hin
+  const kc = 1 - Math.exp(-4 * dt);
+  part.colorW.forEach((w, i) => { part.colorW[i] = w + ((PARAMS.partColor.target === i ? 1 : 0) - w) * kc; });
+  // Alter: nur rechnen, solange die Farbe "Alter" zu sehen ist (oder gerade eingeblendet wird)
+  if (part.colorW[2] > 0.002 || PARAMS.partColor.target === 2) updatePartAge(dt);
+  else part.ageActive = false;
   updateBlasts(dt);                                          // (nach dem Rechnen: eine neue Explosion beginnt mit Alter 0)
 
-  // Ton: die Maus bewegen klingt wie Malen (je schneller, desto höher und lauter)
+  // Ton: die Maus bewegen klingt wie Malen (je schneller, desto höher und lauter) …
   if (part.move > 0) {
     audioPaint(part.move / dt, part.move, part.pointer ? part.pointer[0] : 0.5);
     part.move = 0;
   }
+  // … und die Partikel selbst sind zu hören (Kennzahlen aus partStat)
+  updatePartSound(dt, f, wantDir);
   part.phase += 0.012 * dt * (1 - 0.6 * calm);               // Farben wandern langsam über die Palette
   cursorEl.style.setProperty('--brush', paletteColor(part.phase + 0.3));
   const grab = !!(part.hover || part.drag);
@@ -5147,6 +5414,12 @@ function drawParticles(target, dt) {
   gl.uniform1f(u.uPhase, part.phase);
   gl.uniform1f(u.uAspect, canvas.width / canvas.height);
   gl.uniform3fv(u['uPalette[0]'], currentPalette);
+  // Farbe nach Wolken / Tempo / Alter. (Gibt es das Alter gerade nicht, zählt sein Anteil zu den Wolken – die
+  // Alters-Textur wird dann auch nicht gelesen, an ihrer Stelle steht einfach der Zustand.)
+  const cw = part.colorW, hasAge = part.ageActive && part.age.w === part.side;
+  gl.uniform3f(u.uColorW, cw[0] + (hasAge ? 0 : cw[2]), cw[1], hasAge ? cw[2] : 0);
+  gl.uniform1i(u.uAge, (hasAge ? part.age.read : part.state.read).attach(2));
+  gl.uniform1f(u.uCalm, PARAMS.calm.current);
   gl.bindFramebuffer(gl.FRAMEBUFFER, t.fbo);
   gl.viewport(0, 0, t.w, t.h);
   gl.bindVertexArray(part.vao);
@@ -5246,9 +5519,23 @@ function setSwarm(on, silent) {
   audioTock(!on);
   toast(on ? 'Schwarm an – die Partikel schwimmen los' : 'Schwarm aus');
 }
+// Farbe der Partikel: nach Wolken, Tempo oder Alter (blendet weich über)
+const PART_COLORS = [
+  { name: 'Wolken', help: 'Große Farbwolken ziehen langsam über das Bild; schnelle Partikel leuchten etwas heller.' },
+  { name: 'Tempo',  help: 'Langsame Partikel sind dunkel, schnelle hell – und je schneller, desto weiter wandert die Farbe durch die Palette.' },
+  { name: 'Alter',  help: 'Jedes Partikel wird älter und wechselt dabei die Farbe. Am Lebensende verglimmt es und wird neu geboren. Explosionen und Schwarze Löcher machen sofort wieder jung.' },
+];
+function setPartColor(i, silent) {
+  PARAMS.partColor.target = i;
+  [...partColorBox.children].forEach((b, j) => b.classList.toggle('active', j === i));
+  $('partColorHelp').textContent = PART_COLORS[i].help;
+  $('partLifeRow').classList.toggle('off', i !== 2);
+  if (!silent) toast('Farbe nach: ' + PART_COLORS[i].name);
+}
 function partKey(e) {
   if (e.code === 'KeyR') setPartPull(-part.pull);
   if (e.code === 'KeyS') setSwarm(PARAMS.swarm.target === 0);
+  if (e.code === 'KeyC') setPartColor((PARAMS.partColor.target + 1) % PART_COLORS.length);
   if (e.code === 'Space') { partScatter(); e.preventDefault(); }
   // 1–5: Kraft an der Mausposition setzen (ohne Maus im Bild: in der Bildmitte)
   const digit = /^Digit([1-9])$/.exec(e.code);
@@ -5256,9 +5543,53 @@ function partKey(e) {
   if (e.code === 'Delete' || e.code === 'Backspace') removeForce(part.hover || part.sel);
   if (e.code === 'KeyX') clearForces();
 }
-// Auto-Play: eine unsichtbare Kraft wandert auf einer weichen Schleifenbahn durchs Bild
-function partAutoplay() {
+// Auto-Play: Eine unsichtbare "Maus" wandert auf einer weichen Schleifenbahn durchs Bild – meist zieht sie an,
+// zwischendurch stößt sie ein paar Sekunden lang ab. Dazu kommen unsichtbare Kräfte (Orbit, Magnet, Wind), die auf
+// eigenen Bahnen wandern und alle 15–30 Sekunden durch eine andere ersetzt werden, und ab und zu eine sanfte Explosion.
+const AUTO_FORCES = [4, 1, 2, 3, 4];     // welche Kräfte das Auto-Play setzt (Nummern aus FORCE_TYPES; kein Schwarzes Loch)
+function partAutoplayStart() {
+  part.pointer = null; part.held = false; part.drag = part.hover = null;
+  part.autoPull = 1; part.autoPullTimer = rand(12, 20);
+  part.nextBlast = rand(5, 9);
+  part.ghosts = Array.from({ length: PARTICLES.AUTO_GHOSTS }, (_, i) => ({ f: null, next: autoplay.time + 2 + 7 * i, until: 0 }));
+}
+function partAutoplayStop() {
+  for (const f of part.forces) if (f.ghost) f.dead = true;   // blenden weich aus
+  part.ghosts = [];
+}
+function partAutoplay(dt) {
   part.auto = brushPos(autoplay.brushes[0], autoplay.time * 0.8);
+  if (!autoplay.active) return;                              // (Auto-Play blendet gerade aus)
+  const calm = PARAMS.calm.current;
+  part.autoPullTimer -= dt;
+  if (part.autoPullTimer <= 0) {
+    part.autoPull = -part.autoPull;
+    part.autoPullTimer = part.autoPull > 0 ? rand(14, 26) : rand(4, 7);
+  }
+  part.ghosts.forEach((g, i) => {
+    if (g.f && (g.f.dead || !part.forces.includes(g.f))) g.f = null;      // vom Nutzer gelöscht oder verdrängt
+    if (g.f && autoplay.time > g.until) { g.f.dead = true; g.f = null; g.next = autoplay.time + rand(2, 6); }
+    if (!g.f && autoplay.time > g.next && part.forces.length < PARTICLES.MAX_FORCES) {
+      const t = FORCE_TYPES[AUTO_FORCES[Math.floor(Math.random() * AUTO_FORCES.length)]];
+      const f = g.f = { t, x: 0.5, y: 0.5, level: 0, dead: false, ghost: true,
+                        s: rand(0.6, 1.1), r: rand(0.16, 0.3), a: rand(-180, 180), spin: rand(-25, 25) };
+      f.sC = f.s; f.rC = f.r; f.aC = f.a;
+      part.forces.push(f);
+      g.until = autoplay.time + rand(15, 30);
+    }
+    if (g.f) {
+      const b = autoplay.brushes[(i + 1) % autoplay.brushes.length];
+      const [x, y] = brushPos(b, autoplay.time * 0.45 + 40 * i);
+      g.f.x = clampNum(x, 0.1, 0.9); g.f.y = clampNum(y, 0.1, 0.9);
+      g.f.a += g.f.spin * dt;                                // der Wind dreht sich langsam
+    }
+  });
+  part.nextBlast -= dt;
+  if (part.nextBlast <= 0) {
+    part.nextBlast = rand(7, 14);
+    const s = rand(0.45, 0.8) * Math.min(1, PARAMS.partBlast.target);
+    if (s > 0) { pushBlast(rand(0.2, 0.8), rand(0.2, 0.8), s * (1 - 0.3 * calm)); audioBurst(); }
+  }
 }
 
 // ----- Panel -----
@@ -5274,6 +5605,18 @@ bindSlider('partTrail',   PARAMS.partTrail,   v => v === 0 ? 'aus' : Math.round(
 bindSlider('partSize',    PARAMS.partSize,    v => v.toFixed(2) + '×');
 bindSlider('partGlow',    PARAMS.partGlow,    v => Math.round(v * 100) + ' %');
 setPartPull(1, true);
+// Farbe: Knöpfe entstehen aus PART_COLORS
+const partColorBox = $('partColors');
+PART_COLORS.forEach((c, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.title = c.help;
+  btn.innerHTML = `<span>${c.name}</span>`;
+  btn.addEventListener('click', () => { setPartColor(i); btn.blur(); });
+  partColorBox.appendChild(btn);
+});
+bindSlider('partLife', PARAMS.partLife, v => v.toFixed(v < 10 ? 1 : 0).replace('.', ',') + ' s');
+setPartColor(0, true);
 // Schwarm: Schalter und Regler
 $('swarmSwitchRow').addEventListener('click', e => { e.preventDefault(); setSwarm(PARAMS.swarm.target === 0); });
 bindSlider('swarmAlign', PARAMS.swarmAlign, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
@@ -5305,7 +5648,7 @@ bindForceSlider('forceStrength', 's', v => v === 0 ? 'aus' : Math.round(v * 100)
 bindForceSlider('forceRange',    'r', v => Math.round(v * 100) + ' %');
 bindForceSlider('forceDir',      'a', v => ['rechts →', 'oben rechts ↗', 'oben ↑', 'oben links ↖', 'links ←', 'unten links ↙', 'unten ↓', 'unten rechts ↘'][Math.round((v + 360) % 360 / 45) % 8]);
 function updateForceUi() {
-  const f = part.sel, n = part.forces.filter(x => !x.dead).length;
+  const f = part.sel, n = part.forces.filter(x => !x.dead && !x.ghost).length;
   $('forceDirRow').classList.toggle('off', !(f && f.t.kind === 2));
   $('forceDelete').classList.toggle('unused', !f);
   $('forceInfo').textContent = f ? `Ausgewählt: ${f.t.name} – ${f.t.help}. (${n} von ${PARTICLES.MAX_FORCES} gesetzt)`
@@ -5316,7 +5659,7 @@ updateForceUi();
 
 MODES.push({
   id: 'particles', name: 'Partikel',
-  hint: 'Maus = Partikel anziehen · Klick = Explosion · halten = abstoßen · <b>S</b> = Schwarm · <b>1</b>–<b>5</b> = Kraft setzen · <b>Tab</b> = Modus',
+  hint: 'Maus = anziehen · Klick = Explosion · halten = abstoßen · <b>S</b> = Schwarm · <b>C</b> = Farbe · <b>1</b>–<b>5</b> = Kraft · <b>Tab</b> = Modus',
   autoplayHint: 'Auto-Play · Bewege die Maus, um die Partikel selbst zu lenken',
   enter() {
     $('paletteSection').classList.remove('unused');          // Palette und Bloom wirken hier immer
@@ -5326,8 +5669,8 @@ MODES.push({
   update: updateParticles,
   draw: drawParticles,
   bloomShare: () => 1,
-  autoplayStart() { part.pointer = null; part.held = false; part.drag = part.hover = null; },
-  autoplayStop() {},
+  autoplayStart: partAutoplayStart,
+  autoplayStop: partAutoplayStop,
   autoplay: partAutoplay,
   pointerMove: partPointerMove,
   pointerDown: partPointerDown,
