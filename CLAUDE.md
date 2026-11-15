@@ -15,7 +15,7 @@ Ein **Chill-Modus ohne Ziel** ist wichtiger als ein klassisches Spiel mit Punkte
 ## Technische Leitlinien
 - Web-Technik: HTML, JavaScript, WebGL2 – **kein Framework**, keine Build-Tools. Später Desktop-App (Tauri oder Electron).
 - Alles Rechenintensive auf die GPU (Shader).
-- Mit EINEM Modus (Fluid) anfangen, später Partikel und Mandelbrot ergänzen.
+- Mehrere Modi in einer App: **Fluid** und **Mandelbrot** sind umgesetzt, Partikel folgt später (Abschnitt „Modi“ unten).
 - Jede Eingabe muss innerhalb eines Frames sichtbar werden. Bewegungen und Parameteränderungen immer weich
   interpolieren (Easing, Trägheit).
 - FPS-Zähler und einstellbare Qualitätsstufe (Auflösung, Partikelzahl) für schwächere Geräte.
@@ -31,15 +31,16 @@ Wirbelstärke, Schwerkraft, Verblassen. ✅ Hindernisse zeichnen, um die die Fl�
 **Partikel:** ⬜ Anziehung/Abstoßung durch die Maus. ⬜ Kräfte wie schwarze Löcher, Magnete, Wind, Orbits.
 ⬜ Schwarmverhalten, Trails und Glow. ⬜ Explosionen bei Klick.
 
-**Mandelbrot:** ⬜ Endloser Zoom per Scrollen/Ziehen, ⬜ Julia-Sets live mit Mausposition, ⬜ animierte Farbpaletten,
-⬜ automatische Zoom-Fahrt zu schönen Stellen. (Float32 pixelt ab ca. 1e5–1e6-fach – für tiefen Zoom später Tricks nötig.)
+**Mandelbrot:** ✅ Zoom per Scrollen/Ziehen mit Trägheit, ✅ Julia-Sets live mit Mausposition, ✅ animierte Farbpaletten,
+✅ automatische Zoom-Fahrt zu schönen Stellen, ✅ tiefer Zoom bis 10³⁰-fach (Bezugsbahn statt Float32-Grenze).
+⬜ Zwei-Finger-Zoom auf Touch-Geräten, ⬜ weitere Farbgebungen, ⬜ tiefe Mini-Mandelbrote als Ziel der Zoom-Fahrt.
 
 **Modusübergreifend:** ✅ Paletten-Presets (Neon, Sunset, Ozean, Lava …) mit sanftem Überblenden. ⬜ Presets/Szenarien
 speichern und teilen. ✅ Idle-Modus/Screensaver (Auto-Play). ⬜ Screenshot-, Wallpaper- und Video-Export. ⬜ Optional kleine
-Sammelziele („entdecke 10 Muster“). ⬜ Moduswechsel Fluid/Partikel/Mandelbrot, ⬜ Desktop-App (Tauri oder Electron).
+Sammelziele („entdecke 10 Muster“). ✅ Moduswechsel Fluid/Mandelbrot (⬜ Partikel), ⬜ Desktop-App (Tauri oder Electron).
 
 **Satisfying-Faktoren:** ✅ Audio-Feedback per Web Audio API (selbst synthetisiert, Pentatonik, Lautstärke/Tonhöhe abhängig
-von Geschwindigkeit; ⬜ Zoomtiefe, Partikelzahl kommen mit den anderen Modi). ✅ Lofi-Musik (generativ: Akkorde,
+von Geschwindigkeit, ✅ im Mandelbrot-Modus von der Zoomtiefe; ⬜ Partikelzahl kommt mit dem Partikel-Modus). ✅ Lofi-Musik (generativ: Akkorde,
 Vinyl-Knistern, sanfte Drums, reagiert auf Interaktion). ✅ Wenig UI: minimalistisches, ausblendbares Panel (⬜ Radialmenü).
 ✅ Bloom/Glow, dunkler Hintergrund, kontrastreiche Paletten. ✅ Option „Flackern reduzieren“.
 
@@ -48,6 +49,13 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 
 ## Aktueller Stand
 - Alles in **einer Datei**: `index.html` (HTML, CSS, JavaScript, GLSL-Shader). Öffnen per Doppelklick im Browser.
+- **Zwei Modi in einer App:** Fluid und Mandelbrot. Umschalten mit `Tab` (Umschalt + `Tab` = zurück) oder im
+  Panel-Abschnitt „Modus“, mit weicher Überblendung (0,8 s). Panel, Paletten, Bloom, Flacker-Reduktion, Qualität, FPS,
+  Ton und Auto-Play gibt es nur einmal – sie gelten für beide Modi (Abschnitt „Modi“ unten). Ein Modus, der nicht zu
+  sehen ist, kostet nichts und behält seinen Zustand.
+- **Mandelbrot-Modus** (Abschnitt unten): Zoom per Scrollen/Klick, Ziehen mit Trägheit, Julia-Sets live per Maus
+  (Taste `J`), wandernde Farben in der aktiven Palette, 7 „schöne Stellen“ mit Flug dorthin, Zoom-Fahrt als Auto-Play,
+  Töne passend zur Zoomtiefe, scharf bis 10³⁰-fachem Zoom.
 - Fluid-Modus nach Stable Fluids auf der GPU (WebGL2 + `EXT_color_buffer_float`): Vorticity Confinement (Wirbel),
   Viskosität (Jacobi-Diffusion), Druck-Lösung (Jacobi), Gradienten-Subtraktion, Advektion.
 - Farbe wird als „Dichte + Position auf der Palette“ gespeichert (R = Dichte, G/B = Dichte·cos/sin des Palettenwinkels);
@@ -68,7 +76,8 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   (Doppelklick = Standardwert); Paletten Neon, Sunset, Ozean, Lava. Reglerwerte und Paletten werden weich interpoliert,
   die Akzentfarben der Oberfläche folgen der aktiven Palette.
 - Qualität als Regler mit 6 Stufen: Niedrig/Mittel/Hoch/Ultra/**Extrem**/**Maximum** (Extrem/Maximum = Supersampling der
-  Farbe bis 1,5×/2× Bildschirmauflösung, Strömungsraster bis 512, bis 70 Druck-Iterationen). Schalter „Automatisch anpassen“:
+  Farbe bis 1,5×/2× Bildschirmauflösung, Strömungsraster bis 512, bis 70 Druck-Iterationen; im Mandelbrot-Modus:
+  Fraktal-Auflösung 0,5×/0,75×/1×/1×/1,5×/2× Bildschirm, höchstens 2000–10000 Durchgänge). Schalter „Automatisch anpassen“:
   Ziel ist die volle Bildschirmfrequenz (höchste gemessene FPS ≈ Hz); senkt bei < 85 % davon, erhöht bei > 95 %.
   Manuelles Verstellen schaltet Auto ab, Doppelklick auf den Regler wieder an. Beim Wechsel wird das Bild in die neue
   Auflösung übernommen (kein Reset). Physik ist auf `REF_RESOLUTION` normiert, damit sie sich auf jeder Stufe gleich anfühlt.
@@ -81,26 +90,36 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Bildschirmschoner (Oberfläche und Cursor blenden ganz aus, Hinweis unten). Drei unsichtbare Pinsel auf überlagerten
   Sinusbahnen, die Farbe an- und abschwellend abgeben; alle 3–7 s ein sanfter Farbstoß; alle 25 s nächste Palette.
   Jede Eingabe (Taste, Klick, Scrollen, Mausbewegung > 12 px) beendet es; Pinsel blenden weich aus. Taste `A` startet/stoppt
-  sofort, Schalter „Bei Inaktivität starten“ im Panel.
+  sofort, Schalter „Bei Inaktivität starten“ im Panel. Der Rahmen (Start, Ende, Palettenwechsel) ist für alle Modi
+  derselbe; im Mandelbrot-Modus ist der Inhalt die Zoom-Fahrt.
 - **Ton & Musik** (Abschnitt „Ton & Musik“ unten): Klänge beim Malen und Klicken, generative Lofi-Musik, Panel-Abschnitt
   „Ton“ (Schalter Ton, Schalter Musik, Regler Lautstärke), Taste `M` = stumm. Startet erst nach dem ersten Klick/Tastendruck.
 - **Flacker-Reduktion** (Abschnitt unten): Schalter „Flackern reduzieren“ im Panel-Abschnitt „Qualität“.
 - **Schwerkraft & Hindernisse** (Abschnitt unten): Regler Schwerkraft/Fallrichtung, Werkzeuge Farbe/Hindernis/Radierer.
-- Bedienung: Maus bewegen = malen, Klick = Farbklecks, Leertaste = leeren, `H` = Panel, `F` = FPS, `Q` = eine Qualitätsstufe
-  höher (schaltet Auto ab), `A` = Auto-Play, `1`–`9`/`0` = Look wählen, `←`/`→` = Look weiterschalten, `M` = stumm,
-  `W` = Hindernis-Stift an/aus, `E` = Radierer an/aus, `X` = alle Hindernisse löschen, rechte Maustaste ziehen = Hindernis
-  zeichnen (mit Umschalt-Taste = radieren).
-- Noch nicht umgesetzt: weitere Modi (Partikel, Mandelbrot), Presets speichern/teilen, Export, Desktop-App.
+- Bedienung in jedem Modus: `Tab` = Modus wechseln, `H` = Panel, `F` = FPS, `Q` = eine Qualitätsstufe höher (schaltet
+  Auto ab), `A` = Auto-Play, `M` = stumm.
+- Bedienung Fluid: Maus bewegen = malen, Klick = Farbklecks, Leertaste = leeren, `1`–`9`/`0` = Look wählen,
+  `←`/`→` = Look weiterschalten, `W` = Hindernis-Stift an/aus, `E` = Radierer an/aus, `X` = alle Hindernisse löschen,
+  rechte Maustaste ziehen = Hindernis zeichnen (mit Umschalt-Taste = radieren).
+- Bedienung Mandelbrot: Scrollen = Zoom zur Maus, Ziehen = verschieben, Klick = hinein, Rechtsklick = heraus,
+  `↑`/`↓` = Zoom, `J` = Julia-Set an/aus (dort: Maus wählt die Form, Klick = Form festhalten/lösen), `1`–`7` = Flug zu
+  einer schönen Stelle, `←`/`→` = vorige/nächste Stelle, Leertaste = zurück zur Übersicht.
+- Noch nicht umgesetzt: Partikel-Modus, Presets speichern/teilen, Export, Desktop-App.
 - Testen: Die Seite läuft per Doppelklick. Zum automatischen Prüfen (FPS, GPU-Zeit per `EXT_disjoint_timer_query_webgl2`,
   alle Stufen × alle Looks) wurde sie über einen kleinen lokalen Server geladen (`python -m http.server`). Innerhalb
   eines Seitenaufrufs ist die Simulation bei gleichem Ablauf bitgenau wiederholbar (Prüfsumme der Farb-Textur) – gut für
   Vorher/Nachher-Vergleiche. Zwischen zwei Seitenaufrufen traten zwei verschiedene Prüfsummen auf (Ursache ungeklärt);
-  alte und neue Version lieferten aber beide genau dieselben zwei Werte.
+  alte und neue Version lieferten aber beide genau dieselben zwei Werte. Der Umbau auf mehrere Modi und der
+  Mandelbrot-Modus wurden so geprüft: Fluid-Prüfsumme und fertige Bilder von 7 Looks bitgenau wie vorher.
+  Die GPU-Zeitmessung schwankt auf dem Testrechner stark (gleiche Stelle 4–14 ms je nach Durchlauf) – verlässlich
+  sind nur direkte Vergleiche hintereinander mit vielen Wiederholungen.
 
 ## Bloom (Nachbearbeitung / Post-Processing)
 - Reihenfolge pro Frame: Simulation (`step`) → Look → Hindernisse (Überlagerung) → Helligkeits-Bremse der
   Flacker-Reduktion (nur wenn an) → **Bloom** → Bildschirm. Der Bloom verändert die Simulation nicht und
-  arbeitet nur mit dem fertigen Bild des Looks, daher funktioniert er automatisch mit allen (auch zukünftigen) Looks.
+  arbeitet nur mit dem fertigen Bild des Looks, daher funktioniert er automatisch mit allen (auch zukünftigen) Looks –
+  und genauso mit jedem Modus: `render()` fragt den aktiven Modus nach seinem Bild (`draw`) und seinem Bloom-Anteil
+  (`bloomShare`), alles danach ist für alle Modi gleich.
 - **Bloom-Anteil pro Look:** Ein Look kann `bloom: 0..1` angeben (Standard 1). Die Papier-Looks (Tinte & Aquarell,
   Marmorpapier) haben `bloom: 0` – helles Papier würde sonst glühen und die Farbe wegbleichen. Beim Look-Wechsel wird
   der Anteil weich überblendet; bei `bloom: 0` tritt der Panel-Abschnitt „Bloom“ zurück (abgeblendet).
@@ -394,3 +413,108 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Umschalt-Taste = radieren. Leertaste leert nur die Farbe, Hindernisse bleiben.
 - Gemessen (Stufe Maximum): `step` 1,67 ms → 2,86 ms mit Hindernissen + Schwerkraft; Anzeige ≈ 0,03 ms; alle Stufen und
   Looks 60 FPS.
+
+## Modi (Moduswechsel)
+- Ein Modus ist ein Objekt in der Liste `MODES` (`index.html`, Abschnitt „Modi“) mit fester Schnittstelle:
+  `id`, `name`, `hint`, `autoplayHint`, `enter()`, `leave()`, `update(dt, now)` (Eingaben verarbeiten, rechnen),
+  `draw(target, dt, time)` (Bild zeichnen; `target` = Szenen-Textur oder `null` = Bildschirm), `bloomShare()` (0..1),
+  `autoplayStart()`, `autoplayStop()`, `autoplay(dt)`, `pointerMove/Down/Up(e)`, `pointerLeave()`, `key(e, bracket)`,
+  `qualityInfo(q)`; optional `wheel(e)` und `idle()` (true = es wird gerade nichts Teures gerechnet → die
+  Auto-Qualität schaltet dann nicht hoch).
+- **Geteilt, ohne Code-Kopien:** Hauptschleife `frame()`, `render()` (Helligkeits-Bremse, Bloom), `easeParams`
+  (alle Regler in `PARAMS`), Paletten (GLSL-Baustein `paletteGLSL` mit `palette(t)`, von Looks und Mandelbrot
+  eingebunden), Qualität/Auto-Qualität, FPS, Ton (`audio…`-Funktionen), Auto-Play-Rahmen (`updateAutoplay` → ruft
+  `autoplay(dt)` des aktiven Modus), Panel, Regler (`bindSlider`), Cursor-Ring (`showCursor`), Hinweise und Toasts.
+  Alle Eingaben auf der Zeichenfläche und alle Tasten, die nicht für jeden Modus gelten, gehen an den aktiven Modus.
+- **Panel:** Abschnitte und Tastenkürzel mit `data-mode="id"` sind nur in ihrem Modus zu sehen (die CSS-Regel dafür
+  wird aus `MODES` erzeugt; `body` trägt die Klasse `mode-id`). Die Knöpfe im Abschnitt „Modus“ entstehen aus der Liste.
+- **Überblendung** (`setMode(i)`, `CONFIG.MODE_FADE` = 0,8 s): alter Modus zeichnet in die Szenen-Textur, neuer in
+  eine zweite (`sceneB`, nur währenddessen angelegt), Shader `fade` legt den neuen weich darüber; der Bloom-Anteil
+  wird mit überblendet. Währenddessen laufen `update` und `draw` beider Modi. Wechsel zurück mitten in der
+  Überblendung läuft von der aktuellen Stelle rückwärts. Beim Wechsel: leises Wischen, Hinweis des Modus für 6 s,
+  Auto-Qualität pendelt sich neu ein.
+- **Neuer Modus (z. B. Partikel) = ein Objekt in `MODES` + Panel-Abschnitte mit `data-mode="…"`.** Mehr ist nicht nötig.
+- Fluid als Modus: `updateFluid` (Pinsel, Cursor, `step`), `drawFluid` (Looks, Hindernisse), `fluidBloomShare`,
+  `fluidAutoplay`, `fluidPointerDown`, `fluidKey` – der Inhalt dieser Funktionen ist unverändert.
+- Geprüft: 12 Looks × 6 Stufen fehlerfrei mit 57–60 FPS; Prüfsumme der Farb-Textur und fertige Bilder (7 Looks mit
+  Bloom) bitgenau wie vor dem Umbau; 36 Moduswechsel (alle Stufen, mit/ohne Flacker-Reduktion und Bloom) 60 FPS.
+
+## Mandelbrot-Modus
+- **Rechnung:** Für jeden Bildpunkt wird z → z² + c wiederholt und gezählt, nach wie vielen Durchgängen z „ausbricht“
+  (|z| > 256). Mandelbrot: c = Bildpunkt, Start z = 0. Julia: c fest, Start z = Bildpunkt. Gespeichert wird der
+  „glatte“ Zähler (ohne Stufen), −1 = gehört zur Menge (schwarz).
+- **Zwei Schritte pro Bild:** 1) *Zählen* (teuer) in den Puffer `fracData` (R32F, Größe = Bildschirm ×
+  `QUALITY[].fscale`) – läuft nur, wenn sich Ausschnitt, Julia-Form oder Durchgänge geändert haben (`frac.dataKey`);
+  steht das Bild still, kostet es fast nichts. 2) *Färben* (billig, Shader `fracColor`) – läuft immer, deshalb können
+  die Farben wandern. Weicht die Fraktal-Auflösung vom Bildschirm ab, wird über `fracColorBuf` weich skaliert
+  (über 1 = Supersampling).
+- **Farben** (`fracColor`): Palettenposition = `1,2 · asinh((Zähler − kleinster Zähler im Bild) / 30) · Farbdichte` +
+  wandernde Verschiebung (`frac.phase`). Der kleinste Zähler kommt aus einem winzigen Zähl-Bild (16×16, `fracTiny` →
+  Shader `fracMin` → 1 Bildpunkt `fracStat`, alles auf der GPU). Dadurch sieht das Muster in jeder Tiefe ähnlich aus,
+  und beim Hineinzoomen fließen die Farben von selbst. Helligkeit: flache Farbverläufe (weit weg vom Rand) dunkel,
+  Strukturen hell; Relief (Licht von links oben) aus der Steigung der Farbbänder; ganz nah am Rand glüht es über 1,0
+  auf → Bloom. (Erste Fassungen waren überall hell bzw. in dichten Bereichen weiß-pastellig – nicht wieder einführen.)
+  Regler: **Farbdichte** 0,2–4×, **Farb-Tempo** 0–100 % (Standard 35 %), **Leuchten** (60 %), **Relief** (50 %),
+  **Details** 0,5–3× (Faktor auf die Durchgänge).
+- **Durchgänge** (`fracIterations`): `100 + 40 · (log2 Zoom)^1,4`, begrenzt durch `QUALITY[].iter`
+  (2000/3000/4500/6000/8000/10000), mal „Details“, höchstens 24000. Großzügig, weil nur Bildpunkte teuer sind, die bis
+  zum Schluss nicht ausbrechen. Reicht es nicht, bleiben Stellen schwarz → Regler „Details“.
+- **Ausschnitt** (`frac.M` Mandelbrot, `frac.J` Julia): Bildmitte `x`, `y` als BigInt-Festkommazahlen (200 Binärstellen
+  hinter dem Komma, Hilfen `fx(zahl)` und `fxNum(bigint)`), Zoom `lz` als natürlicher Logarithmus (0 = Übersicht) mit
+  Ziel `lzT`. Scrollen/Klick setzt `lzT`, `lz` läuft weich hinterher, die Stelle unter der Maus bleibt stehen. Ziehen
+  verschiebt sofort; nach dem Loslassen läuft der Ausschnitt mit Trägheit aus (`frac.vel`). Grenzen: Zoom
+  0,6× … 10³⁰×, Bildmitte bleibt in der Nähe der Menge.
+- **Julia-Set** (`setJulia`, Taste `J`): Der Punkt unter der Maus im Mandelbrot-Ausschnitt wird zum Parameter c
+  (läuft weich hinterher); eine kleine Karte unten links zeigt den Mandelbrot-Ausschnitt mit einem Ring bei c. Klick
+  hält die Form fest bzw. löst sie. Der Übergang ist eine echte Verwandlung (`frac.k` 0 → 1 in 1,1 s): Startwert
+  z = k · Julia-Punkt, c = (1 − k) · Mandelbrot-Punkt + k · c.
+- **Schöne Stellen** (`SPOTS`): Punkte genau auf dem Rand der Menge (Misiurewicz-Punkte: ihre Bahn mündet nach k
+  Schritten in einen Kreislauf der Länge p) – dort hört das Muster beim Hineinzoomen nie auf – plus die Mitte eines
+  Mini-Mandelbrots. Beim Start rechnet `refineSpot` jede Position per Newton-Verfahren auf alle 60 Stellen nach.
+  Zieltiefe je Stelle: so tief, bis ein Bildpunkt im Schnitt ≈ 800 Durchgänge braucht, höchstens 10²⁰-fach
+  (Seepferdchen-Tal 6 · 10¹², Vierfach-Spirale 2 · 10¹⁰, Dreifach-Spirale 9 · 10⁴, Elefanten-Tal/Verzweigung/Zepter
+  10²⁰, Mini-Mandelbrot 33-fach). Gefunden wurden die Punkte per Suche in der Nähe gut aussehender Stellen.
+- **Flug** (`fracFlyTo`, `updateFracFlight`): erst herauszoomen, bis das Ziel nahe der Bildmitte liegt (Tempo 1,5 pro
+  Sekunde im Logarithmus), dann hinein (0,6 ≈ 1,8-fach pro Sekunde), das Ziel rückt dabei weich in die Mitte; Tempo
+  ändert sich weich. **Zoom-Fahrt** = Auto-Play: besucht die Stellen in zufälliger Reihenfolge, 4 s Pause am Ziel. Im
+  Julia-Bild wandert stattdessen c auf einem Kreis (Radius 0,7885). „Flackern reduzieren“ macht alles 40 % langsamer.
+- **Ton:** `audioZoom` – ein gezupfter Pentatonik-Ton pro Stück Zoom (alle 0,35 ≈ 1,4-fach), Tonhöhe folgt der
+  Tiefe (Übersicht hoch, tief im Bild tief), vier wechselnde Stufen ergeben eine kleine Melodie, Lautstärke nach
+  Zoom-Tempo; beim Zoomen von Hand zusätzlich leises Rauschen. Julia-Form verändern klingt wie Malen (`audioPaint`),
+  Ankunft an einer Stelle: drei aufsteigende Töne (`audioArrive`). **Nicht geprüft: wie es klingt.**
+- Nicht umgesetzt: Zwei-Finger-Zoom auf Touch-Geräten (ein Finger zieht, Tippen zoomt hinein).
+
+### Tiefer Zoom (Bezugsbahn / „Perturbation“)
+- **Problem:** Die Grafikkarte rechnet mit 32-Bit-Zahlen (ca. 7 Stellen). Gemessen weicht die direkte Rechnung schon
+  bei 8.000-fachem Zoom um bis zu einen halben Bildpunkt ab, ab etwa 20.000-fach wird das Bild klötzchenhaft.
+- **Lösung:** Ein Punkt (Bezugspunkt, meist die Bildmitte) wird im JavaScript mit vielen Stellen gerechnet; seine
+  Bahn (alle z nacheinander) geht als Textur an die Grafikkarte (`fracRef`, RG32F, 1024 Punkte pro Zeile). Jeder
+  Bildpunkt rechnet nur seinen Abstand d zur Bahn Z: `neues d = (2·Z + d)·d + dc`. Winzige Zahlen sind in 32 Bit
+  sehr genau (7 Stellen bezogen auf den Abstand). „Rebasing“: Wird z kleiner als d (oder ist die Bahn zu Ende), wird
+  d = z gesetzt und am Bahnanfang weitergerechnet – das hält d klein. Bahn A startet am Bezugspunkt, Bahn B bei 0
+  (für Julia und die Verwandlung; beim Mandelbrot sind beide gleich).
+- **Bezugsbahn** (`fracPrepareRef`): bis 67 Millionen-fach mit normalen Zahlen (`orbitDouble`), darüber mit BigInt
+  (`orbitBig`, Stellenzahl = Zoom + 48 Binärstellen). Neu gerechnet wird nur, wenn der Bezugspunkt mehr als ¾ Bild
+  von der Mitte entfernt ist, mehr Durchgänge nötig sind, der Zoom deutlich tiefer wurde oder sich die Julia-Form
+  ändert. Bei einem Flug ist das Ziel selbst der Bezugspunkt → eine Rechnung pro Flug.
+- **Abkürzungen** (ohne sie kostete das Zählen in der Tiefe 9–20 ms statt 2–5 ms):
+  1. bis ca. 1.800-fach (`FRACTAL.PLAIN_LZ`) direkte Rechnung (Shader `fracPlain`);
+  2. gemeinsame erste Durchgänge überspringen (`fracSeries`, „Series Approximation“: Abstand als Reihe mit drei
+     Gliedern, im JavaScript vorgerechnet – im Seepferdchen-Tal bei 6 · 10¹²-fach 508 von ≈ 630 Durchgängen);
+  3. ist der Abstand größer als 0,01, rechnet der Bildpunkt den Rest wieder direkt;
+  4. Kreislauf-Erkennung für Punkte in der Menge: wiederholt sich der Stand exakt, wird abgebrochen (Ergebnis
+     bleibt dasselbe; bildfüllendes Mini-Mandelbrot 30 ms → 1 ms, kostet an dichten Stellen ≈ 20 % mehr).
+- **Geprüft** gegen eine langsame BigInt-Vergleichsrechnung an 99–168 Stichproben je Bild, bis 4,6 · 10²⁸-fach, auch
+  Julia tief und Bezugspunkt außerhalb der Mitte: An ruhigen Stellen stimmen 81–99 % auf 0,02 genau, keine weicht um
+  mehr als 0,5 ab (Ausnahme: 1 von 135 in einem Bild). Abweichungen gibt es nur an „chaotischen“ Stellen direkt am
+  Rand, wo schon 1/100 Bildpunkt Verschiebung das Ergebnis ändert. Keine gleichen Nachbar-Bildpunkte (keine Klötzchen).
+- **Kosten** (Testrechner, 1351×1205, Stufe Ultra, nur der Zähl-Schritt; Färben ≈ 0,1–0,4 ms): Übersicht 0,5 ms,
+  Julia 0,35 ms, Seepferdchen 8.000× 2,4 ms, Vierfach-Spirale 14.000× 4 ms (etwa so teuer wie die direkte Rechnung vor
+  dem tiefen Zoom: 2,0 bzw. 6,0 ms), Seepferdchen 6 · 10¹²× 1,9 ms, Vierfach-Spirale 2 · 10¹⁰× 4 ms, Elefanten-Tal 10²⁰× 0,9 ms,
+  Verzweigung 10²⁸× 0,35 ms. Bezugsbahn im JavaScript: 0,1–0,7 ms, beim freien Hineinscrollen bis 2,2 ms, etwa 3-mal
+  pro Sekunde. Flüge (25 s und 50 s) und freies Hineinzoomen bis 10¹⁷-fach: 60 FPS, kein Bild über 25 ms.
+  Alle 10 Testbilder × 6 Stufen: 57–60 FPS, außer der dichtesten Stelle (Vierfach-Spirale) auf Maximum mit 50–52 FPS.
+- **Bekannte Grenzen:** Schwarze Flächen dicht an ihrem eigenen Rand bleiben teuer (z. B. eine Knospe am
+  Mini-Mandelbrot bildfüllend: 23 FPS auf Ultra) – dort greift keine Abkürzung, die Auto-Qualität senkt die Stufe.
+  Während der Verwandlung Mandelbrot ↔ Julia aus großer Tiefe wird die Bezugsbahn in jedem Bild neu gerechnet
+  (gemessen 56 FPS, zwei Bilder über 25 ms).
