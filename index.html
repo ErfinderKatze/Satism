@@ -95,6 +95,8 @@
   #panel .sec:nth-child(16) { transition-delay: .6s; }
   #panel .sec:nth-child(17) { transition-delay: .64s; }
   #panel .sec:nth-child(18) { transition-delay: .68s; }
+  #panel .sec:nth-child(19) { transition-delay: .72s; }
+  #panel .sec:nth-child(20) { transition-delay: .76s; }
   /* ---------- Modi ---------- */
   /* Abschnitte und Tastenkürzel mit data-mode="…" gehören zu einem Modus und sind nur dort zu sehen */
   /* (die Regel dafür wird im Skript aus der Modus-Liste erzeugt, siehe Abschnitt "Modi") */
@@ -102,10 +104,13 @@
   @keyframes secIn { from { opacity: 0; transform: translateY(8px); } }
   #modes, .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   #fracHome { width: 100%; margin-top: 8px; }
-  #modes { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  #modes { grid-template-columns: 1fr 1fr; gap: 6px; }
   #modes .btn { justify-content: center; padding: 8px 2px; font-size: 11.5px; }
   /* Partikel-Modus: schmaler Ring als Cursor; gestrichelt, solange die Maus abstößt */
   #partScatter { width: 100%; }
+  /* Flüssigkeits-Modus (Partikel) */
+  #liqRefill { width: 100%; margin-top: 10px; }
+  body.mode-liquid #cursor { border-width: 1.5px; box-shadow: 0 0 10px var(--brush, #fff); }
   body.mode-particles #cursor { border-width: 1.5px; box-shadow: 0 0 10px var(--brush, #fff); }
   body.part-repel #cursor { border-style: dashed; }
   /* Maus zeigt auf eine gesetzte Kraft (greifen/verschieben): größerer, heller Ring */
@@ -580,6 +585,11 @@
       <input id="partGlow" type="range" min="0.3" max="3" step="0.05">
     </div>
   </div>
+  <div class="sec" data-mode="liquid">
+    <h3>Flüssigkeit (Partikel)</h3>
+    <div class="sub" style="margin-top:0">Tausende einzelne Partikel, die sich zusammen wie Wasser verhalten: Sie fallen, drücken gegeneinander und schwappen.</div>
+    <button class="btn" id="liqRefill"><span>Neu einfüllen</span><kbd>Leertaste</kbd></button>
+  </div>
   <div class="sec" id="paletteSection">
     <h3>Farbpalette</h3>
     <div id="palettes"></div>
@@ -631,7 +641,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>Leertaste</kbd>Neu einfüllen</span>
   </div>
 </div>
 
@@ -675,18 +685,20 @@ const CONFIG = {
 // iter = Mandelbrot-Modus: Obergrenze für die Rechendurchgänge pro Bildpunkt
 // pside = Partikel-Modus: Seitenlänge der Zustands-Textur (Anzahl der Partikel = pside × pside),
 // pscale = Partikel-Modus: Auflösung des Spuren-Bilds als Vielfaches der Bildschirmauflösung
+// lside = Flüssigkeits-Modus: Seitenlänge der Zustands-Textur (Anzahl der Partikel = lside × lside),
+// lsteps = Flüssigkeits-Modus: Rechenschritte pro 1/60 Sekunde (mehr Partikel = kleinere Partikel = kürzere Schritte)
 const QUALITY = [
-  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4, fscale: 0.5, iter: 2000, pside: 192, pscale: 0.5 },
-  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2, fscale: 0.75, iter: 3000, pside: 320, pscale: 0.75 },
-  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2, fscale: 1, iter: 4500, pside: 512, pscale: 1 },
-  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 6000, pside: 724, pscale: 1 },
-  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 8000, pside: 1024, pscale: 1, heavy: true },
-  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 10000, pside: 1448, pscale: 1, heavy: true },
+  { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4, fscale: 0.5, iter: 2000, pside: 192, pscale: 0.5, lside: 64, lsteps: 6 },
+  { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2, fscale: 0.75, iter: 3000, pside: 320, pscale: 0.75, lside: 96, lsteps: 10 },
+  { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2, fscale: 1, iter: 4500, pside: 512, pscale: 1, lside: 128, lsteps: 13 },
+  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 6000, pside: 724, pscale: 1, lside: 160, lsteps: 16 },
+  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 8000, pside: 1024, pscale: 1, lside: 192, lsteps: 19, heavy: true },
+  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 10000, pside: 1448, pscale: 1, lside: 224, lsteps: 22, heavy: true },
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
 
-// Modi (Fluid, Mandelbrot, Partikel). Die Liste wird weiter unten gefüllt – siehe Abschnitt "Modi".
+// Modi (Fluid, Mandelbrot, Partikel, Flüssigkeit). Die Liste wird weiter unten gefüllt – siehe Abschnitt "Modi".
 const MODES = [];
 let modeIndex = 0;          // aktiver Modus (Index in MODES)
 let prevMode = 0;           // Modus, von dem gerade weggeblendet wird
@@ -5684,6 +5696,478 @@ MODES.push({
   },
 });
 
+// ---------- Flüssigkeits-Modus (Partikel) ----------
+// Tausende einzelne Partikel, die sich zusammen wie Wasser verhalten. Anders als im Fluid-Modus (dort wird die Strömung
+// auf einem festen Raster gerechnet) ist hier jedes Partikel ein kleines Stück Flüssigkeit: Es fällt, drückt gegen
+// seine Nachbarn und fließt mit ihnen mit.
+//
+// Verfahren: "Position Based Fluids" (PBF). Grundidee: Flüssigkeit lässt sich nicht zusammendrücken. In jedem
+// Teilschritt wird deshalb
+//   1) jedes Partikel so bewegt, als wäre es allein (Schwerkraft, eigenes Tempo) – die "Vorhersage",
+//   2) für jedes Partikel gemessen, wie dicht es mit seinen Nachbarn gepackt ist, und daraus ein "Druck" berechnet,
+//   3) jedes Partikel so weit von zu nahen Nachbarn weggeschoben, dass die Dichte wieder stimmt.
+// Das neue Tempo ergibt sich einfach aus alter und neuer Position. Weil Positionen geschoben werden (statt Kräfte
+// aufzusummieren), schaukelt sich nichts auf – auch wenn alle Partikel in einer Ecke landen.
+//
+// Nachbarsuche (das eigentlich Schwierige): Jedes Partikel müsste jedes andere fragen, ob es in der Nähe ist – bei
+// 16.000 Partikeln wären das 256 Millionen Paare, und WebGL2 kennt keine Rechen-Shader ("Compute-Shader"), die
+// Listen sortieren könnten. Lösung: ein feines Raster über dem Bild, dessen Felder kleiner sind als ein Partikel.
+// Jedes Partikel wird als ein Punkt in "sein" Feld gezeichnet und schreibt dort seine Daten hinein (Ort + Tempo
+// bzw. Ort + Druck). Wer seine Nachbarn sucht, liest einfach die 7 × 7 Felder um sich herum – alles, was näher ist
+// als die Reichweite, steht dort. Landen zwei Partikel im selben Feld, ist eines davon für die anderen kurz
+// unsichtbar (es selbst sieht alle anderen). Das passiert selten, weil die Partikel einander auf Abstand halten.
+//
+// Ränder: Nahe am Bildrand "sieht" ein Partikel das Spiegelbild seiner Nachbarn (und von sich selbst) hinter der
+// Wand. Dadurch stimmt die Dichte auch am Rand, und die Wand drückt weich zurück.
+const LIQUID = {
+  FILL: 0.3,         // so viel der Bildfläche füllt die Flüssigkeit
+  REACH: 2.15,       // Reichweite: so weit "spürt" ein Partikel seine Nachbarn, als Vielfaches des Partikelabstands
+  GRAVITY: 4,        // Schwerkraft: Beschleunigung in Bildhöhen pro Sekunde²
+  MAX_SPEED: 4,      // schneller wird kein Partikel (Bildhöhen pro Sekunde)
+  STIFF: 0.45,       // Steifigkeit: Anteil des Dichte-Fehlers, der pro Teilschritt korrigiert wird. Weil sich die
+                     // Korrekturen benachbarter Partikel überlagern, beginnt es ab etwa 0,6 zu zittern.
+  SPREAD: 0.012,     // zusätzliches Auseinanderschieben sehr naher Partikel (verhindert Klümpchen)
+  SPREAD_AT: 0.2,    // … bezogen auf diesen Abstand (Anteil der Reichweite)
+  MAX_PUSH: 0.2,     // weiter als so wird ein Partikel pro Teilschritt nicht geschoben (Anteil der Reichweite)
+  MAX_FIX: 0.05,     // so viel zusätzliches Tempo darf das Wegschieben einem Partikel höchstens geben (Bildhöhen/s)
+  VISCOSITY: 0.03,   // Zähigkeit: so stark gleicht ein Partikel pro Teilschritt sein Tempo den Nachbarn an (0..1)
+  JITTER: 0.5,       // der Mindestabstand zum Rand ist je Partikel etwas anders (sonst lägen in einer Ecke alle exakt aufeinander)
+};
+
+const liq = {
+  state: null,            // alle Partikel (Doppelpuffer): xy = Ort im Bild (0..1), zw = Tempo (Bildhöhen pro Sekunde)
+  pred: null,             // Zwischenergebnis je Partikel: xy = Tempo-Ausgleich mit den Nachbarn, z = Druck, w = Dichte
+  grid: null,             // das Such-Raster
+  side: 0,                // Seitenlänge der Zustands-Textur → Anzahl der Partikel = side × side
+  aspect: 1,              // Breite / Höhe des Bildes
+  d: 0, h: 0,             // Partikelabstand und Reichweite (in Bildhöhen)
+  rho0: 1,                // Soll-Dichte (Summe der Nachbar-Gewichte bei gleichmäßiger Packung)
+  acc: 0,                 // Zeit, die noch nicht gerechnet ist (kleiner als ein Teilschritt)
+  fresh: true,            // true = Partikel müssen neu eingefüllt werden
+  phase: Math.random(),   // wandernde Farbverschiebung
+  compileMs: 0,           // so lange hat das Übersetzen der Shader gedauert
+};
+
+// ----- Shader -----
+// Gemeinsamer Teil aller Rechen-Shader. Gerechnet wird in "Bildhöhen" (x läuft von 0 bis uAspect, y von 0 bis 1),
+// damit Kreise rund bleiben und sich alles in jedem Fensterformat gleich anfühlt.
+const liqCommonGLSL = partHashGLSL + `
+  uniform sampler2D uState;     // alle Partikel: xy = Ort im Bild (0..1), zw = Tempo (Bildhöhen pro Sekunde)
+  uniform float uDt;            // Dauer eines Teilschritts (Sekunden)
+  uniform float uAspect;        // Breite / Höhe des Bildes
+  uniform vec2 uGravity;        // Schwerkraft (Bildhöhen pro Sekunde²)
+  uniform float uH;             // Reichweite eines Partikels (Bildhöhen)
+  uniform float uMargin;        // Mindestabstand zum Bildrand (Bildhöhen)
+  uniform float uJitter;        // … je Partikel um bis zu diesen Anteil größer
+  uniform float uMaxSpeed;      // schneller wird kein Partikel
+  uniform vec2 uGridSize;       // Anzahl der Rasterfelder (Breite, Höhe)
+  // im Bild bleiben (id = Nummer des Partikels)
+  vec2 inside (vec2 p, vec2 id) {
+    vec2 m = uMargin * (1.0 + uJitter * hash2(id + 0.5));
+    return clamp(p, m, vec2(uAspect, 1.0) - m);
+  }
+  // Vorhersage: Wo wäre das Partikel nach diesem Teilschritt, wenn es allein wäre? p = Ort (Bildhöhen), v = Tempo
+  void predict (vec4 s, vec2 id, out vec2 p, out vec2 v) {
+    v = s.zw + uGravity * uDt;
+    float sp = length(v);
+    if (sp > uMaxSpeed) v *= uMaxSpeed / sp;
+    p = inside(s.xy * vec2(uAspect, 1.0) + v * uDt, id);
+  }
+  // das Rasterfeld, in dem der Punkt p liegt
+  ivec2 cellOf (vec2 p) { return ivec2(clamp(floor(p / vec2(uAspect, 1.0) * uGridSize), vec2(0.0), uGridSize - 1.0)); }
+`;
+
+// Start: die Partikel als ordentlich gepackter Block (uBox = linke untere Ecke und Breite, in Bildhöhen)
+const liqInitSrc = header + `precision highp int;` + partHashGLSL + `
+  uniform int uSide;
+  uniform float uAspect, uD;
+  uniform vec3 uBox;
+  void main () {
+    ivec2 id = ivec2(gl_FragCoord.xy);
+    int k = id.x + id.y * uSide, cols = max(1, int(uBox.z / uD));
+    vec2 p = uBox.xy + (vec2(k % cols, k / cols) + 0.5 + 0.3 * (hash2(vec2(id) + 0.5) - 0.5)) * uD;
+    fragColor = vec4(p / vec2(uAspect, 1.0), 0.0, 0.0);
+  }`;
+
+// Such-Raster füllen: jedes Partikel ist ein Punkt, der in sein Rasterfeld schreibt.
+// uPayload 0: Ort + Tempo (für das Messen der Dichte), 1: Ort + Druck (für das Wegschieben)
+const liqGridVertex = `#version 300 es
+  precision highp float;
+  precision highp int;
+  precision highp sampler2D;
+  ` + liqCommonGLSL + `
+  uniform sampler2D uPred;
+  uniform int uSide;
+  uniform int uPayload;
+  flat out vec4 vData;
+  void main () {
+    ivec2 id = ivec2(gl_VertexID % uSide, gl_VertexID / uSide);
+    vec2 p, v;
+    predict(texelFetch(uState, id, 0), vec2(id), p, v);
+    vData = uPayload == 0 ? vec4(p, v) : vec4(p, texelFetch(uPred, id, 0).z, 0.0);
+    gl_Position = vec4((vec2(cellOf(p)) + 0.5) / uGridSize * 2.0 - 1.0, 0.0, 1.0);
+    gl_PointSize = 1.0;
+  }`;
+const liqGridSrc = `#version 300 es
+  precision highp float;
+  flat in vec4 vData;
+  out vec4 fragColor;
+  void main () { fragColor = vData; }`;
+
+// Dichte messen → Druck. Jedes Partikel zählt seine Nachbarn in Reichweite, nahe stärker gewichtet als ferne.
+// Ist es dichter gepackt als gewollt, bekommt es einen (negativen) "Druck": wie stark es und seine Nachbarn
+// auseinandergeschoben werden müssen, damit die Dichte wieder stimmt. Nebenbei: Tempo-Ausgleich mit den Nachbarn
+// (Zähigkeit) – zähe Flüssigkeit bewegt sich mehr im Verbund.
+const liqLambdaSrc = header + `precision highp int;` + liqCommonGLSL + `
+  uniform sampler2D uGrid;      // Raster: xy = Ort (Bildhöhen), zw = Tempo des Partikels in diesem Feld (x < 0 = leer)
+  uniform float uRho0;          // Soll-Dichte
+  uniform float uStiff;         // Steifigkeit (0..1)
+  uniform float uVisc;          // Zähigkeit
+  float rho; vec2 gsum; float g2;
+  // einen Nachbarn (oder sein Spiegelbild) im Abstand r mitzählen; gibt sein Gewicht zurück
+  float feel (vec2 r) {
+    float r2 = dot(r, r);
+    if (r2 >= uH * uH) return 0.0;
+    float q = sqrt(r2) / uH, w = 1.0 - q * q, g = 7.5 * (1.0 - q) * (1.0 - q);
+    w = w * w * w;
+    rho += w;
+    gsum += g * r / max(q * uH, 1e-9);
+    g2 += g * g;
+    return w;
+  }
+  void main () {
+    ivec2 id = ivec2(gl_FragCoord.xy);
+    vec2 p, v;
+    predict(texelFetch(uState, id, 0), vec2(id), p, v);
+    rho = 1.0; gsum = vec2(0.0); g2 = 0.0;                    // (1 = das Partikel selbst)
+    vec2 vsum = vec2(0.0);
+    float wsum = 1.0;
+    // Wand in Reichweite? Dann zählen auch die Spiegelbilder hinter ihr (wx, wy = Lage der Wand, −1 = keine)
+    float wx = p.x < uH ? 0.0 : p.x > uAspect - uH ? uAspect : -1.0;
+    float wy = p.y < uH ? 0.0 : p.y > 1.0 - uH ? 1.0 : -1.0;
+    ivec2 c = cellOf(p), size = ivec2(uGridSize);
+    for (int j = -3; j <= 3; j++) for (int i = -3; i <= 3; i++) {
+      ivec2 cc = c + ivec2(i, j);
+      if (cc.x < 0 || cc.y < 0 || cc.x >= size.x || cc.y >= size.y) continue;
+      vec4 g = texelFetch(uGrid, cc, 0);
+      if (g.x < -0.5) continue;                               // leeres Feld
+      vec2 r = p - g.xy;
+      if (dot(r, r) < 1e-12) continue;                        // das bin ich selbst
+      float w = feel(r);
+      vsum += w * (g.zw - v);
+      wsum += w;
+      vec2 m = p + g.xy - 2.0 * vec2(wx, wy);                 // Abstand zum Spiegelbild
+      if (wx >= 0.0) feel(vec2(m.x, r.y));
+      if (wy >= 0.0) feel(vec2(r.x, m.y));
+      if (wx >= 0.0 && wy >= 0.0) feel(m);
+    }
+    // die eigenen Spiegelbilder
+    vec2 m = 2.0 * (p - vec2(wx, wy));
+    if (wx >= 0.0) feel(vec2(m.x, 0.0));
+    if (wy >= 0.0) feel(vec2(0.0, m.y));
+    if (wx >= 0.0 && wy >= 0.0) feel(m);
+    float over = max(rho / uRho0 - 1.0, 0.0);                 // so viel zu dicht (0 = passt oder zu locker)
+    float lambda = -over * uStiff * uRho0 * uRho0 / max(dot(gsum, gsum) + g2, 1e-3);
+    fragColor = vec4(uVisc * vsum / wsum, lambda, rho / uRho0);
+  }`;
+
+// Wegschieben: Jedes Partikel wird von seinen Nachbarn weggeschoben – umso stärker, je höher sein eigener Druck und
+// der des Nachbarn ist. Danach steht der neue Ort fest; das neue Tempo ist (neuer Ort − alter Ort) / Zeit.
+const liqPushSrc = header + `precision highp int;` + liqCommonGLSL + `
+  uniform sampler2D uGrid;      // Raster: xy = Ort (Bildhöhen), z = Druck des Partikels in diesem Feld (x < 0 = leer)
+  uniform sampler2D uPred;      // eigener Tempo-Ausgleich (xy) und eigener Druck (z)
+  uniform float uRho0;
+  uniform float uSpread, uSpreadW;   // Auseinanderschieben sehr naher Partikel: Stärke und Bezugs-Gewicht
+  uniform float uMaxPush;       // weiter wird ein Partikel pro Teilschritt nicht geschoben (Bildhöhen)
+  uniform float uMaxFix;        // so viel zusätzliches Tempo darf das Schieben höchstens geben
+  float lam; vec2 disp;
+  // von einem Nachbarn (oder seinem Spiegelbild) im Abstand r weggeschoben werden; lj = dessen Druck
+  void push (vec2 r, float lj) {
+    float r2 = dot(r, r);
+    if (r2 >= uH * uH) return;
+    float q = sqrt(r2) / uH, w = 1.0 - q * q, g = 7.5 * (1.0 - q) * (1.0 - q);
+    float tight = w * w * w / uSpreadW;
+    tight *= tight; tight *= tight;
+    disp -= (lam + lj - uSpread * tight) * g * r / max(q * uH, 1e-9);
+  }
+  void main () {
+    ivec2 id = ivec2(gl_FragCoord.xy);
+    vec4 s = texelFetch(uState, id, 0), own = texelFetch(uPred, id, 0);
+    vec2 p, v;
+    predict(s, vec2(id), p, v);
+    lam = own.z; disp = vec2(0.0);
+    float wx = p.x < uH ? 0.0 : p.x > uAspect - uH ? uAspect : -1.0;
+    float wy = p.y < uH ? 0.0 : p.y > 1.0 - uH ? 1.0 : -1.0;
+    ivec2 c = cellOf(p), size = ivec2(uGridSize);
+    for (int j = -3; j <= 3; j++) for (int i = -3; i <= 3; i++) {
+      ivec2 cc = c + ivec2(i, j);
+      if (cc.x < 0 || cc.y < 0 || cc.x >= size.x || cc.y >= size.y) continue;
+      vec4 g = texelFetch(uGrid, cc, 0);
+      if (g.x < -0.5) continue;
+      vec2 r = p - g.xy;
+      if (dot(r, r) < 1e-12) continue;
+      push(r, g.z);
+      vec2 m = p + g.xy - 2.0 * vec2(wx, wy);
+      if (wx >= 0.0) push(vec2(m.x, r.y), g.z);
+      if (wy >= 0.0) push(vec2(r.x, m.y), g.z);
+      if (wx >= 0.0 && wy >= 0.0) push(m, g.z);
+    }
+    vec2 m = 2.0 * (p - vec2(wx, wy));
+    if (wx >= 0.0) push(vec2(m.x, 0.0), lam);
+    if (wy >= 0.0) push(vec2(0.0, m.y), lam);
+    if (wx >= 0.0 && wy >= 0.0) push(m, lam);
+    vec2 dp = disp * uH / uRho0;
+    float len = length(dp);
+    if (len > uMaxPush) dp *= uMaxPush / len;
+    vec2 pn = inside(p + dp, vec2(id));
+    // neues Tempo aus altem und neuem Ort, dazu der Tempo-Ausgleich mit den Nachbarn
+    vec2 vn = (pn - s.xy * vec2(uAspect, 1.0)) / uDt + own.xy;
+    // Das Wegschieben darf nicht beliebig viel Tempo erzeugen (stark zusammengepresste Partikel entspannen sich
+    // dann über mehrere Schritte, statt auseinanderzuschießen)
+    vec2 fix = vn - v;
+    float fl = length(fix), lim = length(v) + uMaxFix;
+    if (fl > lim) vn = v + fix * (lim / fl);
+    float sp = length(vn);
+    if (sp > uMaxSpeed) vn *= uMaxSpeed / sp;
+    fragColor = vec4(pn / vec2(uAspect, 1.0), vn);
+  }`;
+
+// Vorläufige Anzeige (Prototyp): jedes Partikel als weiches Scheibchen, Farbe nach Tempo
+const liqDotsVertex = `#version 300 es
+  precision highp float;
+  precision highp int;
+  precision highp sampler2D;
+  ` + paletteGLSL + `
+  uniform sampler2D uState;
+  uniform int uSide;
+  uniform float uAspect;
+  uniform float uAhead;        // Zeit seit dem letzten Rechenschritt: die Punkte werden so weit vorausgezeichnet
+  uniform float uSize;         // Durchmesser in Bildpunkten
+  uniform float uPhase;
+  out vec3 vColor;
+  void main () {
+    vec4 s = texelFetch(uState, ivec2(gl_VertexID % uSide, gl_VertexID / uSide), 0);
+    float k = 1.0 - exp(-length(s.zw) * 1.2);                 // Tempo 0..1
+    vColor = palette(uPhase + 0.45 * k) * (0.5 + 0.8 * k);
+    gl_Position = vec4((s.xy + s.zw * uAhead / vec2(uAspect, 1.0)) * 2.0 - 1.0, 0.0, 1.0);
+    gl_PointSize = uSize;
+  }`;
+const liqDotsSrc = `#version 300 es
+  precision highp float;
+  in vec3 vColor;
+  out vec4 fragColor;
+  void main () {
+    vec2 q = gl_PointCoord * 2.0 - 1.0;
+    float r2 = dot(q, q);
+    fragColor = vec4(vColor * (1.0 - 0.45 * r2), smoothstep(1.0, 0.7, r2));
+  }`;
+
+// Die Shader werden erst übersetzt, wenn der Modus zum ersten Mal gebraucht wird (der Start der App bleibt schnell)
+function liqCompile() {
+  if (programs.liqGrid) return;
+  const t0 = performance.now();
+  programs.liqInit = makeProgram(liqInitSrc);
+  programs.liqGrid = makeProgram(liqGridSrc, compile(gl.VERTEX_SHADER, liqGridVertex));
+  programs.liqLambda = makeProgram(liqLambdaSrc);
+  programs.liqPush = makeProgram(liqPushSrc);
+  programs.liqDots = makeProgram(liqDotsSrc, compile(gl.VERTEX_SHADER, liqDotsVertex));
+  liq.rho0 = liqRestDensity();
+  liq.compileMs = performance.now() - t0;
+}
+
+// Soll-Dichte: Summe der Nachbar-Gewichte, wenn die Partikel gleichmäßig im Sechseck-Muster gepackt sind
+// (gerechnet in Einheiten des Partikelabstands; jedes Partikel belegt dann genau die Fläche 1)
+function liqRestDensity() {
+  const a = Math.sqrt(2 / Math.sqrt(3)), h = LIQUID.REACH;
+  let sum = 0;
+  for (let j = -5; j <= 5; j++) for (let i = -5; i <= 5; i++) {
+    const x = (i + 0.5 * (j & 1)) * a, y = j * a * Math.sqrt(3) / 2, q2 = (x * x + y * y) / (h * h);
+    if (q2 < 1) sum += (1 - q2) ** 3;
+  }
+  return sum;
+}
+
+// ----- Puffer -----
+// Werden erst angelegt, wenn der Modus zum ersten Mal gebraucht wird, und passen sich Qualitätsstufe und Fenster an
+function ensureLiqBuffers() {
+  liqCompile();
+  const q = QUALITY[qualityLevel], side = Math.min(q.lside, maxTextureSize), n = side * side;
+  gl.disable(gl.BLEND);
+  if (side !== liq.side) {
+    if (liq.state) { liq.state.free(); liq.pred.free(); }
+    liq.state = createDoubleFBO(side, side, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+    liq.pred = createFBO(side, side, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+    liq.side = side;
+    liq.fresh = true;
+  }
+  // Partikelgröße: so, dass alle Partikel zusammen immer denselben Anteil des Bildes füllen – mehr Partikel = feiner
+  liq.aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+  liq.d = Math.sqrt(LIQUID.FILL * liq.aspect / n);
+  liq.h = LIQUID.REACH * liq.d;
+  // Such-Raster: Felder mindestens ein Drittel der Reichweite groß → 3 Felder in jede Richtung decken sie ab
+  const gw = clampNum(Math.floor(3 * liq.aspect / liq.h), 8, maxTextureSize), gh = clampNum(Math.floor(3 / liq.h), 8, maxTextureSize);
+  if (!liq.grid || liq.grid.w !== gw || liq.grid.h !== gh) {
+    if (liq.grid) liq.grid.free();
+    liq.grid = createFBO(gw, gh, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+  }
+  if (liq.fresh) liqFill();
+}
+
+// Partikel neu einfüllen: als Block an der linken Seite, der dann zusammensackt und durchs Bild schwappt
+function liqFill() {
+  const n = liq.side * liq.side, width = 0.45 * liq.aspect;
+  gl.disable(gl.BLEND);
+  const u = use('liqInit');
+  gl.uniform1i(u.uSide, liq.side);
+  gl.uniform1f(u.uAspect, liq.aspect);
+  gl.uniform1f(u.uD, liq.d);
+  gl.uniform3f(u.uBox, 0.25 * liq.d, 0.25 * liq.d, width);
+  blit(liq.state.read); blit(liq.state.write);
+  liq.fresh = false;
+  liq.acc = 0;
+}
+
+// ----- einmal pro Bild: rechnen -----
+// Gemeinsame Werte der Rechen-Shader (H = Dauer eines Teilschritts)
+function liqUniforms(u, H) {
+  gl.uniform1i(u.uState, 0);
+  gl.uniform1i(u.uPred, 1);
+  gl.uniform1i(u.uGrid, 2);
+  gl.uniform1f(u.uDt, H);
+  gl.uniform1f(u.uAspect, liq.aspect);
+  gl.uniform2f(u.uGravity, 0, -LIQUID.GRAVITY);
+  gl.uniform1f(u.uH, liq.h);
+  gl.uniform1f(u.uMargin, 0.25 * liq.d);
+  gl.uniform1f(u.uJitter, LIQUID.JITTER);
+  gl.uniform1f(u.uMaxSpeed, LIQUID.MAX_SPEED);
+  gl.uniform2f(u.uGridSize, liq.grid.w, liq.grid.h);
+  gl.uniform1f(u.uRho0, liq.rho0);
+}
+// Such-Raster neu füllen (payload 0: Ort + Tempo, 1: Ort + Druck)
+function liqFillGrid(payload) {
+  const g = liq.grid, u = use('liqGrid');
+  gl.uniform1i(u.uPayload, payload);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, g.fbo);
+  gl.viewport(0, 0, g.w, g.h);
+  gl.clearColor(-1, 0, 0, 0);                                // x = −1 heißt: Feld ist leer
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.bindVertexArray(part.vao);
+  gl.drawArrays(gl.POINTS, 0, liq.side * liq.side);
+  gl.bindVertexArray(null);
+}
+// Erste Hälfte eines Teilschritts: Raster füllen, Dichte messen → Druck (Ergebnis in liq.pred)
+function liqMeasure() {
+  liq.state.read.attach(0);
+  liqFillGrid(0);
+  use('liqLambda');
+  liq.grid.attach(2);
+  blit(liq.pred);
+}
+// Zweite Hälfte: Raster mit dem Druck füllen, Partikel auseinanderschieben → neuer Zustand
+function liqResolve() {
+  liq.pred.attach(1);
+  liqFillGrid(1);
+  use('liqPush');
+  blit(liq.state.write);
+  liq.state.swap();
+}
+// Mehrere Teilschritte der Dauer H rechnen
+function liqSimulate(steps, H) {
+  gl.disable(gl.BLEND);
+  let u = use('liqGrid');
+  liqUniforms(u, H);
+  gl.uniform1i(u.uSide, liq.side);
+  u = use('liqLambda');
+  liqUniforms(u, H);
+  gl.uniform1f(u.uStiff, LIQUID.STIFF);
+  gl.uniform1f(u.uVisc, LIQUID.VISCOSITY);
+  u = use('liqPush');
+  liqUniforms(u, H);
+  gl.uniform1f(u.uSpread, LIQUID.SPREAD);
+  gl.uniform1f(u.uSpreadW, (1 - LIQUID.SPREAD_AT * LIQUID.SPREAD_AT) ** 3);
+  gl.uniform1f(u.uMaxPush, LIQUID.MAX_PUSH * liq.h);
+  gl.uniform1f(u.uMaxFix, LIQUID.MAX_FIX);
+  for (let i = 0; i < steps; i++) { liqMeasure(); liqResolve(); }
+}
+
+function updateLiquid(dt) {
+  ensureLiqBuffers();
+  // Feste Teilschritte: Jede Qualitätsstufe hat ihre Schrittdauer (mehr Partikel = kleinere Partikel = kürzere
+  // Schritte). Ein Bild rechnet so viele ganze Schritte, wie in seine Zeit passen; der Rest wird aufgehoben.
+  const perFrame = QUALITY[qualityLevel].lsteps, H = 1 / (60 * perFrame);
+  liq.acc += dt;
+  let steps = Math.floor(liq.acc / H + 1e-4);
+  liq.acc = Math.max(0, liq.acc - steps * H);
+  if (steps > 2 * perFrame + 1) { steps = 2 * perFrame + 1; liq.acc = 0; }
+  if (steps > 0) liqSimulate(steps, H);
+  liq.phase += 0.012 * dt * (1 - 0.6 * PARAMS.calm.current);
+  cursorEl.style.setProperty('--brush', paletteColor(liq.phase + 0.3));
+  cursorEl.style.setProperty('--size', '26px');
+}
+
+// ----- einmal pro Bild: zeichnen -----
+function drawLiquid(target) {
+  ensureLiqBuffers();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.fbo : null);
+  const H = target ? target.h : gl.drawingBufferHeight;
+  gl.viewport(0, 0, target ? target.w : gl.drawingBufferWidth, H);
+  gl.clearColor(0.004, 0.006, 0.014, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  const u = use('liqDots');
+  gl.uniform1i(u.uState, liq.state.read.attach(0));
+  gl.uniform1i(u.uSide, liq.side);
+  gl.uniform1f(u.uAspect, liq.aspect);
+  gl.uniform1f(u.uAhead, liq.acc);
+  gl.uniform1f(u.uSize, Math.max(2, 1.25 * liq.d * H));
+  gl.uniform1f(u.uPhase, liq.phase);
+  gl.uniform3fv(u['uPalette[0]'], currentPalette);
+  gl.bindVertexArray(part.vao);
+  gl.drawArrays(gl.POINTS, 0, liq.side * liq.side);
+  gl.bindVertexArray(null);
+  gl.disable(gl.BLEND);
+}
+
+// ----- Bedienung -----
+function liqRefill() {
+  liq.fresh = true;
+  audioClear();
+  toast('Neu eingefüllt');
+}
+function liqKey(e) {
+  if (e.code === 'Space') { liqRefill(); e.preventDefault(); }
+}
+
+// ----- Panel -----
+$('liqRefill').addEventListener('click', e => { liqRefill(); e.currentTarget.blur(); });
+
+MODES.push({
+  id: 'liquid', name: 'Flüssigkeit (Partikel)', label: 'Flüssigkeit',
+  hint: 'Tausende Partikel verhalten sich wie Wasser · <b>Leertaste</b> = neu einfüllen · <b>Tab</b> = Modus',
+  autoplayHint: 'Auto-Play · Bewege die Maus, um selbst zu spielen',
+  enter() {
+    $('paletteSection').classList.remove('unused');
+    $('bloomSection').classList.remove('unused');
+  },
+  leave() {},
+  update: updateLiquid,
+  draw: drawLiquid,
+  bloomShare: () => 1,
+  autoplayStart() {},
+  autoplayStop() {},
+  autoplay() {},
+  pointerMove(e) { showCursor(e.clientX, e.clientY); hideHint(); },
+  pointerDown(e) { showCursor(e.clientX, e.clientY); },
+  pointerUp() {},
+  pointerLeave() {},
+  key: liqKey,
+  qualityInfo(q) {
+    ensureLiqBuffers();
+    return `${(liq.side * liq.side).toLocaleString('de-DE')} Partikel · ${60 * q.lsteps} Rechenschritte pro Sekunde<br>Such-Raster ${liq.grid.w}×${liq.grid.h}`;
+  },
+});
+
 // ----- Moduswechsel -----
 // Knöpfe im Panel-Abschnitt "Modus" und die Regel, die Panel-Teile fremder Modi versteckt, entstehen aus der Liste
 const modeBox = $('modes');
@@ -5692,7 +6176,7 @@ MODES.forEach((m, i) => {
   modeStyle.textContent += `body:not(.mode-${m.id}) [data-mode="${m.id}"] { display: none; }\n`;
   const btn = document.createElement('button');
   btn.className = 'btn';
-  btn.innerHTML = `<span>${m.name}</span>`;
+  btn.innerHTML = `<span>${m.label || m.name}</span>`;      // (label = kurzer Name für den Knopf)
   btn.addEventListener('click', () => { setMode(i); btn.blur(); });
   modeBox.appendChild(btn);
 });
