@@ -906,6 +906,84 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - **Farbmenge 1,2 im Inneren:** Feuer weiß überstrahlt, Metallic eine weiße Fläche, sobald eine Lichtfläche der
   Umgebung vorbeidreht → 0,7.
 
+### Warum „Position Based Fluids“ statt klassischem SPH
+- Klassisches SPH (Druck als Kraft, Kräfte aufsummieren) wurde **nicht gebaut und nicht gemessen**. Gewählt wurde von
+  Anfang an PBF, das dieselbe Nachbarsuche und dieselben Gewichtsfunktionen benutzt (also „verwandtes Verfahren“), aber
+  Positionen direkt verschiebt statt Kräfte aufzusummieren. Begründung (Annahme, nicht im Vergleich geprüft): Bei
+  SPH muss der Druck sehr steif sein, damit Wasser nicht wie Gummi federt, und steife Kräfte explodieren bei zu großen
+  Schritten; PBF bleibt auch bei extrem zusammengepressten Partikeln beschränkt (gemessen: alle Partikel auf einem
+  Punkt → entfaltet sich ohne ungültige Werte). Der Preis: PBF ist leicht zusammendrückbar und braucht viele
+  Teilschritte (siehe „Grenzen“).
+
+### Aufbau (Code in `index.html`, Abschnitt „Flüssigkeits-Modus (Partikel)“; Entwurf in `.claude/liquid.js`)
+- **Texturen/Puffer** (alle in `liq`):
+  - `state` – Doppelpuffer RGBA32F, NEAREST, `lside × lside`: xy = Ort (0..1 im Bild), zw = Tempo (Bildhöhen/s).
+    Partikel-Nummer k = x + y · side; die ersten `liq.count` sind im Bild, der Rest ist Vorrat (steht bei 0,5/0,5 und
+    wird nicht gerechnet).
+  - `pred` – RGBA32F, gleiche Größe: xy = Tempo-Ausgleich (Viskosität), z = Druck λ, w = Dichte / Soll-Dichte.
+    Wird auch von der Darstellung gelesen (Druck sichtbar machen, Look „Partikel“ nach Dichte).
+  - `grid` – Such-Raster RGBA32F, angelegt für den kleinsten Partikelabstand (Dichte-Regler 140 %); benutzt wird der
+    Teil `liq.gw × liq.gh` (Feldgröße ≈ Reichweite / 3). Leere Felder: x = −1.
+  - `field` (roh), `dye` (fertig) – Dichte-Feld RGBA16F, Bildschirm × `pscale`; `dye` ist das, was die Looks als
+    Farb-Textur lesen. `flowSum` (RGBA16F) / `flow` (RG16F) / `curl` (R16F) in halber Auflösung: Strömung + Drehung.
+    `sprites` (RGBA16F) nur, solange der Look „Partikel“ zu sehen ist. Angelegt in `ensureLiqFields()`.
+- **Shader-Programme** (übersetzt in `liqCompile()`, erst beim ersten Gebrauch): `liqInit` (Einfüllen als Block),
+  `liqResize` (Stufenwechsel), `liqGrid` (Punkte ins Such-Raster; `uPayload` 0 = Ort+Tempo, 1 = Ort+Druck+Dichte;
+  `uFlip` = Reihenfolge), `liqLambda` (Dichte → Druck, Viskosität), `liqPush` (wegschieben, Zusammenhalt, Rand,
+  neues Tempo), `liqSplat` (Partikel als Flecken: `uWhat` 0 = Farbmenge, 1 = Tempo + Gewicht), `liqField`
+  (Randausgleich), `liqFlow` (Tempo-Summe / Gewicht), `liqSprites` (Look „Partikel“). Gemeinsamer GLSL-Teil
+  `liqCommonGLSL` (`predict`, `inside`, `cellOf`). Für die Drehung wird der vorhandene Shader `curl` benutzt.
+- **Funktionen:** `ensureLiqBuffers()` (Puffer, Partikelgröße `liq.d`, Reichweite `liq.h`, Schrittdauer `liq.H`,
+  Raster), `liqFill()` (neu einfüllen; auslösen über `liq.fresh = true`), `liqRestDensity()` (Soll-Dichte aus
+  Sechseck-Packung), `liqUniforms()`, `liqPass()`, `liqFillGrid()`, `liqMeasure()` + `liqResolve()` (= ein
+  Teilschritt), `liqSimulate(steps)` (rechnet Regler in Shader-Größen um, dann die Schritte), `updateLiquid(dt)`
+  (feste Teilschritte, Cursorfarbe), `liqUpdateFields()`, `liqDrawSprites()`, `drawLiquid()` (Felder + `drawLooks`),
+  `liqRefill()`, `liqKey()`. Look-Stand `liquidLooks` (Quelle `id: 'liquid'`).
+- **Qualitätsstufen:** `QUALITY[].lside` = 80/128/160/208/256/272 (Platz für 6.400 … 73.984 Partikel, davon 60 % beim
+  Einfüllen im Bild). Das frühere Feld `lsteps` gibt es nicht mehr (Schrittzahl ergibt sich aus der Partikelgröße).
+  Das Dichte-Feld nutzt das vorhandene `pscale` (0,5/0,75/1/1/1/1).
+
+### Standardwerte der Regler (`PARAMS`, Doppelklick = Standard)
+| Regler | Schlüssel | Bereich | Standard | wirkt als |
+|---|---|---|---|---|
+| Schwerkraft | `liqGravity` | 0–200 % | 100 % | × `GRAVITY` 4 Bildhöhen/s² |
+| Fallrichtung | `liqGravityDir` | −180…180° | 0 (unten) | wie im Fluid-Modus; abgeblendet bei Schwerkraft 0 |
+| Viskosität | `liqViscosity` | 0–100 % | 20 % | quadratisch: Tempo-Ausgleich `v² · 0,004` Bildhöhen²/s (pro Schritt höchstens 60 %) + Bremsung `v² · 5`/s |
+| Zusammenhalt | `liqCohesion` | 0–100 % | 30 % | × `COHESION` 60 · (0,0127 / Reichweite)²; nur an der Oberfläche |
+| Steifigkeit | `liqStiff` | 0–100 % | 85 % | Korrektur-Anteil 0,2 + 0,25 · Wert (Standard ≈ 0,41) |
+| Dichte | `liqDensity` | 70–140 % | 100 % | Partikelabstand / √Wert |
+| Look-Regler „Farbe nach“ | `dotColor` | Tempo/Dichte | Tempo | nur Look „Partikel“ |
+| Look-Regler „Partikelgröße“ | `dotSize` | 0,5–2× | 1× | nur Look „Partikel“ |
+- Feste Konstanten in `LIQUID` (Kommentare im Code): `FILL_MAX` 0,5, `START` 0,6, `REACH` 2,15, `STEP_RATE` 4,5,
+  `MAX_RATE` 2400, `MAX_STEPS` 64, `MAX_SPEED` 4, `STIFF_MIN/MAX` 0,2/0,45, `SPREAD` 0,012, `MAX_PUSH` 0,2,
+  `MAX_FIX` 0,05, `CRUSH` 1,5, `RESCUE` 0,08, `BOUNCE` 0,2 ab 0,3 Bildhöhen/s, `JITTER` 0,5, `SPLAT` 2, `BODY` 0,7,
+  `PRESSURE` 6 (höchstens 25 % Verdichtung), `TINT_SPAN` 0,6.
+- Hinweis: Die Regler sind Rohwerte, noch keine Presets. Ob „20 % Viskosität / 30 % Zusammenhalt“ sich gut anfühlt,
+  hat noch kein Mensch beurteilt.
+
+### Wo Schritt 4–6 andocken
+- **Schritt 4 Interaktion:** Das Modus-Objekt hat für `pointerMove/Down/Up/Leave` bisher nur den Cursor.
+  - Maus schiebt/zieht: am einfachsten als zusätzliche Beschleunigung in `predict()` (`liqCommonGLSL`) über neue
+    Uniforms (Ort, Radius, Stärke) – `predict` wird von `liqGrid`, `liqLambda` und `liqPush` gleich benutzt, die
+    Vorhersage bleibt also überall gleich. Beschleunigungen nicht als Positions-Schub einbauen (`MAX_FIX` begrenzt nur
+    das Korrektur-Tempo, nicht das Eigentempo; `MAX_SPEED` 4 begrenzt alles).
+  - Spritzer/Tropfen und Hahn: Partikel aus dem Vorrat holen = `liq.count` erhöhen und die neuen Zeilen der
+    `state`-Textur beschreiben (z. B. kleiner Shader wie `liqInit`, nur für den Bereich `count…count+n`, beide
+    Hälften des Doppelpuffers). Wichtig: neue Partikel nicht exakt aufeinander setzen (siehe `JITTER`/„ich selbst“).
+    Leeren: `liq.count` senken bzw. weich ausblenden; die Palettenposition hängt an der Partikel-Nummer (`liqSplat`).
+  - Eimer kippen: `PARAMS.liqGravityDir.target` setzen – wird schon weich nachgezogen (gemessen: 90°/180°/−90°
+    stabil).
+  - Hindernisse: Die Fluid-Textur `obstacles` (R8, 1 = Hindernis) und `obstacleStroke`/`drawObstacles` gibt es; im
+    Flüssigkeits-Modus fehlt noch, sie in `liqPush` (Partikel aus dem Hindernis schieben, ähnlich wie `inside()`) und
+    ggf. in der Dichte (Spiegelbilder wie am Rand) zu berücksichtigen. Achtung: `obstacleStroke` setzt
+    `obstaclesExist`, das den Fluid-Modus auf die Hindernis-Shader umschaltet – eigene Textur oder bewusst teilen.
+- **Schritt 5 Presets:** nur `PARAMS.liq*.target` setzen (weiches Überblenden kommt von `easeParams`). Die Physik liest
+  die Regler in `liqSimulate()` jedes Bild neu. Stabilität jedes Presets auf allen Stufen mit `__scan` prüfen.
+- **Schritt 6 Ton/Auto-Play/Flacker-Reduktion:** Modus-Objekt hat leere `autoplayStart/Stop/autoplay`. Kennzahlen für
+  den Ton könnte man wie `partStat`/`readPartStats` (Partikel-Modus) ohne Warten auf die GPU aus `liq.state`/`liq.pred`
+  holen. Flacker-Reduktion: die gemeinsame Helligkeits-Bremse wirkt schon (läuft über `render()`); Spritzer selbst
+  sollten mit `PARAMS.calm.current` gedämpft werden. Panel-Abschnitt: `.claude/liquid-panel.html`.
+
 ### Testen
 - Hilfen in `.claude/` (nicht im Repo): `l-tools.js` (lädt `__t`/`__p` mit; `__l.stats()` = ungültige Werte, Tempo,
   Schwerpunkt, Dichte-Verteilung; `__l.hidden()` = Anteil unsichtbarer Partikel; `__l.verify()` = Dichte gegen
