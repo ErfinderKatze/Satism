@@ -35,14 +35,15 @@ Partikel-Klang, Auto-Play mit unsichtbaren Kräften.
 
 **Flüssigkeit (Partikel):** ✅ Maus schiebt oder zieht die Flüssigkeit, ✅ Tropfen und Spritzer bei Klick, ✅ Strahl und Hahn,
 ✅ Eimer kippen, ✅ Hindernisse, ✅ Presets (Wasser, Öl, Honig, Gel, Quecksilber), ✅ eigener Klang, ✅ Auto-Play.
-⬜ zwei Flüssigkeiten gleichzeitig, ⬜ Szenarien speichern.
+⬜ zwei Flüssigkeiten gleichzeitig, ✅ Szenarien speichern (Regler, Look, Hahn – ohne Hindernisse).
 
 **Mandelbrot:** ✅ Zoom per Scrollen/Ziehen mit Trägheit, ✅ Julia-Sets live mit Mausposition, ✅ animierte Farbpaletten,
 ✅ automatische Zoom-Fahrt zu schönen Stellen, ✅ tiefer Zoom bis 10³⁰-fach (Bezugsbahn statt Float32-Grenze).
 ⬜ Zwei-Finger-Zoom auf Touch-Geräten, ⬜ weitere Farbgebungen, ⬜ tiefe Mini-Mandelbrote als Ziel der Zoom-Fahrt.
 
-**Modusübergreifend:** ✅ Paletten-Presets (Neon, Sunset, Ozean, Lava …) mit sanftem Überblenden. ⬜ Presets/Szenarien
-speichern und teilen. ✅ Idle-Modus/Screensaver (Auto-Play). ⬜ Screenshot-, Wallpaper- und Video-Export. ⬜ Optional kleine
+**Modusübergreifend:** ✅ Paletten-Presets (Neon, Sunset, Ozean, Lava …) mit sanftem Überblenden. ✅ Presets/Szenarien
+speichern und als Textcode teilen. ✅ Idle-Modus/Screensaver (Auto-Play). ✅ Screenshot- und Hintergrundbild-Export
+(bis 4K), ⬜ Video-Export. ⬜ Optional kleine
 Sammelziele („entdecke 10 Muster“). ✅ Moduswechsel Fluid/Mandelbrot/Partikel/Flüssigkeit, ⬜ Desktop-App (Tauri oder Electron).
 
 **Satisfying-Faktoren:** ✅ Audio-Feedback per Web Audio API (selbst synthetisiert, Pentatonik, Lautstärke/Tonhöhe abhängig
@@ -56,7 +57,7 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 ## Aktueller Stand
 - Alles in **einer Datei**: `index.html` (HTML, CSS, JavaScript, GLSL-Shader). Öffnen per Doppelklick im Browser.
 - **In Arbeit: fünfter Modus „3D-Fraktal-Flug“** (Abschnitt ganz unten; dort steht, welcher Schritt fertig ist und
-  welcher als nächster kommt – Schritte 1–4 von 6 sind fertig). Man fliegt selbst durch 3D-Fraktale (Mandelbulb,
+  welcher als nächster kommt – Schritte 1–5 von 6 sind fertig). Man fliegt selbst durch 3D-Fraktale (Mandelbulb,
   Mandelbox, Menger-Schwamm, Sierpinski-Pyramide, 3D-Julia, Faltungs-Baukasten), gerechnet per Raymarching.
 - **Vier Modi in einer App:** Fluid, Mandelbrot, Partikel und Flüssigkeit (Partikel). Umschalten mit `Tab`
   (Umschalt + `Tab` = zurück) oder im Panel-Abschnitt „Modus“, mit weicher Überblendung (0,8 s). Panel, Paletten,
@@ -116,7 +117,7 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - **Flacker-Reduktion** (Abschnitt unten): Schalter „Flackern reduzieren“ im Panel-Abschnitt „Qualität“.
 - **Schwerkraft & Hindernisse** (Abschnitt unten): Regler Schwerkraft/Fallrichtung, Werkzeuge Farbe/Hindernis/Radierer.
 - Bedienung in jedem Modus: `Tab` = Modus wechseln, `H` = Panel, `F` = FPS, `Q` = eine Qualitätsstufe höher (schaltet
-  Auto ab), `A` = Auto-Play (im 3D-Flug `P`, weil `A` dort fliegt), `M` = stumm.
+  Auto ab), `A` = Auto-Play (im 3D-Flug `P`, weil `A` dort fliegt), `M` = stumm, `I` = Bild speichern.
 - Bedienung 3D-Fraktal-Flug: Klick = Maus fangen (bewegen = umsehen, `Esc` = frei) oder mit gedrückter Maustaste
   ziehen, `W` `A` `S` `D` = fliegen, Leertaste / `C` = hoch / runter, Umschalt = schneller, `B` = bremsen,
   Mausrad = Flug-Tempo, `Y` / `X` = rollen, `G` = Horizont gerade, Pfeiltasten = umsehen, `R` = zurück zum Start,
@@ -137,7 +138,10 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   auf/zu, Leertaste = leeren, `N` = neu füllen, `G` = Eimer kippen (Fallrichtung 90° weiter, Umschalt + `G` = zurück),
   `P` = nächstes Preset, `W` = Hindernis-Stift an/aus, `E` = Radierer an/aus, `X` = alle Hindernisse löschen, rechte
   Maustaste ziehen = Hindernis (mit Umschalt-Taste = radieren), `1`–`9`/`0` = Look wählen, `←`/`→` = Look weiterschalten.
-- Noch nicht umgesetzt: Presets speichern/teilen, Export, Desktop-App.
+- **Szenarien und Bild-Export** (Abschnitt „Szenarien und Bild-Export“ unten, gilt für alle Modi): Panel-Abschnitt
+  „Szenarien“ (mitgelieferte Start-Szenarien je Modus, eigene speichern/laden/löschen, als Textcode kopieren und
+  einfügen) und „Bild speichern“ (PNG in Fenstergröße, doppelt, Bildschirm-, 4K- oder Handy-Hintergrundbild; Taste `I`).
+- Noch nicht umgesetzt: Video-Export, Desktop-App, Hindernisse im Szenario.
 - Testen: Die Seite läuft per Doppelklick. Zum automatischen Prüfen (FPS, GPU-Zeit per `EXT_disjoint_timer_query_webgl2`,
   alle Stufen × alle Looks) wurde sie über einen kleinen lokalen Server geladen (`python -m http.server`). Innerhalb
   eines Seitenaufrufs ist die Simulation bei gleichem Ablauf bitgenau wiederholbar (Prüfsumme der Farb-Textur) – gut für
@@ -1188,22 +1192,127 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   `left_click_drag` mit Werkzeug „Hindernis“ zeichnet. Bildschirmfotos entstehen sehr schnell nach der Eingabe –
   ein Tropfen hängt darauf scheinbar noch in der Luft.
 
-## 3D-Fraktal-Flug (in Arbeit: Schritt 4 von 6 fertig)
+## Szenarien und Bild-Export (für alle Modi)
+- Code: Abschnitt `// ---------- Szenarien und Bild-Export ----------` in `index.html` (direkt vor
+  `// ---------- Hauptschleife ----------`), Panel-Abschnitte „Szenarien“ und „Bild speichern“ (zwischen „Bloom“ und
+  „Ton“, in jedem Modus zu sehen). Bearbeitet wird in `.claude/share.js` und `.claude/share-panel.html`, eingesetzt mit
+  `python .claude/splice-share.py` – **nicht direkt in `index.html` ändern**. Änderungen außerhalb (CSS, Tasten,
+  Hauptschleife, `resizeCanvas`, Bloom, Mandelbrot, Partikel): `patch-share5.py`, `patch-share5b.py`, `patch-share5c.py`.
+
+### Szenarien
+- Ein **Szenario** = `{ v: 1, m: Modus-Kennung, n: Name, p: Palette, r: { Regler: Wert }, s: Zustand des Modus }`.
+  Gespeichert werden nur Regler, die vom Standardwert abweichen. **Nicht** gespeichert: der Inhalt der Simulation
+  (gemalte Farbe, einzelne Partikel, Hindernisse) und alles, was Geschmack des Nutzers ist (Lautstärke, Qualität,
+  Flacker-Reduktion, im 3D-Flug Tempo/Trägheit/Maus-Empfindlichkeit).
+- Was ein Modus beiträgt, steht in **`SCENE_MODES`** (ein Eintrag je Modus-Kennung – die Modi selbst bleiben
+  unverändert): `params(state)` (Namen der Regler), `save()` (kleiner Zustand), `load(state, apply)`
+  (`apply(instant)` stellt die Regler um; der Modus ruft es auf, wann es passt).
+  - `fluid`: Fluid-Regler + alle Look-Regler; Zustand: Look.
+  - `mandel`: Fraktal-Regler; Zustand: Julia ja/nein, Bildmitte (BigInt als Dezimaltext), Zoom, Julia-Form. Beim
+    Laden fliegt die Ansicht dorthin (`fracFlyTo`); eine Julia-Form wird festgehalten (`frac.frozen`).
+  - `particles`: alle `part…`/`swarm…`-Regler; Zustand: Anziehen/Abstoßen, gesetzte Kräfte (Typ, Ort, Stärke,
+    Reichweite, Richtung). Beim Laden wird die Liste der Kräfte **ersetzt** (`part.forces = []`, siehe Fallstricke).
+  - `liquid`: alle `liq…`-Regler + Look-Regler; Zustand: Look, Schieben/Ziehen, Hahn (an, Ort).
+  - `flight`: Regler des gewählten Fraktals + `FLY_SHARED` + Licht/Farbe/Blickwinkel; Zustand: Fraktal, Ort und
+    Drehung der Kamera, Baukasten-Startwert. Geladen wird per `flyGo` mit `apply` (Blende, Umstellen im Dunkeln).
+  - Bloom-Regler (`SCENE_BLOOM`) und die Palette gehören zu jedem Szenario.
+- `sceneCapture(name)` → Szenario des aktiven Modus, `sceneApply(sc)` → anwenden (wechselt bei Bedarf den Modus).
+  **Fremde Werte werden entschärft:** Regler nur im Bereich ihres Panel-Reglers (`sceneRange`), Zahlen müssen endlich
+  sein, Kamera innerhalb der Welt, höchstens 12 Kräfte, BigInt nur aus Ziffern (≤ 90 Stellen), unbekannte Regler und
+  alles außer den genannten Feldern wird ignoriert.
+- **Textcode:** `SATISIM1.` + Base64 (URL-sicher) des JSON-Texts (`sceneEncode`/`sceneDecode`). Länge: Fluid ≈ 160,
+  Flüssigkeit ≈ 220, Partikel ≈ 240, 3D-Flug ≈ 300, Mandelbrot ≈ 500 Zeichen (die Koordinaten haben 60 Stellen).
+  „Code kopieren“ legt ihn in die Zwischenablage (klappt das nicht, steht er markiert im Textfeld), „Code einfügen“
+  öffnet ein Textfeld + „Diesen Code laden“. Der Code darf in anderem Text stecken (er wird herausgesucht).
+- **Eigene Szenarien:** im Browser gespeichert (`localStorage`, Schlüssel `satisim.scenes`, Hilfen
+  `loadStore`/`saveStore` aus dem Flug-Abschnitt). Das Panel zeigt die des aktiven Modus; gleicher Name im selben
+  Modus überschreibt; ✕ löscht. Ohne Namen heißt es „Modus N“.
+- **Start-Szenarien** (`SCENE_STARTS`, je Modus): Fluid 4 (Lavalampe, Tintenwirbel, Chrom-Schlieren, Polarlicht),
+  Mandelbrot 4 (Glühende Ränder, drei Julia-Formen), Partikel 4 (Galaxie, Fischschwarm, Windkanal, Zwei Sonnen),
+  Flüssigkeit 4 (Quecksilber-Brunnen, Honigtopf, Schwerelos, Bunte Perlen), 3D-Flug 10 (Korallenfels, Leuchtende Hänge,
+  Kugelgarten, Ringebene, Würfelschacht, Im Schwamm, Pyramidental, Seidenstrudel, Kreisel, Tempelstadt – Kameras dicht
+  über der Oberfläche, gefunden mit `flyFindSpot` und von Hand aus Kontaktbögen ausgesucht).
+- In Textfeldern (`isTyping`) lösen Buchstaben keine Tastenkürzel aus (gemeinsame Tasten-Behandlung und Flug-Tasten).
+
+### Bild-Export
+- **Bedienung:** Knöpfe im Abschnitt „Bild speichern“ (`SHOT_KINDS`): Bildschirmfoto (Fenstergröße), Doppelte Größe,
+  Hintergrundbild (Größe dieses Bildschirms), Hintergrund 4K (3840×2160), Handy-Hintergrund (1440×3120). Taste **`I`**
+  wiederholt die zuletzt gewählte Größe. Ergebnis: PNG-Datei im Download-Ordner
+  (`Satisim-<Modus>-<Breite>x<Höhe>-<Datum>-<Uhrzeit>.png`).
+- **Ablauf** (`shotStart` → `shotFrame` in jedem Bild → `shotGrab` → `shotDeliver` → `shotEnd`): `shot` (früh
+  deklariert, direkt nach `qualityLevel`) hält den Zustand. Erst warten, bis Übergänge fertig sind (Moduswechsel,
+  Look-Wechsel, `mode.shotBusy()`; höchstens 20 s). Dann `shot.active = true`: `resizeCanvas()` stellt die
+  Zeichenfläche auf `shot.size`, und **solange der Export läuft, wird in `frame()` nur noch `render(0)` aufgerufen**
+  (kein `update`, kein `easeParams`, kein Auto-Play, kein `initFramebuffers`) – die Simulation steht exakt still.
+  Ist das Bild fertig (`mode.shotReady()`, sonst nach 2 Bildern), wird es **im selben Augenblick** von der
+  Zeichenfläche in ein 2D-Canvas kopiert (`drawImage`; später hat der Browser den Inhalt schon freigegeben), auf die
+  Ziel-Größe zugeschnitten und als PNG übergeben. Abbruch nach 180 s.
+- **Zwei Arten von Modi:** `freeAspect: true` (Mandelbrot, 3D-Flug) rechnen genau in der Ziel-Größe neu – wirklich
+  schärfer. Die Simulations-Modi (Fluid, Partikel, Flüssigkeit) müssen das Seitenverhältnis des Fensters behalten:
+  gerechnet wird in einem **ganzen Vielfachen der Fenstergröße** (dann bleiben alle Simulations-Puffer exakt, wie sie
+  sind), daraus wird die Bildmitte im Ziel-Seitenverhältnis ausgeschnitten und verkleinert. Dort werden Look,
+  Oberflächen-Baustein, Dichte-Feld (Flüssigkeit) und Glow in der hohen Auflösung gerechnet; die Simulationsdaten
+  selbst (Farb-Textur, Spuren-Bild der Partikel) werden nur vergrößert.
+- **Grenzen:** höchstens `SHOT.PIXELS` 16,6 Mio. Bildpunkte und 8192 je Seite (größere Ziele werden verkleinert).
+- **Anpassungen an gemeinsamen Teilen** (alle mit `shot && shot.active`): Bloom-Kette beginnt um den Vergrößerungs-
+  Faktor kleiner (`grow` in `ensureBloomBuffers` – der Glow ist im Verhältnis so breit wie am Bildschirm); die
+  Flacker-Bremse ruht (sie vergleicht mit dem Bild davor); Mandelbrot rechnet mindestens 1 Fraktal-Bildpunkt pro
+  Bildpunkt (höchstens 20 Mio.); Partikel zeigen die Zeichen der gesetzten Kräfte nicht; der 3D-Flug rechnet mit der
+  höchsten Stufe (`flyQuality()`: 320 Schritte, 16-fache Kantenglättung), Standbild bis `SHOT.PIXELS`, dreifaches
+  Zeit-Budget pro Bild, ohne Überblenden.
+- **Gemessen** (1920×1080-Fenster, RTX 3050 Laptop; Zeit vom Klick bis zur fertigen Datei): Fluid/Partikel/
+  Flüssigkeit/Mandelbrot 0,1–0,4 s für 3840×2160; 3D-Flug 0,5–1,1 s (Übersicht bzw. Nahaufnahme, 16-fach geglättet).
+  Dateien 2–13 MB. Danach haben Zeichenfläche und alle Puffer wieder ihre alte Größe; die Farb-Textur des
+  Fluid-Modus ist während des Exports bitgenau unverändert (Prüfsumme). Alle Modi danach 60 FPS, GL-Fehler 0.
+
+### Fallstricke
+- **`shot` muss vor dem ersten `resizeCanvas()` deklariert sein** (steht deshalb oben bei `qualityLevel`, nicht im
+  Abschnitt selbst).
+- **Liste der Partikel-Kräfte nie länger als `MAX_FORCES`:** Beim Laden eines Szenarios die alte Liste leeren, nicht
+  nur „ausblenden“ – sonst schreibt `updateForces` über das Ende der Uniform-Felder hinaus (so passiert: RangeError).
+- **Mitten in einem Übergang exportieren ergibt ein dunkles oder halb verwandeltes Bild** (so passiert bei der
+  Verwandlung Julia → Mandelbrot) → `shotBusy()` im Modus angeben. Ein neuer Modus mit eigenen Blenden braucht das auch.
+- Nur das, was in die WebGL-Zeichenfläche gezeichnet wird, landet im Bild (Hindernisse ja; Cursor, Hahn-Zeichen und
+  Panel nicht).
+- Ein neuer Regler, der zu einem Szenario gehören soll, braucht einen Panel-Regler (`bindSlider`) – sonst kennt
+  `sceneRange` seinen Bereich nicht und er wird beim Laden übergangen (Ausnahmen stehen dort: `bloomOn`, `swarm`,
+  `partColor`).
+- Ein neuer Modus braucht einen Eintrag in `SCENE_MODES` (sonst stürzt `sceneCapture` ab) und, falls gewünscht, in
+  `SCENE_STARTS`.
+
+### Grenzen und Offenes
+- **Nicht geprüft:** das echte Herunterladen der Datei und das echte Kopieren in die Zwischenablage (im Test wurde
+  die fertige PNG-Datei abgefangen und nachgemessen: Größe, Helligkeit, Kontrast; der Code-Text wurde hin und zurück
+  geprüft). Beides sind Standard-Funktionen des Browsers, aber ein Mensch sollte es einmal ausprobieren. Über
+  `file://` (Doppelklick) erlauben manche Browser das Kopieren nicht – dann steht der Code markiert im Textfeld.
+- Hindernisse (Fluid, Flüssigkeit) und der Inhalt der Simulation gehören nicht zum Szenario.
+- Partikel-Modus: Das exportierte Bild ist ein vergrößertes Spuren-Bild – größer, aber nicht feiner aufgelöst.
+- Kein Video-Export. Kein Bild größer als 16,6 Mio. Bildpunkte (Kacheln wären möglich: `uOffset` im Flug-Shader ist
+  dafür vorbereitet, wird aber nicht benutzt).
+
+### Testen
+- `.claude/run-s5.js` (vorher `test-harness.js` und `p-harness.js` laden): `window.__opt = { parts: ['shots',
+  'scenes', 'codes'], kinds: [0, 1, 3, 4], modes: […], level }` → `window.__res`. Bilder werden dabei **nicht**
+  heruntergeladen (`shotDeliver` ist ersetzt). Dauert mit allem ≈ 1,5 min → nach dem Start mit `wait` warten.
+- `.claude/s-tools.js`: `__s5.sheet(szenarien, spalten, bilder)` lädt Szenarien nacheinander und zeigt sie als
+  Kontaktbogen in EINEM Bildschirmfoto (läuft > 45 s → im Hintergrund starten, dann warten).
+
+## 3D-Fraktal-Flug (in Arbeit: Schritt 5 von 6 fertig)
 - **Ausbauplan:** 1 Kern (Raymarching, Distanzschätzer Mandelbulb, Licht, Farben, einfache Flugsteuerung) ✅ ·
   2 Leistung und Genauigkeit (Auflösung regelt sich beim Fliegen, im Stillstand verfeinern, Kamera kann nicht in die
   Oberfläche, Grenze der 32-Bit-Zahlen, Extremfälle) ✅ · 3 weitere Fraktale (Mandelbox, Menger-Schwamm,
   Sierpinski-Pyramide, 3D-Julia) und Faltungs-Baukasten ✅ · 4 Bedienung (Mausrad = Tempo, Rollen, Bremsen, Regler je
-  Fraktal, Zufalls-Knopf, Kamera merken) ✅ · 5 Presets, Textcode, Screenshot/Hintergrundbild (für ALLE Modi) ⬜ · 6 Ton,
-  Kameraflug als Bildschirmschoner, Flacker-Reduktion, Panel ⬜.
-- **Nächster Schritt: 5** – Szenarien (Fraktal, Regler, Kamera, Palette) speichern, laden und als Textcode teilen,
-  kuratierte Start-Szenarien, hochauflösendes Bild / Hintergrundbild. Wunsch des Nutzers: Speichern und Bild-Export
-  sollen in **allen** Modi funktionieren (Fluid, Mandelbrot, Partikel, Flüssigkeit, 3D-Flug) – also als gemeinsamer Teil
-  bauen, nicht im Flug-Abschnitt. Für den Flug gibt es dafür schon: `flyGo({ kind, pos, quat, apply })` (Sprung mit
-  Umstellen im Dunkeln), `uOffset` im Shader (Kacheln), `loadStore`/`saveStore` (Speichern im Browser).
+  Fraktal, Zufalls-Knopf, Kamera merken) ✅ · 5 Szenarien, Textcode, Bild-Export – als gemeinsamer Teil für ALLE Modi
+  (eigener Abschnitt „Szenarien und Bild-Export“ direkt vor diesem) ✅ · 6 Ton, Kameraflug als Bildschirmschoner,
+  Flacker-Reduktion, Panel ⬜.
+- **Nächster Schritt: 6** – eigener Klang (Pentatonik; Töne passend zu Tempo und Nähe zur Oberfläche), Kameraflug
+  als Auto-Play/Bildschirmschoner (sanfte Fahrt zu schönen Stellen – `flyFindSpot` gibt es schon, siehe unten;
+  `flyAutoplay` ist bisher nur ein Rundflug), „Flackern reduzieren“ muss greifen (Blenden bei Sprüngen, Tempo des
+  Kameraflugs), Panel-Feinschliff.
 - Code: Abschnitt `// ---------- 3D-Fraktal-Flug ----------` in `index.html` (direkt vor `// ----- Moduswechsel -----`),
   Konstanten in `FLY`, Aufwand je Qualitätsstufe in `FLY_LEVELS`, Fraktale in `FLY_KINDS`, Zustand in `fly`,
   Modus-Objekt `id: 'flight'`. Commits: `82b4833` (Schritt 1), `2c47ead` (Schritt 2), `ca15f07` (Schritt 3),
-  Schritt 4 direkt danach.
+  `a24097a` (Schritt 4), Schritt 5 direkt danach.
 
 ### Technik (Schritt 1: Kern)
 - **Raymarching:** Für jeden Bildpunkt läuft ein Strahl von der Kamera los. An jeder Stelle sagt der
@@ -1370,6 +1479,26 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   echte Eingaben in der Vorschau (Mausrad, `K`, `G`, `7`). In Echtzeit (1523×1205, alle 6 Stufen, Mandelbulb und
   Baukasten, nah an der Oberfläche): 60 FPS, GPU 2,9–10,1 ms, längstes Bild 17–33 ms, keine GL-Fehler.
 
+### Anbindung an Szenarien und Bild-Export, Stellen-Suche (Schritt 5)
+- **Szenario des Flugs** (`SCENE_MODES.flight` im gemeinsamen Abschnitt): Fraktal, Kamera (Ort, Quaternion),
+  Baukasten-Startwert, dazu die Regler des gewählten Fraktals, `FLY_SHARED`, Licht/Farbe und Blickwinkel. Geladen
+  wird über `flyGo({ kind, pos, quat, apply })`. 10 Start-Szenarien in `SCENE_STARTS.flight`.
+- **Bild-Export:** `freeAspect: true` (jedes Seitenverhältnis wird direkt gerechnet), `shotBusy()` (wartet auf
+  Sprünge), `shotReady()` (alle Durchgänge der Kantenglättung fertig), `shotProgress()`. **`flyQuality()`** ersetzt
+  überall `FLY_LEVELS[qualityLevel]`: beim Export gilt die höchste Stufe. Das Standbild darf dann bis `SHOT.PIXELS`
+  groß werden, die Streifen sind dreimal so groß, es wird nicht übergeblendet; `flyImageKey` enthält, ob gerade
+  exportiert wird.
+- **Probe-Bild `flyViewProbe(pos, quat, scale)`** (32×32, liest den G-Buffer): `cover`, `edges`, `bumps`, `light`
+  (Erklärung bei „Zufalls-Form“). `flyKitProbe()` = dasselbe von der Start-Kamera aus.
+- **Stellen-Suche `flyFindSpot(level, tries)`** → `{ pos, quat, dist, look }` oder `null`: sucht eine Kamera im
+  Abstand `level` dicht über der Oberfläche, die flach über sie hinwegschaut. Je Versuch: zufälliger Punkt auf der
+  Hüllkugel, Richtung auf einen zufälligen Punkt im Inneren; das Herantasten rechnet **der Shader** (`uTask = 2`,
+  Funktion `seek()`: ein einzelner Strahl, der anhält, sobald der Abstand auf `uLevel` gefallen ist; Ergebnis =
+  Richtung von der Oberfläche weg + zurückgelegte Strecke, gelesen aus dem 1×1-Ziel des Messfühlers). Kamera:
+  Blick entlang der Oberfläche in Flugrichtung, 0,2–0,5 rad zur Oberfläche geneigt, „oben“ = von der Oberfläche weg.
+  Von `tries` Versuchen gewinnt das beste Probe-Bild (Bild zu ca. 80 % gefüllt, uneben, vor allem hell genug).
+  Kosten: 6–17 ms für 6 Versuche (Mandelbulb 11 ms, Mandelbox/Menger/Julia/Baukasten 16–17 ms, Sierpinski 6,5 ms).
+
 ### Messwerte (1920×1080, 60-Hz-Vorschau, NVIDIA RTX 3050 Laptop; Flug = seitwärts fliegen, Stillstand = danach anhalten)
 | Stufe | Flug: Übersicht | im Tal (Abstand 0,1) | nah (0,02) | sehr nah (0,0005) | FPS im Flug | Standbild | scharf nach | fertig geglättet nach |
 |---|---|---|---|---|---|---|---|---|
@@ -1444,6 +1573,8 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Dann Bilder direkt rechnen (`__p.one`, `__f.move`, `__f.still`).
 
 ### Ausprobiert und verworfen
+- **Stellen-Suche mit dem Messfühler in einer JavaScript-Schleife** (bis 70 Einzelmessungen pro Versuch, jede mit
+  direktem Zurücklesen): 0,6 s pro Suche – das Bild blieb sichtbar stehen → Herantasten im Shader (11 ms).
 - **Zufalls-Form ohne Prüfung der Unebenheit** (nur Füllgrad und Kanten): etwa jede dritte Form war ein glatter
   Quader (Spiegeln ohne Drehung), ein gestreifter Block (Kasten ohne Kugel-Faltung) oder dunkles Gestrüpp
   (Menger mit Kugel-Faltung) → Regeln dafür und die Messwerte `bumps`/`light`.
@@ -1476,6 +1607,6 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   `run-f2.js` (Stufen: Flug und Stillstand in Echtzeit; Extremfälle; Ersatz-Regelung → `window.__res`,
   `window.__opt = { parts, levels }`), `run-f3.js` (jede Form: Kosten, Regler-Anschläge, Echtzeit-Bildrate;
   `parts: ['cost', 'extremes', 'fps']`), `run-f1b.js` (Moduswechsel und Tasten in Echtzeit → `window.__res2`),
-  `run-f4.js` (Bedienung aus Schritt 4), `run-fq.js` (Kurztest in Echtzeit auf allen Stufen: FPS, GPU-Zeit,
+  `run-f4.js` (Bedienung aus Schritt 4), `run-s5.js` (Szenarien und Bild-Export, alle Modi), `run-fq.js` (Kurztest in Echtzeit auf allen Stufen: FPS, GPU-Zeit,
   Standbild, ungültige Werte; `window.__opt = { kinds, levels }` – nach jeder Änderung laufen lassen).
   Alte Fassung zum Vergleich: `.claude/pre-fly.html`.

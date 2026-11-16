@@ -140,6 +140,19 @@
   body.mode-flight #cursor { border-width: 1.5px; box-shadow: 0 0 8px var(--brush, #fff); }
   body.mode-flight.fly-locked #cursor { opacity: .55; }
   .btn.wide { width: 100%; margin-top: 8px; }     /* Knopf über die ganze Breite des Panels */
+  /* Szenarien: Zeile aus Knopf/Textfeld und kleinem Knopf daneben; Textfelder im Stil des Panels */
+  .scene-row { display: flex; gap: 8px; margin-top: 8px; }
+  .scene-row > :first-child { flex: 1; min-width: 0; }
+  .scene-row .btn.del { flex: none; width: 34px; justify-content: center; padding: 8px 0; opacity: .7; }
+  #sceneName, #sceneCode {
+    box-sizing: border-box; width: 100%; padding: 8px 10px; border-radius: 10px; font: inherit; font-size: 12px;
+    color: inherit; background: rgba(255,255,255,.06); border: 1px solid var(--line); outline: none;
+  }
+  #sceneName:focus, #sceneCode:focus { border-color: var(--a1); }
+  #sceneCode { display: block; margin-top: 8px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; word-break: break-all; }
+  #sceneCodeBox.off { display: none; }
+  #sceneSave { flex: none; }
+  .btn:disabled { opacity: .45; pointer-events: none; }
   #flyCams .btn.empty span { opacity: .5; }      /* leerer Kamera-Platz */
   #flyKinds .btn { padding: 8px 8px; font-size: 11.5px; }
   .fly-block.off { display: none; }              /* Teile des Panels, die nur zu einem der Fraktale gehören */
@@ -839,7 +852,32 @@
       </div>
     </div>
   </div>
-  <div class="sec">
+  <!-- Szenarien und Bild-Export -->
+  <div class="sec" id="sceneSection">
+    <h3>Szenarien</h3>
+    <div id="sceneStarts" class="grid2"></div>
+    <div class="sub" id="sceneOwnHelp"></div>
+    <div id="sceneOwn"></div>
+    <div class="scene-row" style="margin-top:10px">
+      <input type="text" id="sceneName" maxlength="40" placeholder="Name für dieses Szenario" autocomplete="off" spellcheck="false">
+      <button class="btn" id="sceneSave"><span>Speichern</span></button>
+    </div>
+    <div class="grid2" style="margin-top:8px">
+      <button class="btn" id="sceneCopy"><span>Code kopieren</span></button>
+      <button class="btn" id="scenePaste"><span>Code einfügen</span></button>
+    </div>
+    <div id="sceneCodeBox" class="off">
+      <textarea id="sceneCode" rows="4" placeholder="Code hier einfügen (beginnt mit SATISIM1.)" spellcheck="false"></textarea>
+      <button class="btn wide" id="sceneLoad"><span>Diesen Code laden</span></button>
+    </div>
+    <div class="sub">Ein Szenario merkt sich Modus, Palette, Regler, Look und – je nach Modus – Kamera, Ausschnitt oder gesetzte Kräfte. Der Code ist ein kurzer Text zum Weitergeben.</div>
+  </div>
+  <div class="sec" id="shotSection">
+    <h3>Bild speichern</h3>
+    <div id="shotKinds" class="grid2"></div>
+    <div class="sub" id="shotInfo"></div>
+  </div>
+  <div class="sec" id="audioSection">
     <h3>Ton</h3>
     <label class="switch-row" id="sfxSwitchRow" style="margin-top:0">Ton (Klänge beim Malen) <span class="switch on" id="sfxSwitch"></span></label>
     <label class="switch-row" id="musicSwitchRow">Musik (Lofi) <span class="switch on" id="musicSwitch"></span></label>
@@ -868,7 +906,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span data-mode="fluid mandel particles liquid"><kbd>A</kbd>Auto-Play</span><span data-mode="flight"><kbd>P</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid liquid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid liquid"><kbd>E</kbd>Radierer</span><span data-mode="fluid liquid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid liquid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid liquid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>R</kbd>Schieben ↔ Ziehen</span><span data-mode="liquid"><kbd>Klick</kbd>Tropfen + Spritzer</span><span data-mode="liquid"><kbd>T</kbd>Hahn</span><span data-mode="liquid"><kbd>G</kbd>Kippen</span><span data-mode="liquid"><kbd>P</kbd>Preset</span><span data-mode="liquid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="liquid"><kbd>N</kbd>Neu füllen</span><span data-mode="flight"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>Fliegen</span><span data-mode="flight"><kbd>Leertaste</kbd><kbd>C</kbd>Hoch / runter</span><span data-mode="flight"><kbd>Umschalt</kbd>Schneller</span><span data-mode="flight"><kbd>B</kbd>Bremsen</span><span data-mode="flight"><kbd>Mausrad</kbd>Tempo</span><span data-mode="flight"><kbd>Y</kbd><kbd>X</kbd>Rollen</span><span data-mode="flight"><kbd>G</kbd>Horizont</span><span data-mode="flight"><kbd>Klick</kbd>Maus fangen</span><span data-mode="flight"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd>Umsehen</span><span data-mode="flight"><kbd>R</kbd>Zum Start</span><span data-mode="flight"><kbd>1</kbd>–<kbd>6</kbd>Fraktal</span><span data-mode="flight"><kbd>N</kbd>Zufalls-Form</span><span data-mode="flight"><kbd>K</kbd>Kamera merken</span><span data-mode="flight"><kbd>7</kbd>–<kbd>0</kbd>Kamera anspringen</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span data-mode="fluid mandel particles liquid"><kbd>A</kbd>Auto-Play</span><span data-mode="flight"><kbd>P</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span><kbd>I</kbd>Bild speichern</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid liquid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid liquid"><kbd>E</kbd>Radierer</span><span data-mode="fluid liquid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid liquid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid liquid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>R</kbd>Schieben ↔ Ziehen</span><span data-mode="liquid"><kbd>Klick</kbd>Tropfen + Spritzer</span><span data-mode="liquid"><kbd>T</kbd>Hahn</span><span data-mode="liquid"><kbd>G</kbd>Kippen</span><span data-mode="liquid"><kbd>P</kbd>Preset</span><span data-mode="liquid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="liquid"><kbd>N</kbd>Neu füllen</span><span data-mode="flight"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>Fliegen</span><span data-mode="flight"><kbd>Leertaste</kbd><kbd>C</kbd>Hoch / runter</span><span data-mode="flight"><kbd>Umschalt</kbd>Schneller</span><span data-mode="flight"><kbd>B</kbd>Bremsen</span><span data-mode="flight"><kbd>Mausrad</kbd>Tempo</span><span data-mode="flight"><kbd>Y</kbd><kbd>X</kbd>Rollen</span><span data-mode="flight"><kbd>G</kbd>Horizont</span><span data-mode="flight"><kbd>Klick</kbd>Maus fangen</span><span data-mode="flight"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd>Umsehen</span><span data-mode="flight"><kbd>R</kbd>Zum Start</span><span data-mode="flight"><kbd>1</kbd>–<kbd>6</kbd>Fraktal</span><span data-mode="flight"><kbd>N</kbd>Zufalls-Form</span><span data-mode="flight"><kbd>K</kbd>Kamera merken</span><span data-mode="flight"><kbd>7</kbd>–<kbd>0</kbd>Kamera anspringen</span>
   </div>
 </div>
 
@@ -924,6 +962,9 @@ const QUALITY = [
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
+// Läuft gerade ein Bild-Export? (null = nein; sonst { size: [Breite, Höhe] der Zeichenfläche, active, … } –
+// siehe Abschnitt "Szenarien und Bild-Export". Solange active gilt, hat die Zeichenfläche diese Größe.)
+let shot = null;
 
 // Modi (Fluid, Mandelbrot, Partikel, Flüssigkeit). Die Liste wird weiter unten gefüllt – siehe Abschnitt "Modi".
 const MODES = [];
@@ -2195,8 +2236,9 @@ function initFramebuffers() {
 
 function resizeCanvas() {
   const dpr = Math.min(window.devicePixelRatio || 1, QUALITY[qualityLevel].dpr);
-  const w = Math.floor(canvas.clientWidth * dpr);
-  const h = Math.floor(canvas.clientHeight * dpr);
+  const exporting = shot && shot.active;           // Bild-Export: Zeichenfläche hat so lange die Export-Größe
+  const w = exporting ? shot.size[0] : Math.floor(canvas.clientWidth * dpr);
+  const h = exporting ? shot.size[1] : Math.floor(canvas.clientHeight * dpr);
   if (canvas.width !== w || canvas.height !== h) {
     canvas.width = w;
     canvas.height = h;
@@ -2633,7 +2675,10 @@ function ensureBloomBuffers() {
   scene = createFBO(w, h, gl.RGBA16F, gl.RGBA);
   bloomLevels = [];
   bloomUpLevels = [];
-  let bw = Math.floor(w / q.bloomDiv), bh = Math.floor(h / q.bloomDiv);
+  // (Bild-Export: Das Bild ist ein Vielfaches größer als sonst. Die Weichzeichner-Kette beginnt dann um denselben
+  // Faktor kleiner – so sind ihre Bilder so groß wie am Bildschirm, und der Glow ist im Verhältnis genauso breit.)
+  const grow = shot && shot.active ? Math.max(1, Math.round(h / shot.normal[1])) : 1;
+  let bw = Math.floor(w / (q.bloomDiv * grow)), bh = Math.floor(h / (q.bloomDiv * grow));
   while (bloomLevels.length < q.bloomLevels && Math.min(bw, bh) >= 4) {
     bloomLevels.push(createFBO(bw, bh, gl.RGBA16F, gl.RGBA));
     bw = Math.floor(bw / 2); bh = Math.floor(bh / 2);
@@ -2768,7 +2813,7 @@ function render(dt) {
   }
   // ("Flackern reduzieren" nimmt den Glow etwas zurück – pulsierender Schein ist auch eine Art Flackern)
   const bloomAmount = PARAMS.bloomIntensity.current * PARAMS.bloomOn.current * (1 - 0.35 * calm) * share;
-  const useCalm = calm > 0.02;
+  const useCalm = calm > 0.02 && !(shot && shot.active);   // (nicht beim Bild-Export: sie vergleicht mit dem Bild davor)
   if (bloomAmount > 0.002 || useCalm || fading) ensureBloomBuffers();
   const useBloom = bloomAmount > 0.002 && bloomLevels.length > 0;
   // Bloom, Flacker-Reduktion und Überblendung arbeiten mit dem fertigen Bild → dann wird in die Szenen-Textur gezeichnet
@@ -2943,6 +2988,8 @@ function clearCanvas() {
 
 // Tasten: zuerst die, die in jedem Modus gelten – alle anderen gehen an den aktiven Modus
 window.addEventListener('keydown', e => {
+  if (isTyping(e.target)) return;                  // im Textfeld (Name, Code) sind Buchstaben keine Tastenkürzel
+  if (shot) { e.preventDefault(); return; }        // solange ein Bild gespeichert wird, ruht die Bedienung
   if (e.code === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey) e.preventDefault();   // Tab wechselt den Modus, nicht den Fokus
   // [ und ] brauchen auf deutschen Tastaturen AltGr (zählt als Strg+Alt) – deshalb vor der Sperre für Tastenkombinationen prüfen
   const bracket = e.key === '[' ? -1 : e.key === ']' ? 1 : 0;
@@ -2956,6 +3003,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyF') setFpsVisible(!fpsVisible);
   if (e.code === 'KeyQ') cycleQuality();
   if (e.code === 'KeyM') setMuted(!audio.muted);
+  if (e.code === 'KeyI') shotStart();              // Bild speichern (zuletzt gewählte Größe)
   MODES[modeIndex].key(e, bracket);
 });
 // Tasten für die Looks (in jedem Modus, der Looks benutzt):
@@ -3812,6 +3860,8 @@ updateAudioInfo();
 //   looks (optional)       Look-Stand, falls der Modus die Looks benutzt (siehe makeLooks) – dann gelten Look-Knöpfe
 //                          und Look-Tasten für ihn
 //   autoplayKey (optional) Taste für Auto-Play in diesem Modus (Standard: A; der 3D-Flug braucht A zum Fliegen → P)
+//   freeAspect, shotReady(), shotProgress() (optional)   für den Bild-Export – siehe "Szenarien und Bild-Export"
+// Was ein Modus zu einem gespeicherten Szenario beiträgt, steht dort in SCENE_MODES.
 // Neuer Modus = ein Objekt in MODES + Panel-Abschnitte mit data-mode="id". Ein Modus, der nicht zu sehen ist,
 // kostet nichts (er wird weder gerechnet noch gezeichnet) und behält seinen Zustand.
 
@@ -4214,7 +4264,9 @@ const miniStat = createFBO(1, 1, gl.R32F, gl.RED, gl.FLOAT, gl.NEAREST);
 const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 function ensureFracBuffers() {
   const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
-  const scale = Math.min(QUALITY[qualityLevel].fscale, maxTextureSize / Math.max(W, H));
+  let scale = Math.min(QUALITY[qualityLevel].fscale, maxTextureSize / Math.max(W, H));
+  // (Bild-Export: mindestens ein Fraktal-Bildpunkt pro Bildpunkt, feiner nur, soweit der Speicher reicht)
+  if (shot && shot.active) scale = Math.min(Math.max(1, Math.min(QUALITY[qualityLevel].fscale, Math.sqrt(2e7 / (W * H)))), maxTextureSize / Math.max(W, H));
   const w = Math.max(1, Math.round(W * scale)), h = Math.max(1, Math.round(H * scale));
   const key = `${w}x${h}:${W}x${H}`;
   if (key === fracBufKey) return;
@@ -4759,6 +4811,8 @@ MODES.push({
   draw: drawFractal,
   bloomShare: () => 1,
   idle: () => !frac.busy,                                    // Bild steht still → es wird gerade nichts Teures gerechnet
+  freeAspect: true,                                          // Bild-Export: kann jedes Seitenverhältnis direkt rechnen
+  shotBusy: () => !!frac.flight || (frac.k > 0 && frac.k < 1),   // … wartet aber, bis Flug und Verwandlung fertig sind
   autoplayStart() { frac.hold = 0; frac.frozen = false; frac.theta = Math.atan2(fxNum(frac.cT[1]), fxNum(frac.cT[0])); },
   autoplayStop() { frac.flight = null; },
   autoplay: fracAutoplay,
@@ -5801,6 +5855,7 @@ function drawParticles(target, dt) {
   gl.uniform1i(u.uTrail, t.attach(0));
   gl.uniform1f(u.uExposure, PARAMS.partGlow.current);
   bindForces(u);
+  if (shot && shot.active) gl.uniform1i(u.uCount, 0);        // Bild-Export: ohne die Zeichen der gesetzten Kräfte
   bindBlasts(u);
   gl.uniform1f(u.uCalm, PARAMS.calm.current);
   gl.uniform1i(u.uSel, part.forces.indexOf(part.sel));
@@ -7809,6 +7864,8 @@ const FLY_LEVELS = [
   { move: 1,    still: 1,    aa: 12, steps: 260, shadow: 20, ao: 5 },
   { move: 1,    still: 1,    aa: 16, steps: 320, shadow: 24, ao: 5 },
 ];
+// Aufwand, der gerade gilt: die gewählte Qualitätsstufe – beim Bild-Export immer die höchste (dort zählt die Zeit nicht)
+const flyQuality = () => FLY_LEVELS[shot && shot.active ? FLY_LEVELS.length - 1 : qualityLevel];
 
 // ----- kleine Rechenhilfen: Vektoren [x, y, z] und Drehungen -----
 const vAdd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -8185,7 +8242,9 @@ const flyHead = `#version 300 es
   precision highp int;
   layout(location = 0) out vec4 outA;   // Anteile der Palettenfarben 0–3
   layout(location = 1) out vec4 outB;   // x = Anteil der Palettenfarbe 4, y = Anteil Weiß, z = Entfernung, w = 1
-  uniform int uTask;            // 0 = Bild rechnen, 1 = Messfühler (Abstand und Richtung zur Oberfläche an der Kamera)
+  uniform int uTask;            // 0 = Bild rechnen, 1 = Messfühler (Abstand und Richtung zur Oberfläche an der Kamera),
+                                // 2 = Stellen-Suche (von der Kamera geradeaus bis dicht vor die Oberfläche, siehe seek)
+  uniform float uLevel;         // Stellen-Suche: bei diesem Abstand zur Oberfläche anhalten
   uniform vec3 uCam;            // Ort der Kamera
   uniform vec3 uFwd, uRight, uUp;   // Blickrichtung und Bildachsen (uRight/uUp: halbe Bildbreite/-höhe in 1 Einheit Entfernung)
   uniform vec2 uRes;            // Größe des ganzen gerechneten Bildes in Bildpunkten
@@ -8284,8 +8343,28 @@ const flyMain = `
     outB = vec4(0.0);
   }
 
+  // Stellen-Suche: ein einzelner "Strahl" von der Kamera in Blickrichtung, der anhält, sobald der Abstand zur
+  // Oberfläche auf uLevel gefallen ist. Ergebnis: die Richtung von der Oberfläche weg dort (xyz, Länge 1) und die
+  // zurückgelegte Strecke (w; −1 = nichts Brauchbares gefunden: vorbeigeflogen oder im Inneren gelandet).
+  void seek () {
+    gIter = uIter; gEps = 0.0;
+    float t = 0.0, d = 0.0;
+    bool ok = false;
+    for (int i = 0; i < 96; i++) {
+      d = de(uCam + uFwd * t);
+      if (d < uLevel * 1.15) { ok = d > 0.0; break; }
+      t += d - uLevel;
+      if (t > uFar) break;
+    }
+    vec3 g = gradient(uCam + uFwd * t, max(abs(d) * 0.1, uEpsMin * 4.0));
+    ok = ok && dot(g, g) > 0.0;
+    outA = vec4(ok ? normalize(g) : vec3(0.0, 1.0, 0.0), ok ? t : -1.0);
+    outB = vec4(0.0);
+  }
+
   void main () {
     if (uTask == 1) { probe(); return; }
+    if (uTask == 2) { seek(); return; }
     // Strahl durch diesen Bildpunkt
     vec2 ndc = (gl_FragCoord.xy + uOffset + uJitter) / uRes * 2.0 - 1.0;
     vec3 rd = normalize(uFwd + ndc.x * uRight + ndc.y * uUp);
@@ -8521,12 +8600,13 @@ function flyTarget(w, h) {
   };
 }
 function ensureFlyBuffers() {
-  const f = fly, W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, L = FLY_LEVELS[qualityLevel];
+  const f = fly, W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, L = flyQuality();
   const size = (scale, maxPixels) => {
     const s = Math.min(scale, maxTextureSize / Math.max(W, H), Math.sqrt(maxPixels / (W * H)));
     return [Math.max(8, Math.round(W * s)), Math.max(8, Math.round(H * s))];
   };
-  const [gw, gh] = size(L.move, FLY.MOVE_PIXELS), [aw, ah] = size(L.still, FLY.STILL_PIXELS);
+  // (Bild-Export: das Standbild darf so groß werden wie das Export-Bild)
+  const [gw, gh] = size(L.move, FLY.MOVE_PIXELS), [aw, ah] = size(L.still, shot && shot.active ? SHOT.PIXELS : FLY.STILL_PIXELS);
   // (neue Puffer sind leer → imageKey löschen, damit das nächste Bild auf jeden Fall neu gerechnet wird)
   if (!f.g || f.g.w !== gw || f.g.h !== gh) { if (f.g) f.g.free(); f.g = flyTarget(gw, gh); f.imageKey = ''; }
   if (!f.acc || f.acc.w !== aw || f.acc.h !== ah) { if (f.acc) f.acc.free(); f.acc = flyTarget(aw, ah); f.imageKey = ''; }
@@ -8549,7 +8629,7 @@ const flyClear = () => Math.max(0, fly.dist - vLen(vSub(fly.pos, fly.probePos)))
 
 // still = true: Standbild (alle Schritte pro Strahl), sonst Bewegung (weniger Schritte, siehe FLY.MOVE_STEPS)
 function flyUniforms(u, w, h, task, still) {
-  const f = fly, kind = FLY_KINDS[f.kind], L = FLY_LEVELS[qualityLevel];
+  const f = fly, kind = FLY_KINDS[f.kind], L = flyQuality();
   const tanHalf = flyTanHalf();
   const pixel = 2 * tanHalf / h;                             // Größe eines Bildpunkts in 1 Einheit Entfernung
   const fogDist = FLY.FOG * f.scale / Math.max(PARAMS.flyFog.current, 0.01);
@@ -8740,7 +8820,7 @@ function flyImageKey() {
   return [f.kind, f.pos.join(), f.quat.join(), f.scale.toPrecision(5), FLY_KINDS[f.kind].params.map(k => r(P[k].current)).join(),
     Math.round(P.flyIter.current), r(P.flyFog.current), r(P.flyGlow.current), r(P.flyShadow.current), r(P.flyColor.current),
     r(P.flyHue.current), r(P.flyFov.current),
-    qualityLevel, f.g.w, f.acc.w, f.acc.h].join('|');
+    qualityLevel, f.g.w, f.acc.w, f.acc.h, shot && shot.active ? 1 : 0].join('|');
 }
 // Verschiebung der Strahlen für den k-ten Durchgang der Kantenglättung (−0,5 … 0,5 Bildpunkte). Die "Halton-Folge"
 // verteilt die Punkte gleichmäßig über den Bildpunkt, egal nach wie vielen Durchgängen man aufhört.
@@ -8751,14 +8831,15 @@ function flyJitter(k) {
 // Stillstand: einen Streifen des Standbilds rechnen. Durchgang 1 füllt das Bild, jeder weitere wird mit dem Anteil
 // 1/k hineingemischt – danach steht im Puffer genau der Mittelwert aller k Durchgänge.
 function flyRefine(e) {
-  const f = fly, R = f.ref, A = f.acc, aa = FLY_LEVELS[qualityLevel].aa;
+  const f = fly, R = f.ref, A = f.acc, aa = flyQuality().aa;
   if (R.n >= aa) return;
   const k = R.n + 1;
   // so viele Zeilen, wie in die erlaubte Zeit passen (geschätzt aus der zuletzt gemessenen Rechenzeit pro Bildpunkt)
   let rows;
   if (flyTimer.on) {
     const cost = Math.max(f.costStill, f.costMove * 0.7);
-    rows = cost > 0 ? Math.floor(flyBudget() * 0.85 / cost / A.w) : Math.ceil(A.h / 12);
+    // (Bild-Export: dreimal so große Streifen – flüssige Bedienung ist dort egal, es soll schnell fertig werden)
+    rows = cost > 0 ? Math.floor(flyBudget() * (shot && shot.active ? 3 : 1) * 0.85 / cost / A.w) : Math.ceil(A.h / 12);
     if (R.rows) rows = Math.min(rows, Math.ceil(R.rows * 1.6));   // nur allmählich größer (die Schätzung kann daneben liegen)
   } else rows = Math.round(A.h * f.pace.rows);
   R.rows = rows = clampNum(rows, 4, A.h);
@@ -8837,7 +8918,7 @@ function flyPointerUp(e) {
 }
 // Gedrückt gehaltene Tasten (die gemeinsame Tasten-Behandlung meldet nur das erste Drücken, nicht das Loslassen)
 window.addEventListener('keydown', e => {
-  if (MODES[modeIndex].id !== 'flight' || e.ctrlKey || e.altKey || e.metaKey || !FLY_MOVE_KEYS.has(e.code)) return;
+  if (MODES[modeIndex].id !== 'flight' || e.ctrlKey || e.altKey || e.metaKey || !FLY_MOVE_KEYS.has(e.code) || isTyping(e.target) || shot) return;
   const arrow = e.code.startsWith('Arrow');
   if (arrow && e.target instanceof HTMLInputElement) return;   // Pfeiltasten gehören dort dem Regler
   if (arrow || e.code === 'Space') e.preventDefault();
@@ -8902,18 +8983,19 @@ function setFlyKit(i, silent) {
   updateFlyUi();
   if (!silent) toast('Baukasten: ' + FLY_KIT[i].name);
 }
-// Probe-Bild für den Zufalls-Knopf: Die Form wird winzig klein (32 × 32 Bildpunkte) von der Start-Kamera aus gerechnet.
+// Probe-Bild: Die Form wird winzig klein (32 × 32 Bildpunkte) gerechnet – von der Start-Kamera aus (Zufalls-Knopf)
+// oder von einer beliebigen Kamera (pos, quat; scale = ihr Abstand zur Oberfläche: Maßstab für Nebel und Licht).
 // Daraus vier Zahlen: cover = Anteil der Bildpunkte, die die Form treffen (0 = nichts zu sehen, 1 = Bild ganz voll),
 // edges = Anteil der Nachbar-Paare mit einem Sprung in der Entfernung (viel = zerfällt zu Staub),
 // bumps = Anteil der getroffenen Stellen, an denen die Oberfläche uneben ist (0 = glatter Klotz oder runder Klumpen),
 // light = mittlere Helligkeit der getroffenen Stellen (sehr dunkel = fast unsichtbares Gestrüpp).
-function flyKitProbe() {
+function flyViewProbe(pos, quat, scale = 1) {
   const e = flyProgram(fly.kind);
   if (!e) return null;
-  const N = 32, T = fly.tiny || (fly.tiny = flyTarget(N, N)), home = FLY_KINDS[fly.kind].home;
-  // (Kamera kurz an den Start setzen – nur für diese Rechnung; dist = 0 heißt: Strahlen beginnen direkt an der Kamera)
+  const N = 32, T = fly.tiny || (fly.tiny = flyTarget(N, N));
+  // (Kamera kurz dorthin setzen – nur für diese Rechnung; dist = 0 heißt: Strahlen beginnen direkt an der Kamera)
   const keep = { pos: fly.pos, quat: fly.quat, scale: fly.scale, dist: fly.dist, probePos: fly.probePos };
-  Object.assign(fly, { pos: home.pos.slice(), quat: qLook(vSub(home.look, home.pos)), scale: 1, dist: 0, probePos: home.pos });
+  Object.assign(fly, { pos: pos.slice(), quat, scale, dist: 0, probePos: pos });
   flyRender(e, T, N, N, { still: true });
   Object.assign(fly, keep);
   const c = new Float32Array(N * N * 4), d = new Float32Array(N * N * 4);
@@ -8922,20 +9004,65 @@ function flyKitProbe() {
   gl.readBuffer(gl.COLOR_ATTACHMENT1);                       // zweite Textur: z = Entfernung des Treffers (sehr groß = vorbei)
   gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, d);
   gl.readBuffer(gl.COLOR_ATTACHMENT0);
-  const depth = (x, y) => d[(y * N + x) * 4 + 2], hit = z => z < 20;
+  // (unit = Maßstab der Entfernungen: von der Start-Kamera aus ganze Einheiten, nah an der Oberfläche entsprechend kleiner)
+  const depth = (x, y) => d[(y * N + x) * 4 + 2], unit = Math.min(scale, 1), hit = z => z < 20 * unit;
   let cover = 0, edges = 0, bumps = 0, inner = 0, light = 0;
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const i = (y * N + x) * 4, z = depth(x, y);
     if (hit(z)) { cover++; light += c[i] + c[i + 1] + c[i + 2] + c[i + 3] + d[i]; }
-    if (x + 1 < N) { const z2 = depth(x + 1, y); if (hit(z) !== hit(z2) || (hit(z) && Math.abs(z - z2) > 0.12)) edges++; }
+    if (x + 1 < N) { const z2 = depth(x + 1, y); if (hit(z) !== hit(z2) || (hit(z) && Math.abs(z - z2) > 0.12 * unit)) edges++; }
     // uneben: Die Entfernung weicht vom Mittel der beiden Nachbarn ab (auf einer ebenen Fläche ist das null)
     if (x > 0 && x + 1 < N && hit(z) && hit(depth(x - 1, y)) && hit(depth(x + 1, y))) {
       inner++;
-      if (Math.abs(depth(x - 1, y) + depth(x + 1, y) - 2 * z) > 0.03) bumps++;
+      if (Math.abs(depth(x - 1, y) + depth(x + 1, y) - 2 * z) > 0.03 * unit) bumps++;
     }
   }
   return { cover: cover / (N * N), edges: edges / (N * (N - 1)), bumps: bumps / Math.max(inner, 1), light: light / Math.max(cover, 1) };
 }
+const flyKitProbe = () => { const home = FLY_KINDS[fly.kind].home; return flyViewProbe(home.pos, qLook(vSub(home.look, home.pos))); };
+
+// Sehenswerte Stelle suchen (für den Kameraflug im Auto-Play): eine Kamera dicht über der Oberfläche, die flach über
+// sie hinwegschaut – so sieht man zugleich nahe Details und die Tiefe dahinter.
+//   level   gewünschter Abstand zur Oberfläche
+// So geht es: Start an einem zufälligen Punkt auf der Hüllkugel, Flug auf einen zufälligen Punkt im Inneren zu –
+// Schritt für Schritt um den gemessenen Abstand (wie ein Strahl beim Raymarching, nur mit dem Messfühler), bis der
+// Abstand level erreicht ist. Dort zeigt fly.grad von der Oberfläche weg: Die Kamera schaut quer dazu (in
+// Flugrichtung an der Oberfläche entlang) und um ca. 20° zur Oberfläche hin geneigt; "oben" ist von der Oberfläche weg.
+// Von mehreren Versuchen (tries) gewinnt der mit dem schönsten Probe-Bild. Liefert { pos, quat, dist } oder null.
+function flyFindSpot(level, tries = 6) {
+  const f = fly, kind = FLY_KINDS[f.kind], e = flyProgram(f.kind), P = f.probe;
+  if (!e) return null;
+  if (!P.target) P.target = createFBO(1, 1, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+  const keep = { pos: f.pos, quat: f.quat };
+  const R = kind.bound() * 1.1, unit = () => vNorm([rand(-1, 1), rand(-1, 1), rand(-1, 1)]), out = new Float32Array(4);
+  let best = null, bestScore = -1e9;
+  for (let n = 0; n < tries; n++) {
+    const from = vMul(unit(), R), rd = vNorm(vSub(vMul(unit(), R * rand(0, 0.45)), from));
+    // das Herantasten rechnet der Shader (uTask = 2, ein einziger Bildpunkt): eine Messung statt vieler
+    f.pos = from; f.quat = qLook(rd);
+    gl.disable(gl.BLEND);
+    gl.useProgram(e.program);
+    flyUniforms(e.uniforms, 1, 1, 2);
+    gl.uniform1f(e.uniforms.uLevel, level);
+    gl.uniform1f(e.uniforms.uFar, 2.1 * R);
+    blit(P.target);
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.FLOAT, out);
+    Object.assign(f, keep);
+    if (!(out[3] > 0) || !Number.isFinite(out[0] + out[1] + out[2])) continue;   // nichts Brauchbares getroffen
+    const nrm = [out[0], out[1], out[2]], pos = vAdd(from, vMul(rd, out[3]));
+    const along = vSub(rd, vMul(nrm, vDot(rd, nrm)));
+    if (vLen(along) < 0.05) continue;                            // genau senkrecht aufgetroffen: keine Richtung "entlang"
+    const tilt = rand(0.2, 0.5);                                 // Neigung zur Oberfläche hin (Bogenmaß)
+    const fwd = vSub(vMul(vNorm(along), Math.cos(tilt)), vMul(nrm, Math.sin(tilt)));
+    const spot = { pos, quat: qLook(fwd, nrm), dist: level };
+    const m = flyViewProbe(spot.pos, spot.quat, clampNum(level, flyFloor(), FLY.REACH_MAX));
+    // schön: Bild gut gefüllt (aber nicht ganz zu), reich gegliedert, vor allem nicht zu dunkel
+    const score = -Math.abs(m.cover - 0.8) + Math.min(m.bumps, 0.7) + 3 * Math.min(m.light, 0.35) - Math.max(m.edges - 0.5, 0);
+    if (score > bestScore) { bestScore = score; best = spot; best.look = m; }
+  }
+  return best;
+}
+
 // Zufalls-Form würfeln. Nicht jede Kombination ergibt etwas Sehenswertes: Viele zerfallen zu Staub oder füllen als
 // Klotz das ganze Bild. Deshalb werden bis zu 16 Kandidaten gewürfelt (in Bereichen, die sich bewährt haben), jeder
 // wird mit einem winzigen Probe-Bild geprüft, und der erste brauchbare gewinnt (sonst der beste).
@@ -9173,7 +9300,7 @@ function updateFlight(dt, now) {
     f.infoTimer = 0.25;
     flyRefresh();
     const num = v => (v < 1e-9 ? '0' : v >= 0.1 ? v.toFixed(2) : v >= 0.001 ? v.toFixed(4) : v.toExponential(1)).replace('.', ',');
-    const aa = FLY_LEVELS[qualityLevel].aa;
+    const aa = flyQuality().aa;
     const image = !f.acc ? '' : f.moving
       ? `${f.part[0]}×${f.part[1]}` + (f.dyn < 0.99 ? ` (${Math.round(f.dyn * 100)} %)` : '')
       : `${f.acc.w}×${f.acc.h} · Kantenglättung ${Math.min(f.ref.n, aa)}/${aa}`;
@@ -9228,7 +9355,7 @@ function drawFlight(target, dt) {
   // Durchgang des Standbilds fertig ist, wird weich vom groben zum scharfen Bild übergeblendet.
   const level = (f.jump ? smooth01(Math.abs(1 - 2 * Math.min(f.jump.t, 1))) : 1) * f.dim;
   const sharp = f.ref.n >= 1;
-  if (sharp) f.ref.fade = Math.min(1, f.ref.fade + dt / FLY.FADE);
+  if (sharp) f.ref.fade = shot && shot.active ? 1 : Math.min(1, f.ref.fade + dt / FLY.FADE);   // (Export: nicht überblenden)
   if (!sharp || f.ref.fade < 1) flyShow(f.g, f.part[0], f.part[1], target, level, 1);
   if (sharp) flyShow(f.acc, f.acc.w, f.acc.h, target, level, smooth01(f.ref.fade));
 }
@@ -9321,6 +9448,11 @@ MODES.push({
   // Die Auto-Qualität soll nur dann eine Stufe höher schalten, wenn beim Fliegen wirklich Luft ist: also nicht im
   // Stillstand und nicht, solange die Auflösung schon heruntergeregelt ist.
   idle: () => !fly.moving || fly.dyn < 0.98,
+  // Bild-Export: jedes Seitenverhältnis geht; fertig ist das Bild, wenn alle Durchgänge der Kantenglättung gemittelt sind
+  freeAspect: true,
+  shotBusy: () => !!(fly.go || fly.jump),
+  shotReady: () => !fly.waiting && !fly.moving && fly.ref.n >= flyQuality().aa,
+  shotProgress: () => (fly.moving ? 0 : (fly.ref.n + fly.ref.row / fly.acc.h) / flyQuality().aa),
   autoplayStart() { fly.autoAngle = Math.atan2(fly.pos[0], fly.pos[2]); flyLock(false); },
   autoplayStop() { fly.auto = null; },
   autoplay: flyAutoplay,
@@ -9332,7 +9464,7 @@ MODES.push({
   key: flyKey,
   qualityInfo(q) {
     ensureFlyBuffers();
-    const L = FLY_LEVELS[qualityLevel];
+    const L = flyQuality();
     return `Fraktal beim Fliegen bis ${fly.g.w}×${fly.g.h} (passt sich der Rechenzeit an)<br>im Stillstand ${fly.acc.w}×${fly.acc.h}, Kanten ${L.aa}-fach geglättet · bis ${L.steps} Schritte pro Strahl`;
   },
 });
@@ -9370,21 +9502,443 @@ function setMode(i) {
   // Auto-Qualität neu einpendeln lassen: der neue Modus kostet anders
   if (qualityMode === 'auto') Object.assign(autoQ, { low: 0, high: 0, cooldown: 2, ceiling: QUALITY.length - 1 });
   updateQualityInfo();
+  updateShareUi();                       // Szenarien und Bild-Export zeigen, was zum neuen Modus gehört
   showHint(MODES[i].hint, 6);
   audioClear();                          // leises Wischen
   toast('Modus: ' + MODES[i].name);
 }
 updateModeUi();
 
+// ---------- Szenarien und Bild-Export ----------
+// Zwei Dinge, die es für ALLE Modi nur einmal gibt (wie Panel, Paletten, Bloom …):
+//
+// 1) SZENARIEN: Ein Szenario hält fest, was man gerade eingestellt hat – Modus, Farbpalette, Regler-Stellungen, Look,
+//    Bloom und den kleinen Zustand des Modus (3D-Flug: Fraktal und Kamera; Mandelbrot: Ausschnitt und Julia-Form;
+//    Partikel: gesetzte Kräfte; Flüssigkeit: Hahn …). NICHT gespeichert wird der Inhalt der Simulation (die gemalte
+//    Farbe, die einzelnen Partikel, Hindernisse). Ein Szenario lässt sich im Browser speichern, wieder laden und als
+//    kurzer Text ("Code") kopieren und weitergeben.
+//    Was ein Modus dazu beiträgt, steht in SCENE_MODES (ein Eintrag je Modus-Kennung):
+//      params(state)        Namen der Regler (in PARAMS), die zum Szenario gehören
+//      save()               kleiner Zustand des Modus als einfaches Objekt (nur Zahlen, Texte, Listen)
+//      load(state, apply)   Zustand wiederherstellen. apply(instant) stellt die Regler um (instant = ohne
+//                           Überblenden) – der Modus ruft es auf, wann es bei ihm passt (der 3D-Flug z. B. erst, wenn
+//                           das Bild für den Sprung abgedunkelt ist).
+//
+// 2) BILD-EXPORT: Das aktuelle Bild als PNG-Datei – auch größer als der Bildschirm (Hintergrundbild). Dafür wird die
+//    Zeichenfläche kurz auf die Zielgröße gestellt und das Bild dort neu gezeichnet: Mandelbrot und 3D-Flug rechnen
+//    es dabei wirklich neu in voller Schärfe, die anderen Modi zeichnen Look und Glow in der hohen Auflösung (ihre
+//    Simulation bleibt, wie sie ist). Solange der Export läuft, steht alles andere still (siehe shotFrame).
+//    Ein Modus kann angeben:  freeAspect  true = er kann jedes Seitenverhältnis direkt rechnen (Mandelbrot, 3D-Flug);
+//                                         sonst wird im Seitenverhältnis des Fensters gerechnet und zugeschnitten
+//                             shotBusy()  true, solange im Modus ein Übergang läuft (Sprung, Flug, Verwandlung) –
+//                                         der Export wartet so lange
+//                             shotReady() true, sobald das Bild fertig gerechnet ist (sonst: nach 2 Bildern)
+//                             shotProgress()  Fortschritt 0..1 für die Anzeige
+
+// Tippt der Nutzer gerade in ein Textfeld? (dann dürfen Buchstaben keine Tastenkürzel auslösen)
+const isTyping = el => el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && el.type === 'text');
+
+// ----- Szenarien: was jeder Modus beiträgt -----
+const SCENE_BLOOM = ['bloomIntensity', 'bloomThreshold', 'bloomSoftness', 'bloomOn'];
+// alle Look-Regler (aus der Liste der Looks gesammelt) – für die Modi, die Looks benutzen
+const SCENE_LOOK = [...new Set(LOOKS.flatMap(l => l.params || []))];
+const sceneNum = (v, digits = 6) => +Number(v).toPrecision(digits);
+const sceneLook = name => { const i = LOOKS.findIndex(l => l.name === name); if (i >= 0) setLook(i); };
+// Zahl aus einem (möglicherweise fremden) Szenario: gültig machen und in Grenzen halten
+const sceneClamp = (v, a, b, fallback) => (Number.isFinite(v) ? clampNum(v, a, b) : fallback);
+// große Festkommazahl (Mandelbrot-Koordinate) aus Text – nur Ziffern, begrenzte Länge
+const sceneBig = (t, fallback) => (typeof t === 'string' && /^-?\d{1,90}$/.test(t) ? BigInt(t) : fallback);
+
+const SCENE_MODES = {
+  fluid: {
+    params: () => ['viscosity', 'curl', 'fade', 'brush', 'gravity', 'gravityDir', ...SCENE_LOOK],
+    save: () => ({ look: LOOKS[lookIndex].name }),
+    load(s, apply) { apply(false); sceneLook(s.look); },
+  },
+  mandel: {
+    params: () => ['fracDensity', 'fracSpeed', 'fracGlow', 'fracRelief', 'fracDetail'],
+    save() {
+      const f = frac, V = fracView();
+      return { julia: f.julia ? 1 : 0, x: String(V.x), y: String(V.y), lz: sceneNum(V.lzT, 8), cx: String(f.cT[0]), cy: String(f.cT[1]) };
+    },
+    load(s, apply) {
+      apply(false);
+      const f = frac, julia = !!s.julia;
+      if (julia !== f.julia) { f.julia = julia; f.vel = [0, 0]; f.dragMove = [0, 0]; }
+      if (julia) {
+        // Julia-Form setzen und festhalten (sonst würde die nächste Mausbewegung sie gleich wieder verändern)
+        f.cT = [sceneBig(s.cx, f.cT[0]), sceneBig(s.cy, f.cT[1])];
+        f.c = [f.cT[0], f.cT[1]];
+        f.frozen = true;
+      }
+      const V = fracView(), home = julia ? FRAC_HOME.J : FRAC_HOME.M;
+      // … und zum gespeicherten Ausschnitt fliegen (erst heraus, dann hinein – wie zu einer "schönen Stelle")
+      f.spot = -1;
+      fracFlyTo({ x: sceneBig(s.x, home.x), y: sceneBig(s.y, home.y), lz: sceneClamp(s.lz, FRACTAL.LZ_MIN, FRACTAL.LZ_MAX, 0) }, V);
+      updateFracUi();
+    },
+  },
+  particles: {
+    params: () => Object.keys(PARAMS).filter(k => /^(part|swarm)/.test(k)),
+    save: () => ({
+      pull: part.pull,
+      forces: part.forces.filter(f => !f.dead && !f.ghost).map(f => [FORCE_TYPES.indexOf(f.t), sceneNum(f.x, 4), sceneNum(f.y, 4), sceneNum(f.s, 4), sceneNum(f.r, 4), sceneNum(f.a, 4)]),
+    }),
+    load(s, apply) {
+      apply(false);
+      setSwarm(PARAMS.swarm.target > 0.5, true);
+      setPartColor(clampNum(Math.round(PARAMS.partColor.target), 0, PART_COLORS.length - 1), true);
+      setPartPull(s.pull < 0 ? -1 : 1, true);
+      // gesetzte Kräfte ersetzen. Die alten verschwinden sofort (nicht ausblenden lassen: Die Liste darf nie mehr als
+      // MAX_FORCES Einträge haben, sonst passen sie nicht in die Uniform-Felder), die neuen blenden weich ein.
+      part.forces = [];
+      part.hover = part.drag = null;
+      selectForce(null);
+      for (const a of (Array.isArray(s.forces) ? s.forces : []).slice(0, PARTICLES.MAX_FORCES)) {
+        const t = FORCE_TYPES[a[0]];
+        if (!t) continue;
+        const f = { t, x: sceneClamp(a[1], 0.03, 0.97, 0.5), y: sceneClamp(a[2], 0.03, 0.97, 0.5), level: 0, dead: false,
+                    s: sceneClamp(a[3], 0, 3, 1), r: sceneClamp(a[4], 0.05, 0.6, 0.2), a: sceneClamp(a[5], -180, 180, 0) };
+        f.sC = f.s; f.rC = f.r; f.aC = f.a;
+        part.forces.push(f);
+      }
+      updateForceUi();
+    },
+  },
+  liquid: {
+    params: () => [...Object.keys(PARAMS).filter(k => /^liq/.test(k)), ...SCENE_LOOK, 'dotColor', 'dotSize'],
+    save: () => ({ look: LOOKS[lookIndex].name, push: liq.push, tap: [liq.tap.on ? 1 : 0, sceneNum(liq.tap.x, 4), sceneNum(liq.tap.y, 4)] }),
+    load(s, apply) {
+      apply(false);
+      sceneLook(s.look);
+      setLiqPush(s.push < 0 ? -1 : 1, true);
+      if (Array.isArray(s.tap)) setLiqTap(!!s.tap[0], [sceneClamp(s.tap[1], 0, 1, 0.5), sceneClamp(s.tap[2], 0, 1, 0.94)], true);
+    },
+  },
+  flight: {
+    // (nur die Regler des gewählten Fraktals – und nichts, was nur das Fluggefühl betrifft: Tempo, Trägheit, Maus)
+    params: s => [...((FLY_KINDS.find(k => k.id === s.kind) || FLY_KINDS[0]).params), ...FLY_SHARED, 'flyFog', 'flyGlow', 'flyShadow', 'flyColor', 'flyHue', 'flyFov'],
+    save: () => ({ kind: FLY_KINDS[fly.kind].id, pos: fly.pos.map(v => sceneNum(v, 10)), quat: fly.quat.map(v => sceneNum(v, 8)), kit: fly.kit }),
+    load(s, apply) {
+      const kind = Math.max(0, FLY_KINDS.findIndex(k => k.id === s.kind)), home = FLY_KINDS[kind].home;
+      const ok = Array.isArray(s.pos) && s.pos.length === 3 && s.pos.every(Number.isFinite) && Array.isArray(s.quat) && s.quat.length === 4 && s.quat.every(Number.isFinite) && Math.hypot(...s.quat) > 0.1;
+      // Sprung mit Blende; die Regler werden umgestellt, während das Bild dunkel ist
+      const kit = Number.isInteger(s.kit) && s.kit >= -2 && s.kit < FLY_KIT.length ? s.kit : -1;
+      flyGo(Object.assign({ kind, apply() { apply(true); fly.kit = kit; } }, ok ? { pos: s.pos.map(v => clampNum(v, -FLY.WORLD, FLY.WORLD)), quat: s.quat } : { pos: home.pos, look: home.look }));
+    },
+  },
+};
+
+// Erlaubter Bereich eines Reglers (aus dem Panel) – fremde Codes dürfen keine unsinnigen Werte einschleusen
+function sceneRange(key) {
+  const s = sliders.find(sl => sl.param === PARAMS[key]);
+  return s ? [parseFloat(s.input.min), parseFloat(s.input.max)] : key === 'bloomOn' || key === 'swarm' ? [0, 1] : key === 'partColor' ? [0, PART_COLORS.length - 1] : null;
+}
+
+// Aktuellen Stand als Szenario: { v: Fassung, m: Modus, n: Name, p: Palette, r: { Regler: Wert }, s: Zustand des Modus }
+// (gespeichert werden nur Regler, die vom Standardwert abweichen – das hält den Code kurz)
+function sceneCapture(name) {
+  const mode = MODES[modeIndex], S = SCENE_MODES[mode.id], state = S.save(), r = {};
+  for (const key of [...S.params(state), ...SCENE_BLOOM]) {
+    const p = PARAMS[key];
+    if (p && Math.abs(p.target - p.def) > 1e-9) r[key] = sceneNum(p.target);
+  }
+  return { v: 1, m: mode.id, n: name || '', p: activePalette, r, s: state };
+}
+
+// Szenario anwenden: Modus wechseln, Palette, Regler, Zustand des Modus
+function sceneApply(sc, silent) {
+  const i = MODES.findIndex(m => m.id === sc.m), S = SCENE_MODES[sc.m];
+  if (i < 0 || !S) { toast('Dieses Szenario passt nicht zu dieser Fassung von Satisim'); return false; }
+  userActive();
+  if (i !== modeIndex) setMode(i);
+  if (PALETTES[sc.p]) setPalette(sc.p);
+  const state = sc.s && typeof sc.s === 'object' ? sc.s : {}, r = sc.r && typeof sc.r === 'object' ? sc.r : {};
+  const apply = instant => {
+    for (const key of [...S.params(state), ...SCENE_BLOOM]) {
+      const p = PARAMS[key], range = sceneRange(key);
+      if (!p || !range) continue;
+      p.target = sceneClamp(r[key], range[0], range[1], p.def);
+      if (instant) p.current = p.target;
+    }
+    // Schalter im Panel nachziehen
+    $('bloomSwitch').classList.toggle('on', PARAMS.bloomOn.target > 0.5);
+    $('bloomControls').classList.toggle('unused', PARAMS.bloomOn.target <= 0.5);
+    PARAMS.bloomOn.target = PARAMS.bloomOn.target > 0.5 ? 1 : 0;
+  };
+  S.load(state, apply);
+  if (!silent) { audioArrive(); toast('Szenario: ' + (sc.n || 'ohne Namen')); }
+  return true;
+}
+
+// ----- Textcode -----
+// Das Szenario wird als JSON-Text geschrieben und so verpackt, dass nur Buchstaben, Ziffern, "-" und "_" vorkommen
+// ("Base64") – das übersteht Kopieren, Chat-Programme und E-Mails unbeschadet. Davor steht die Kennung "SATISIM1.".
+const SCENE_TAG = 'SATISIM1.';
+function sceneEncode(sc) {
+  const bytes = new TextEncoder().encode(JSON.stringify(sc));
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return SCENE_TAG + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+// Text → Szenario (oder null, wenn der Text kein gültiger Code ist)
+function sceneDecode(text) {
+  try {
+    const m = /SATISIM1\.([A-Za-z0-9_-]{4,20000})/.exec(String(text));
+    if (!m) return null;
+    const bin = atob(m[1].replace(/-/g, '+').replace(/_/g, '/'));
+    const sc = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0))));
+    if (!sc || typeof sc !== 'object' || sc.v !== 1 || !SCENE_MODES[sc.m]) return null;
+    sc.n = String(sc.n || '').slice(0, 40);
+    return sc;
+  } catch (err) { return null; }
+}
+
+// ----- Start-Szenarien (mitgeliefert) und eigene (im Browser gespeichert) -----
+// Mitgelieferte Szenarien je Modus – dasselbe Format wie die eigenen (n = Name, p = Palette, r = Regler, s = Zustand)
+const SCENE_STARTS = {
+  fluid: [
+    { n: 'Lavalampe', p: 'Lava', r: { viscosity: 0.35, curl: 12, fade: 0.25, gravity: 0.35, gravityDir: 180, heat: 1.3 }, s: { look: 'Feuer / Glut' } },
+    { n: 'Tintenwirbel', p: 'Ozean', r: { curl: 45, fade: 0.3, inkStyle: 0.3 }, s: { look: 'Tinte & Aquarell' } },
+    { n: 'Chrom-Schlieren', p: 'Neon', r: { viscosity: 0.15, curl: 18, fade: 0.2, brush: 1.6 }, s: { look: 'Metallic' } },
+    { n: 'Polarlicht', p: 'Ozean', r: { curl: 40, fade: 0.45, spaceMode: 2, spaceGlow: 1.4 }, s: { look: 'Galaxie / Nebel / Aurora' } },
+  ],
+  mandel: [
+    { n: 'Glühende Ränder', p: 'Lava', r: { fracDensity: 1.6, fracGlow: 1, fracRelief: 0.8 }, s: { julia: 0, x: String(fx(-0.743644)), y: String(fx(0.131826)), lz: 6.5 } },
+    { n: 'Julia: Drachen', p: 'Neon', r: { fracDensity: 0.8, fracSpeed: 0.5 }, s: { julia: 1, x: '0', y: '0', lz: 0, cx: String(fx(-0.8)), cy: String(fx(0.156)) } },
+    { n: 'Julia: Schneeflocke', p: 'Ozean', r: { fracDensity: 1.2, fracRelief: 0.9 }, s: { julia: 1, x: '0', y: '0', lz: 0.3, cx: String(fx(-0.1011)), cy: String(fx(0.9563)) } },
+    { n: 'Julia: Spiralen', p: 'Sunset', r: { fracDensity: 1.4, fracGlow: 0.8 }, s: { julia: 1, x: '0', y: '0', lz: 0.2, cx: String(fx(0.285)), cy: String(fx(0.01)) } },
+  ],
+  particles: [
+    { n: 'Galaxie', p: 'Neon', r: { partTrail: 0.55, partInertia: 0.6, partFlow: 0.15 }, s: { pull: 1, forces: [[0, 0.5, 0.5, 1.2, 0.3, 0], [4, 0.5, 0.5, 1, 0.4, 0]] } },
+    { n: 'Fischschwarm', p: 'Ozean', r: { swarm: 1, swarmAlign: 0.8, swarmCoh: 0.6, swarmSpeed: 0.6, partTrail: 0.25, partColor: 1 }, s: { pull: 1, forces: [] } },
+    { n: 'Windkanal', p: 'Sunset', r: { partTrail: 0.6, partFlow: 0.6, partSize: 0.8 }, s: { pull: -1, forces: [[3, 0.2, 0.5, 1.4, 0.5, 0], [2, 0.6, 0.5, 1.2, 0.18, 0]] } },
+    { n: 'Zwei Sonnen', p: 'Lava', r: { partTrail: 0.5, partInertia: 0.5, partColor: 2, partLife: 8 }, s: { pull: 1, forces: [[4, 0.3, 0.5, 1.2, 0.25, 0], [4, 0.7, 0.5, 1.2, 0.25, 0]] } },
+  ],
+  liquid: [
+    { n: 'Quecksilber-Brunnen', p: 'Ozean', r: { liqViscosity: 0.05, liqCohesion: 1, liqStiff: 1, liqDensity: 1.35, metal: 0 }, s: { look: 'Metallic', push: 1, tap: [1, 0.5, 0.94] } },
+    { n: 'Honigtopf', p: 'Sunset', r: { liqViscosity: 1, liqCohesion: 0.5, liqDensity: 1.1, metal: 1 }, s: { look: 'Metallic', push: 1, tap: [1, 0.35, 0.94] } },
+    { n: 'Schwerelos', p: 'Neon', r: { liqGravity: 0, liqCohesion: 0.8, liqViscosity: 0.3 }, s: { look: 'Seifenblase / Ölfilm', push: -1, tap: [0, 0.5, 0.94] } },
+    { n: 'Bunte Perlen', p: 'Neon', r: { liqCohesion: 0.5, dotColor: 0, dotSize: 1.4 }, s: { look: 'Partikel', push: 1, tap: [1, 0.65, 0.94] } },
+  ],
+  // 3D-Flug: Kameras dicht über der Oberfläche (gefunden mit flyFindSpot und von Hand ausgesucht)
+  flight: [
+    { n: 'Korallenfels', p: 'Neon', r: {}, s: { kind: 'bulb', pos: [0.976261, 0.5255361, 0.1262756], quat: [-0.344671, -0.00749586, -0.572595, 0.743829] } },
+    { n: 'Leuchtende Hänge', p: 'Sunset', r: { flyGlow: 0.8 }, s: { kind: 'bulb', pos: [0.7856236, 0.3561074, 0.7733252], quat: [0.34087, 0.629565, 0.342068, 0.608642] } },
+    { n: 'Kugelgarten', p: 'Ozean', r: {}, s: { kind: 'box', pos: [1.445563, -0.9272248, 0.7040574], quat: [0.215787, 0.433368, -0.553422, 0.677755] } },
+    { n: 'Ringebene', p: 'Sunset', r: {}, s: { kind: 'box', pos: [-0.9993322, -0.09436497, 1.317201], quat: [0.513894, -0.130104, -0.17391, 0.829904] } },
+    { n: 'Würfelschacht', p: 'Neon', r: {}, s: { kind: 'menger', pos: [-0.2061131, 0.8778352, 0.2462734], quat: [-0.232584, -0.457625, -0.105381, 0.851692] } },
+    { n: 'Im Schwamm', p: 'Ozean', r: { flyGlow: 0.8 }, s: { kind: 'menger', pos: [0.7628243, 0.1491086, 0.5079017], quat: [-0.000418225, 0.476883, -0.302166, 0.825396] } },
+    { n: 'Pyramidental', p: 'Neon', r: { flyGlow: 0.8, flyColor: 1.5 }, s: { kind: 'sierp', pos: [0.2410596, 0.4847199, 0.1604637], quat: [-0.207677, 0.692214, 0.573896, 0.385166] } },
+    { n: 'Seidenstrudel', p: 'Neon', r: {}, s: { kind: 'julia', pos: [0.6690459, 0.3873729, -0.227431], quat: [0.503017, 0.689988, 0.455035, -0.252655] } },
+    { n: 'Kreisel', p: 'Ozean', r: { flyColor: 1.6 }, s: { kind: 'julia', pos: [0.3992729, 0.8160692, 0.424454], quat: [-0.343583, -0.323007, -0.593395, 0.652303] } },
+    { n: 'Tempelstadt', p: 'Sunset', r: { flyKitFold: 4, flyKitScale: 2.2, flyKitSphere: 0.5, flyIter: 14 }, s: { kind: 'kit', pos: [0.1061081, 0.4750771, -0.2958293], quat: [0.669609, -0.442767, -0.561636, -0.200366], kit: 4 } },
+  ],
+};
+
+let sceneOwn = loadStore('satisim.scenes', []).filter(sc => sc && sc.v === 1 && SCENE_MODES[sc.m]).slice(0, 200);
+const sceneStartBox = $('sceneStarts'), sceneOwnBox = $('sceneOwn');
+// Listen im Panel neu aufbauen (gezeigt werden nur die Szenarien des aktiven Modus)
+function updateSceneUi() {
+  const id = MODES[modeIndex].id;
+  sceneStartBox.textContent = '';
+  for (const sc of SCENE_STARTS[id] || []) {
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.innerHTML = '<span></span>';
+    btn.firstChild.textContent = sc.n;
+    btn.addEventListener('click', () => { sceneApply(Object.assign({ v: 1, m: id }, sc)); btn.blur(); });
+    sceneStartBox.appendChild(btn);
+  }
+  sceneOwnBox.textContent = '';
+  sceneOwn.forEach((sc, i) => {
+    if (sc.m !== id) return;
+    const row = document.createElement('div'), btn = document.createElement('button'), del = document.createElement('button');
+    row.className = 'scene-row';
+    btn.className = 'btn';
+    btn.innerHTML = '<span></span>';
+    btn.firstChild.textContent = sc.n || 'ohne Namen';
+    btn.addEventListener('click', () => { sceneApply(sc); btn.blur(); });
+    del.className = 'btn del';
+    del.textContent = '✕';
+    del.title = 'Dieses Szenario löschen';
+    del.addEventListener('click', () => {
+      sceneOwn.splice(i, 1);
+      saveStore('satisim.scenes', sceneOwn);
+      updateSceneUi();
+      toast('Szenario gelöscht');
+    });
+    row.append(btn, del);
+    sceneOwnBox.appendChild(row);
+  });
+  $('sceneOwnHelp').textContent = sceneOwnBox.children.length ? 'Deine Szenarien in diesem Modus:' : 'Noch keine eigenen Szenarien in diesem Modus.';
+}
+function sceneSave() {
+  const input = $('sceneName'), id = MODES[modeIndex].id;
+  let name = input.value.trim().slice(0, 40);
+  if (!name) name = MODES[modeIndex].name + ' ' + (sceneOwn.filter(sc => sc.m === id).length + 1);
+  const sc = sceneCapture(name), old = sceneOwn.findIndex(o => o.m === id && o.n === name);
+  if (old >= 0) sceneOwn[old] = sc; else sceneOwn.push(sc);     // gleicher Name im selben Modus → überschreiben
+  const ok = saveStore('satisim.scenes', sceneOwn);
+  input.value = '';
+  updateSceneUi();
+  audioTock(false);
+  toast(`Szenario „${name}“ gespeichert` + (ok ? '' : ' (nur bis zum Schließen der Seite)'));
+}
+// Code des aktuellen Stands in die Zwischenablage (und ins Textfeld, falls der Browser das Kopieren nicht erlaubt)
+function sceneCopy() {
+  const code = sceneEncode(sceneCapture($('sceneName').value.trim().slice(0, 40))), box = $('sceneCode');
+  box.value = code;
+  $('sceneCodeBox').classList.remove('off');
+  const done = ok => toast(ok ? `Code kopiert (${code.length} Zeichen)` : 'Code steht im Textfeld – dort markieren und kopieren');
+  const fallback = () => { box.focus(); box.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (err) { /* dann eben von Hand */ } box.blur(); done(ok); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(() => done(true), fallback);
+  else fallback();
+}
+function sceneLoadCode() {
+  const sc = sceneDecode($('sceneCode').value);
+  if (!sc) { toast('Das ist kein gültiger Satisim-Code'); return; }
+  if (sceneApply(sc)) { $('sceneCode').value = ''; $('sceneCodeBox').classList.add('off'); }
+}
+$('sceneSave').addEventListener('click', e => { sceneSave(); e.currentTarget.blur(); });
+$('sceneName').addEventListener('keydown', e => { if (e.key === 'Enter') { sceneSave(); e.target.blur(); } });
+$('sceneCopy').addEventListener('click', e => { sceneCopy(); e.currentTarget.blur(); });
+$('scenePaste').addEventListener('click', e => {
+  const hidden = $('sceneCodeBox').classList.toggle('off');
+  if (!hidden) { $('sceneCode').value = ''; $('sceneCode').focus(); }
+  e.currentTarget.blur();
+});
+$('sceneLoad').addEventListener('click', e => { sceneLoadCode(); e.currentTarget.blur(); });
+
+// ----- Bild-Export -----
+const SHOT = {
+  PIXELS: 16.6e6,           // größtes Bild, das gerechnet wird (Bildpunkte) – schützt den Speicher der Grafikkarte
+  SIDE: 8192,               // längste Seite höchstens
+  TIMEOUT: 180,             // nach so vielen Sekunden wird abgebrochen (falls ein Modus nie fertig wird)
+};
+// Ziel-Größen. size() liefert [Breite, Höhe] in Bildpunkten.
+const SHOT_KINDS = [
+  { id: 'window', name: 'Bildschirmfoto', help: 'so groß wie das Fenster', size: () => [canvas.width, canvas.height] },
+  { id: 'double', name: 'Doppelte Größe', help: 'doppelt so breit und hoch wie das Fenster', size: () => [canvas.width * 2, canvas.height * 2] },
+  { id: 'screen', name: 'Hintergrundbild', help: 'genau passend für diesen Bildschirm', size: () => [Math.round(screen.width * (window.devicePixelRatio || 1)), Math.round(screen.height * (window.devicePixelRatio || 1))] },
+  { id: '4k', name: 'Hintergrund 4K', help: '3840 × 2160', size: () => [3840, 2160] },
+  { id: 'phone', name: 'Handy-Hintergrund', help: '1440 × 3120 (Hochformat)', size: () => [1440, 3120] },
+];
+let shotLast = 0;             // zuletzt gewählte Ziel-Größe (Taste I wiederholt sie)
+// Ziel-Größe (out) und die Größe, in der dafür gerechnet wird (size)
+function shotPlan(kind) {
+  const cw = canvas.width, ch = canvas.height, side = Math.min(SHOT.SIDE, maxTextureSize);
+  let out = kind.size();
+  const lim = Math.min(1, Math.sqrt(SHOT.PIXELS / (out[0] * out[1])), side / Math.max(out[0], out[1]));
+  out = out.map(v => Math.max(16, Math.round(v * lim)));
+  if (MODES[modeIndex].freeAspect) return { out, size: out };
+  // Simulations-Modi: Das Bild muss das Seitenverhältnis des Fensters behalten (sonst wäre die Simulation verzerrt).
+  // Gerechnet wird in einem GANZEN Vielfachen der Fenstergröße (dann bleiben alle Puffer der Simulation exakt, wie
+  // sie sind) – groß genug, dass der Zuschnitt auf das Ziel nicht vergrößert werden muss, soweit der Speicher reicht.
+  let k = Math.max(1, Math.ceil(Math.max(out[0] / cw, out[1] / ch) - 0.02));
+  while (k > 1 && (cw * k * ch * k > SHOT.PIXELS || Math.max(cw, ch) * k > side)) k--;
+  return { out, size: [cw * k, ch * k] };
+}
+function shotStart(i = shotLast) {
+  if (shot) return;
+  shotLast = i;
+  const kind = SHOT_KINDS[i], plan = shotPlan(kind);
+  // (normal = Fenstergröße davor: Maß dafür, wie viel größer gerechnet wird – der Glow soll gleich breit bleiben)
+  shot = Object.assign(plan, { kind, phase: 'wait', t0: performance.now(), frames: 0, active: false, normal: [canvas.width, canvas.height], say: 0 });
+  updateShotUi();
+  toast('Bild wird gerechnet …');
+}
+// Wird in jedem Bild aufgerufen, solange ein Export läuft. true = dieses Bild gehört dem Export (alles andere –
+// Eingaben, Simulation, Auto-Play – steht so lange still, damit genau das gezeigte Bild gespeichert wird).
+function shotFrame(now) {
+  const S = shot, mode = MODES[modeIndex];
+  if (S.phase === 'wait') {
+    // erst laufende Übergänge zu Ende bringen (Moduswechsel, Look-Wechsel, Sprung oder Flug im Modus), höchstens 20 s –
+    // mitten in einer Blende wäre das Bild dunkel oder halb verwandelt
+    if ((modeFade < 1 || (mode.looks && lookFade < 1) || (mode.shotBusy && mode.shotBusy())) && now - S.t0 < 20000) return false;
+    S.phase = 'render'; S.active = true; S.t0 = now;
+  }
+  resizeCanvas();                       // stellt die Zeichenfläche auf S.size (die Simulation behält ihre Puffer)
+  render(0);
+  S.frames++;
+  if (mode.shotReady ? mode.shotReady() : S.frames >= 2) {
+    shotGrab(S);
+    shotEnd();
+  } else if (now - S.t0 > SHOT.TIMEOUT * 1000) {
+    shotEnd();
+    toast('Das Bild wurde nicht fertig – abgebrochen');
+  } else if (now - S.say > 400) {
+    S.say = now;
+    toast('Bild wird gerechnet … ' + (mode.shotProgress ? Math.round(mode.shotProgress() * 100) + ' %' : ''));
+  }
+  return true;
+}
+function shotEnd() {
+  shot = null;
+  resizeCanvas();
+  updateQualityInfo();
+  updateShotUi();
+}
+// Das fertig gezeichnete Bild von der Zeichenfläche holen (muss im selben Augenblick passieren – danach gibt der
+// Browser den Inhalt frei), auf die Ziel-Größe zuschneiden und als PNG-Datei übergeben
+function shotGrab(S) {
+  const c = document.createElement('canvas');
+  c.width = S.out[0]; c.height = S.out[1];
+  const g = c.getContext('2d');
+  // größter Ausschnitt aus der Bildmitte mit dem Seitenverhältnis des Ziels
+  const k = Math.min(canvas.width / c.width, canvas.height / c.height), sw = c.width * k, sh = c.height * k;
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(canvas, (canvas.width - sw) / 2, (canvas.height - sh) / 2, sw, sh, 0, 0, c.width, c.height);
+  const d = new Date(), two = v => String(v).padStart(2, '0');
+  const name = `Satisim-${MODES[modeIndex].name.replace(/[^A-Za-z0-9ÄÖÜäöüß]+/g, '-').replace(/-$/, '')}-${c.width}x${c.height}-` +
+    `${d.getFullYear()}${two(d.getMonth() + 1)}${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}${two(d.getSeconds())}.png`;
+  c.toBlob(blob => {
+    if (!blob) { toast('Das Bild konnte nicht gespeichert werden'); return; }
+    shotDeliver(blob, name, c.width, c.height);
+  }, 'image/png');
+}
+// Datei an den Browser übergeben (landet im Download-Ordner)
+function shotDeliver(blob, name, w, h) {
+  const a = document.createElement('a'), url = URL.createObjectURL(blob);
+  a.href = url; a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  audioArrive();
+  toast(`Bild gespeichert: ${w} × ${h} (${(blob.size / 1e6).toFixed(1).replace('.', ',')} MB)`);
+}
+const shotBox = $('shotKinds');
+SHOT_KINDS.forEach((k, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.innerHTML = `<span>${k.name}</span>`;
+  btn.addEventListener('click', () => { shotStart(i); btn.blur(); });
+  shotBox.appendChild(btn);
+});
+function updateShotUi() {
+  [...shotBox.children].forEach((b, i) => { b.classList.toggle('active', i === shotLast); b.disabled = !!shot; });
+  const plan = shotPlan(SHOT_KINDS[shotLast]), big = plan.size[0] * plan.size[1] > canvas.width * canvas.height * 1.05;
+  $('shotInfo').innerHTML = `Taste <b>I</b> = ${SHOT_KINDS[shotLast].name}: ${plan.out[0]} × ${plan.out[1]} Bildpunkte` +
+    (MODES[modeIndex].freeAspect ? (big ? ' – wird in dieser Größe neu gerechnet.' : '.')
+      : ' – ' + (big ? 'Look und Glow werden dafür größer gerechnet, ' : '') + 'bei anderem Seitenverhältnis wird die Bildmitte ausgeschnitten.');
+}
+
+// beim Moduswechsel: Listen und Info auf den neuen Modus einstellen
+function updateShareUi() { updateSceneUi(); updateShotUi(); }
+
 // ---------- Hauptschleife ----------
 let last = performance.now();
 function frame(now) {
   const rawDt = (now - last) / 1000;
   last = now;
+  // Bild-Export: Solange er läuft, gehört jedes Bild ihm – Eingaben, Simulation und Auto-Play stehen still
+  if (shot && shotFrame(now)) { requestAnimationFrame(frame); return; }
   const dt = Math.min(rawDt, 1 / 30);
   if (rawDt > 0 && rawDt < 0.25) { updateFps(rawDt); autoQuality(rawDt, fpsSmooth); }   // Pausen (Tab im Hintergrund) ignorieren
 
-  if (resizeCanvas()) { initFramebuffers(); updateQualityInfo(); }
+  if (resizeCanvas()) { initFramebuffers(); updateQualityInfo(); updateShotUi(); }
   easeParams(dt);
   updateAutoplay(dt, now);
   updateAudio(dt);
@@ -9406,6 +9960,7 @@ function frame(now) {
 
 if (window.innerWidth < 600) togglePanel();   // auf schmalen Bildschirmen erst mal eingeklappt
 updateQualityInfo();
+updateShareUi();
 randomSplats(4);
 startAutoplay(false);     // beim ersten Start malt die App sofort von selbst – Oberfläche bleibt sichtbar
 requestAnimationFrame(frame);
