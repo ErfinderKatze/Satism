@@ -1185,19 +1185,20 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   `left_click_drag` mit Werkzeug „Hindernis“ zeichnet. Bildschirmfotos entstehen sehr schnell nach der Eingabe –
   ein Tropfen hängt darauf scheinbar noch in der Luft.
 
-## 3D-Fraktal-Flug (in Arbeit: Schritt 1 von 6 fertig)
+## 3D-Fraktal-Flug (in Arbeit: Schritt 2 von 6 fertig)
 - **Ausbauplan:** 1 Kern (Raymarching, Distanzschätzer Mandelbulb, Licht, Farben, einfache Flugsteuerung) ✅ ·
-  2 Leistung und Genauigkeit (Auflösung passt sich an, im Stillstand verfeinern, Kamera kann nicht in die Oberfläche,
-  Grenze der 32-Bit-Zahlen, Extremfälle) ⬜ · 3 weitere Fraktale (Mandelbox, Menger-Schwamm, Sierpinski-Pyramide,
-  3D-Julia) und Faltungs-Baukasten ⬜ · 4 Bedienung (Mausrad = Tempo, Rollen, Bremsen, Regler je Fraktal,
-  Zufalls-Knopf, Kamera speichern) ⬜ · 5 Presets, Textcode, Screenshot/Hintergrundbild ⬜ · 6 Ton, Kameraflug als
-  Bildschirmschoner, Flacker-Reduktion, Panel ⬜.
-- **Nächster Schritt: 2.** Nach Schritt 3 anhalten und auf „weiter“ des Nutzers warten.
+  2 Leistung und Genauigkeit (Auflösung regelt sich beim Fliegen, im Stillstand verfeinern, Kamera kann nicht in die
+  Oberfläche, Grenze der 32-Bit-Zahlen, Extremfälle) ✅ · 3 weitere Fraktale (Mandelbox, Menger-Schwamm,
+  Sierpinski-Pyramide, 3D-Julia) und Faltungs-Baukasten ⬜ · 4 Bedienung (Mausrad = Tempo, Rollen, Bremsen, Regler je
+  Fraktal, Zufalls-Knopf, Kamera speichern) ⬜ · 5 Presets, Textcode, Screenshot/Hintergrundbild ⬜ · 6 Ton,
+  Kameraflug als Bildschirmschoner, Flacker-Reduktion, Panel ⬜.
+- **Nächster Schritt: 3.** Nach Schritt 3 anhalten und auf „weiter“ des Nutzers warten.
 - Code: Abschnitt `// ---------- 3D-Fraktal-Flug ----------` in `index.html` (direkt vor `// ----- Moduswechsel -----`),
   Konstanten in `FLY`, Aufwand je Qualitätsstufe in `FLY_LEVELS`, Fraktale in `FLY_KINDS`, Zustand in `fly`,
   Modus-Objekt `id: 'flight'`. Gearbeitet wird auf dem Git-Zweig `3d-fraktal-flug` (nicht `master`).
+  Commits: `82b4833` (Schritt 1), Schritt 2 direkt danach.
 
-### Technik (Schritt 1)
+### Technik (Schritt 1: Kern)
 - **Raymarching:** Für jeden Bildpunkt läuft ein Strahl von der Kamera los. An jeder Stelle sagt der
   **Distanzschätzer** (GLSL-Funktion `de(p)`), wie weit es mindestens bis zur Oberfläche ist – um diese Strecke
   springt der Strahl weiter. Treffer, sobald der Abstand kleiner ist als `FLY.HIT` (0,75) Bildpunkte (die Schwelle
@@ -1207,70 +1208,140 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Unterschiede wachsen: `dz ← n · r^(n−1) · dz + 1`). Abstand ≈ `0,5 · ln(r) · r / dz`, abgebrochen erst bei r > 16.
   Potenz als Regler (2–16, Standard 8, `PARAMS.flyPower`).
 - **Detailgrad nach Entfernung:** Die Formel bricht ab, sobald ihre Details feiner als ein Bildpunkt wären
-  (`dz · gEps > uLod`, `FLY.LOD` = 2). Ferne Stellen brauchen so nur 4–5 Durchgänge. Für Normalen, Schatten und Ritzen
-  wird danach mit **fester** Durchgangszahl gerechnet (`gIter = gUsed`, `gEps = 0`) – sonst rauschen die Normalen.
+  (`dz · gEps > uLod`, `FLY.LOD` = 2). Ferne Stellen brauchen so nur 4–5 Durchgänge. Für Normalen und Ritzen wird
+  danach mit **fester** Durchgangszahl gerechnet (`gIter = gUsed`, `gEps = 0`) – sonst rauschen die Normalen.
 - **Gemeinsame Struktur für alle Fraktale:** Shader = `flyHead` + `kind.glsl` (nur `de()`) + `flyMain` (Strahlen, Licht,
   Schatten, Nebel, Farben). `de()` liest `gIter`/`gEps` und schreibt `gUsed`/`gTrap`. Neues Fraktal = Eintrag in
-  `FLY_KINDS` (`id`, `name`, `home`, `orbit`, `bound()`, `uniforms(u)`, `glsl`).
+  `FLY_KINDS` (`id`, `name`, `home`, `orbit`, `bound()`, `uniforms(u)`, `glsl`; optional `fudge`, `relax`).
 - **Licht:** Normale aus vier Messpunkten (Tetraeder, `gradient`), Sonne mit weichem Schatten (`shadow`: zweiter
   Strahl, Halbschatten aus `10 · d / t`), Himmelslicht und etwas Gegenlicht mal Verschattung in Ritzen (`occlusion`:
-  bis 5 Messpunkte über der Oberfläche), Stirnlampe an der Kamera (reicht 8 Kamera-Abstände weit), Glanzlicht.
-  Alle Licht-Maße hängen an `uPixRef` (Bildpunkt eines 1080-Zeilen-Bilds), nicht an der gerade benutzten Auflösung.
+  bis 5 Messpunkte über der Oberfläche), Stirnlampe an der Kamera (`uHead`: 0,5 nah an der Oberfläche, 0,2 in der
+  Übersicht; reicht 14 Kamera-Abstände weit), Glanzlicht. Alle Licht-Maße hängen an `uPixRef` (Bildpunkt eines
+  1080-Zeilen-Bilds), nicht an der gerade benutzten Auflösung – deshalb sehen Flug-Bild und Standbild gleich aus.
 - **Farben per Orbit-Trap:** `gTrap` = wie nah z den Achsen-Ebenen und dem Mittelpunkt kam; Palettenstelle =
   `uColorShift + uColorScale · (1,5 · √trap.w + 0,6 · trap.x + 0,35 · trap.z)`, Helligkeits-Maserung aus `trap.y`.
 - **Farben werden als Anteile gespeichert:** Der Strahlen-Shader schreibt nicht Rot/Grün/Blau, sondern die Anteile
-  der fünf Palettenfarben plus Weiß in zwei Texturen (`fly.g`, RGBA16F, `flyTarget` = Ziel mit zwei Texturen).
+  der fünf Palettenfarben plus Weiß in zwei Texturen (RGBA16F, `flyTarget` = Ziel mit zwei Texturen).
   `addColor(t, menge)` rechnet wie `palette(t)`. Der billige Shader `flyResolve` setzt die aktuelle Palette ein
   (`uPalette`). Folge: Palettenwechsel braucht keine neue Strahlen-Rechnung; Mitteln mehrerer Bilder bleibt exakt.
 - **Glow/Nebel:** Glühen um die Umrisse (Strahlen, die knapp verfehlen: `exp(−Winkel / 0,012)`), Glühen in Ritzen
-  (`0,5 · (1 − ao)³`, heller als Weiß → gemeinsamer Bloom), Nebel `1 − exp(−t / uFogDist)` mit
-  `uFogDist = FLY.FOG (40) · fly.scale` (Sichtweite = 40 Kamera-Abstände), dunkler, palettengetönter Hintergrund.
-- **Hüllkugel:** Strahlen beginnen am Eintritt in die Kugel `kind.bound() · 1,12` und enden am Austritt bzw. bei
-  `7 · uFogDist`; Strahlen daran vorbei kosten keinen Schritt.
+  (`0,5 · (1 − ao)³`, heller als Weiß → gemeinsamer Bloom). Nebel `1 − exp(−Weg / uFogDist)` mit
+  `uFogDist = FLY.FOG (40) · fly.scale` (Sichtweite = 40 Kamera-Abstände); er liegt **nur innerhalb der Hüllkugel**:
+  von außen (Übersicht) bleibt der Hintergrund dunkel, tief im Fraktal verschwindet die Ferne in einem leicht
+  leuchtenden, palettengetönten Dunst.
+- **Hüllkugel:** Strahlen beginnen am Eintritt in die Kugel `kind.bound() · 1,12` und enden am Austritt bzw. nach
+  `7 · uFogDist` im Nebel; Strahlen daran vorbei kosten keinen Schritt.
 - **Messfühler** (`flyProbe`, `uTask = 1`): derselbe Shader rechnet für 1 Bildpunkt Abstand und Richtung zur Oberfläche
   an der Kamera; abgeholt ohne die Grafikkarte aufzuhalten (PBO + `fenceSync`, wie `readPartStats`), nach einem Sprung
   einmal direkt (`flyProbe(true)`). `flyClear()` = letzte Messung minus seither geflogene Strecke (sicherer Wert).
 - **Flug:** Kamera = Ort + Quaternion (frei drehbar). Maus-Blick: Klick fängt die Maus (Pointer Lock), sonst Ziehen;
   Pfeiltasten drehen auch. `W A S D`, Leertaste/`C` hoch/runter, Umschalt = 3× Tempo. Tempo in „Abständen zur
-  Oberfläche pro Sekunde“ (`FLY.SPEED` 0,9) mit Trägheit (`ACCEL` 5/s, Ausrollen `GLIDE` 2,2/s). Auf die Oberfläche zu
-  höchstens ¼ des freien Abstands pro Bild, insgesamt höchstens die Hälfte; Untergrenze `flyEpsMin() · 40`.
+  Oberfläche pro Sekunde“ (`FLY.SPEED` 0,9) mit Trägheit (`ACCEL` 5/s, Ausrollen `GLIDE` 2,2/s).
 - **Sprung** (`flyJump`, Taste `R` = Start): Bild blendet 0,5 s ab und auf, in der Mitte wird die Kamera versetzt.
 - **Auto-Play (vorläufig):** ruhiger Rundflug (`flyAutoplay` gibt ein Ziel vor, geflogen wird über denselben Weg wie
   von Hand). Taste **`P`** statt `A` (Modus-Eigenschaft `autoplayKey`; `A` fliegt nach links).
-- **Shader wird erst beim ersten Besuch übersetzt**, im Hintergrund (`KHR_parallel_shader_compile`), ≈ 0,5 s;
+- **Shader wird erst beim ersten Besuch übersetzt**, im Hintergrund (`KHR_parallel_shader_compile`), ≈ 0,5–1 s;
   solange bleibt das Bild schwarz und die Info-Zeile meldet es.
 
-### Messwerte Schritt 1 (1920×1080, Testrechner; „Bild“ = ganzes Bild mit Bloom, CPU + GPU; noch ohne die Tricks aus Schritt 2)
-| Stufe | Fraktal-Bild | Übersicht | im Tal (Abstand 0,1) | nah (0,02) | sehr nah (0,008) |
-|---|---|---|---|---|---|
-| Niedrig | 960×540 | 0,9 ms | 4,1 ms | 4,5 ms | 5,2 ms |
-| Mittel | 1248×702 | 1,5 ms | 6,6 ms | 8,6 ms | 10,0 ms |
-| Hoch | 1536×864 | 2,4 ms | 11,0 ms | 14,3 ms | 16,9 ms |
-| Ultra | 1920×1080 | 3,3 ms | 18,3 ms | 24,3 ms | 29,0 ms |
-| Extrem | 1920×1080 | 3,5 ms | 18,9 ms | 25,8 ms | 31,0 ms |
-| Maximum | 1920×1080 | 3,5 ms | 19,2 ms | 27,1 ms | 32,3 ms |
-- 60 FPS halten nah an der Oberfläche nur Niedrig/Mittel/(Hoch); Ultra und höher 37–50 FPS → Aufgabe von Schritt 2.
-- Keine GL-Fehler, keine ungültigen Werte im Bild (alle Stufen × 4 Orte), 54 Moduswechsel durch alle fünf Modi
-  fehlerfrei, Fluid-Prüfsummen wie in der alten Fassung (dieselben drei Hauptwerte; seltene Ausreißer in beiden).
-- Flug geprüft: `W` gehalten nähert sich der Oberfläche immer langsamer und bleibt bei 7,6 · 10⁻⁵ stehen (nie
-  hindurch); Potenz 2/3/4,5/16 sehen richtig aus.
+### Leistung und Genauigkeit (Schritt 2)
+- **Zwei Betriebsarten** (`drawFlight`): `flyImageKey()` fasst alles, wovon das Strahlen-Bild abhängt, in einen Text
+  (Kamera, Maßstab, gerundete Regler, Stufe; **nicht** die Palette). Ändert er sich → **Bewegung**, sonst
+  **Stillstand**. Damit das Bild wirklich zur Ruhe kommt, werden Rest-Tempo (< 0,004), Rest-Drehung (< 2 · 10⁻⁵) und
+  der Maßstab `fly.scale` (auf 0,4 % genau) „eingerastet“.
+- **Bewegung = verkleinertes Bild, das sich selbst regelt:** Gerechnet wird in die linke untere Ecke von `fly.g`
+  (Größe = Bildschirm × `FLY_LEVELS[].move`), und zwar `fly.dyn` (0,35 … 1) davon; `flyShow` zeigt den Teil
+  vergrößert an. `fly.dyn` folgt der **gemessenen Rechenzeit der Grafikkarte** (`EXT_disjoint_timer_query_webgl2`,
+  `flyTimeBegin/End/Poll`, Antwort 1–2 Bilder später): Ziel = `FLY.GPU_SHARE` (60 %) der Zeit eines Bildschirm-Bilds
+  (`flyBudget()`, bei 60 Hz 10 ms, bei 144 Hz 4,2 ms); neuer Maßstab = alter · √(Ziel / gemessen), 40 % des Wegs pro
+  Messung (`flyMeasured`). Ohne die Erweiterung regelt `flyPace` nach den Bildabständen (gröber, geprüft).
+- **Stillstand = scharfes Standbild in Streifen:** `flyRefine` rechnet pro Bildschirm-Bild so viele Zeilen von
+  `fly.acc` (Bildschirm × `still`), wie ins Zeit-Budget passen (`gl.scissor`; Schätzung aus der zuletzt gemessenen
+  Zeit pro Bildpunkt, wächst höchstens 1,6-fach pro Bild). Durchgang 1 füllt das Bild, danach wird weich übergeblendet
+  (`FLY.FADE` 0,2 s). Durchgänge 2 … `aa` verschieben die Strahlen um Bruchteile eines Bildpunkts (`flyJitter`,
+  Halton-Folge) und werden mit Anteil 1/k eingemischt (`blendColor` + `CONSTANT_ALPHA`) → Mittelwert =
+  Kantenglättung. Danach kostet das Bild nichts mehr.
+- **Stufen** (`FLY_LEVELS`: move / still / aa / steps / shadow / ao): Niedrig 0,5 / 0,75 / 2 / 90 / 12 / 2 ·
+  Mittel 0,7 / 1 / 3 / 120 / 16 / 3 · Hoch 0,85 / 1 / 4 / 150 / 20 / 4 · Ultra 1 / 1 / 8 / 190 / 24 / 5 ·
+  Extrem 1 / 1 / 12 / 250 / 32 / 5 · Maximum 1 / 1 / 16 / 320 / 40 / 5. Obergrenzen `MOVE_PIXELS` 4,2 Mio.,
+  `STILL_PIXELS` 9 Mio. (Speicher auf 4K-Schirmen).
+- **Auto-Qualität:** `idle()` meldet „nicht hochschalten“ im Stillstand und solange `fly.dyn < 0,98` – hochgeschaltet
+  wird nur, wenn beim Fliegen wirklich Luft ist. Geprüft: Hoch → Ultra nach 6 s, danach stabil, immer 60 FPS.
+- **Schneller gerechnet** (Nahaufnahme, Ultra, 1351×1205: 19 ms → ≈ 10 ms):
+  - Potenz genau 8: ohne Winkelfunktionen (Winkel als Zahlenpaar, dreimal verdoppeln; `uPowInt == 8`) → −25 %.
+  - Schatten: entlang des Schatten-Strahls gröber (`gEps = max(px, 0,05 · t)`), Mindestschritt `px + 0,25 · t`,
+    weniger Schritte → Schatten kosten 3–4 ms statt 7–9 ms.
+  - Größere Schritte auf Probe („Über-Relaxation“, `FLY.RELAX` 1,25, mit Rückzieher, wenn sich die leeren Kugeln nicht
+    überlappen) → −12 %; Tiefen-Unterschied im Mittel < 0,1 %, an 0,1–0,2 % der Bildpunkte > 2 %.
+- **Kamera kann nicht in die Oberfläche:** Der Anteil der Bewegung auf die Oberfläche zu ist auf ¼ des freien
+  Abstands pro Bild begrenzt, insgesamt auf die Hälfte (schützt bei riesigen Zeitschritten). Steckt die Kamera doch
+  zu dicht davor oder im Inneren (Regler hat die Form verändert), schiebt `updateFlight` sie hinaus: davor entlang
+  `fly.grad`, im Inneren (`dist < 2 %` der Untergrenze) vom Mittelpunkt weg; solange dunkelt `fly.dim` das Bild ab.
+- **Grenze der 32-Bit-Zahlen:** `flyEpsMin()` = 3 Rundungsschritte (`FLY.EPS_FLOOR` · 1,2 · 10⁻⁷ · größte
+  Koordinate) ist die feinste Treffer-Schwelle. `flyFloor()` = Abstand, bei dem ein Bildpunkt (1080 Zeilen) genau so
+  groß ist ≈ **0,00037** (≈ 3000-fache Vergrößerung gegenüber dem Start). Näher lässt die Bewegungs-Begrenzung die
+  Kamera nicht: sie bremst weich bis zum Stillstand, ein Toast erklärt es. Tangential und rückwärts geht es weiter.
+- **Anlauf nach einer Pause:** Nach > 0,7 s Stillstand startet die Bewegung mit 60 % von `fly.dyn` (die Grafikkarte
+  taktet sich im Leerlauf herunter: erste Bilder 43 ms statt 8 ms → ohne das 3 Ruckler, mit: keiner).
+
+### Messwerte (1920×1080, 60-Hz-Vorschau, NVIDIA RTX 3050 Laptop; Flug = seitwärts fliegen, Stillstand = danach anhalten)
+| Stufe | Flug: Übersicht | im Tal (Abstand 0,1) | nah (0,02) | sehr nah (0,0005) | FPS im Flug | Standbild | scharf nach | fertig geglättet nach |
+|---|---|---|---|---|---|---|---|---|
+| Niedrig | 960×540 · 1,6 ms | 960×540 · 2,4 ms | 960×540 · 5,2 ms | 960×540 · 5,7 ms | 60 | 1440×810, 2-fach | ≤ 0,03 s | ≤ 0,07 s |
+| Mittel | 1344×756 · 2,1 ms | 1344×756 · 5,0 ms | 1344×756 · 5,7 ms | 1317×741 · 9,8 ms | 60–61 | 1920×1080, 3-fach | ≤ 0,03 s | ≤ 0,15 s |
+| Hoch | 1632×918 · 2,7 ms | 1632×918 · 6,2 ms | 1632×918 · 9,4 ms | 1290×725 · 9,8 ms | 60 | 1920×1080, 4-fach | ≤ 0,05 s | ≤ 0,17 s |
+| Ultra | 1920×1080 · 3,4 ms | 1920×1080 · 9,8 ms | 1656×931 · 10,7 ms | 1225×689 · 10,1 ms | 59–61 | 1920×1080, 8-fach | ≤ 0,05 s | ≤ 0,4 s |
+| Extrem | 1920×1080 · 3,4 ms | 1815×1021 · 9,4 ms | 1645×925 · 10,0 ms | 1223×688 · 9,8 ms | 59–60 | 1920×1080, 12-fach | ≤ 0,05 s | ≤ 0,6 s |
+| Maximum | 1920×1080 · 3,3 ms | 1920×1080 · 9,7 ms | 1617×910 · 9,5 ms | 1191×670 · 10,0 ms | 60 | 1920×1080, 16-fach | ≤ 0,08 s | ≤ 0,82 s |
+- (Zellen „Flug“: gerechnete Auflösung · gemessene GPU-Zeit der Strahlen-Rechnung.) Längstes Bild im Flug 17 ms,
+  vereinzelt 33 ms; keine GL-Fehler, keine ungültigen Werte.
+- **Fenster 3840×2160:** Flug 55–60 FPS (Flug-Bild höchstens 2733×1537, nah 1603×901, sehr nah 1183×665),
+  Standbild 3840×2160 scharf nach 0,03–0,19 s, fertig nach 0,17–3,3 s (Maximum, 16-fach; dabei 13 Bilder mit 34 ms).
+- **Ohne Zeitmessung** (Ersatz-Regelung): 58 FPS im Flug (3 von 87 Bildern über 25 ms), Standbild nach 1,2 s.
+- **Extremfälle:** mit Vollgas in die Oberfläche (2500 Bilder, auch bei 30 Bildern/s): kleinster Abstand 0,000367 bei
+  Untergrenze 0,000370; Zeitschritte von 3 s: kein Durchflug; Kamera im Inneren gestartet: nach 30 Bildern draußen;
+  Potenz-Regler in Fahrt bei Kamera dicht an der Oberfläche: 2 Bilder im Inneren, danach frei; an der Untergrenze
+  keine ungültigen Werte im Bild.
+- 54 Moduswechsel durch alle fünf Modi fehlerfrei; Fluid-Prüfsumme unverändert (`ee1e9dc5-123c5505`, 12 von 12).
 
 ### Fallstricke
 - `near`, `far`, `half` nicht als Namen im Shader. `atan(x, z + 1e-20)` und `max(r, 1e-20)`: ohne das gibt es auf der
   Pol-Achse ungültige Werte. Die Ausgabe wird mit `max(min(…))` begrenzt – ein einziger ungültiger Bildpunkt würde
   sich im Bloom über das Bild ausbreiten.
-- Der Messfühler wird innerhalb EINES JavaScript-Aufrufs nie fertig → in Tests `flyProbe(true)` benutzen
-  (`__f.fly` macht das). Mit veralteter Messung bleibt die Kamera einfach stehen (sicher, aber kein Test des Flugs).
+- **Alles, was das Strahlen-Bild verändert, muss in `flyImageKey()` stehen** (neue Regler, neue Fraktal-Werte) –
+  sonst bleibt das alte Standbild stehen. Was sich dauernd ändert, darf dort nicht hinein (sonst wird nie verfeinert);
+  solche Werte runden oder einrasten lassen.
+- Neue Puffer sind leer → `ensureFlyBuffers` löscht `imageKey`, damit sofort neu gerechnet wird.
+- Der Messfühler und die Zeitmessung werden innerhalb EINES JavaScript-Aufrufs nie fertig → in Tests
+  `flyProbe(true)` benutzen (`__f.fly` macht das) und zum Messen `__f.fix(maßstab)` (hält die Auflösung fest).
+- Es kann immer nur EINE Zeitmessung laufen: `flyTimeBegin` prüft das (`gl.getQuery(…, CURRENT_QUERY)`), sonst
+  stören sich App und Test-Messung (`__t.gpu`).
 - Helligkeit: Flächen dürfen nicht durchgehend über der Bloom-Schwelle (0,4) liegen, sonst legt sich ein rosa
-  Schleier über alles (erste Fassung: Sonne 1,25, Ritzen-Glühen 1,6, Umriss-Glühen 0,035 breit → verworfen).
+  Schleier über alles.
 - Rand des Bildes wirkt bei 70° Blickwinkel gestreckt (normale Perspektive, kein Fehler).
 - **Maus fangen konnte in der Vorschau nicht geprüft werden** (der Test-Browser erlaubt es nicht); Ziehen ist geprüft.
+- Ist die Vorschau verdeckt (`document.hidden`), läuft `requestAnimationFrame` mit 1 Bild/s → FPS-Tests hängen.
+  Dann Bilder direkt rechnen (`__p.one`, `__f.move`, `__f.still`).
+
+### Ausprobiert und verworfen
+- **Schneller Weg für jede ganze Potenz als Schleife** (Winkel-Paar per „schnellem Potenzieren“): langsamer als die
+  Winkelfunktionen (23–30 ms statt 19–20 ms) → nur Potenz 8 fest ausgeschrieben.
+- **Erste Licht-Fassung** (Sonne 1,25, Ritzen-Glühen 1,6, Umriss-Glühen 0,035 breit): alles rosa überstrahlt, Glühen
+  als Scheibe mit hartem Rand an der Hüllkugel.
+- **Feinste Schwelle 16 Rundungsschritte:** nahe Flächen werden glatt wie Plastik; **1 Rundungsschritt:** Streifen,
+  Details gehen verloren → 3.
+- **Nebel überall (auch außerhalb der Hüllkugel) und fast schwarz:** tiefe Ansichten waren düster und flach.
+- **Tief hineinzoomen wie im Mandelbrot-Modus (Bezugsbahn):** nicht gebaut. Für Faltungs-Fraktale ginge es exakt
+  (Abstand zur Bahn der Kamera pro Faltung mitführen), für die Mandelbulb gibt es keine einfache auslöschungsfreie
+  Formel – der Aufwand stand in keinem Verhältnis. Stattdessen sanfte Grenze bei ≈ 3000-facher Vergrößerung.
 
 ### Testen
 - `.claude/flight.js` (Code-Abschnitt) und `.claude/flight-panel.html` (Panel) bearbeiten, dann
   `python .claude/splice-fly.py` – **nicht direkt in `index.html` ändern**, der nächste Lauf überschreibt es.
   Änderungen außerhalb des Abschnitts (CSS, `PARAMS`, Tasten) per Patch-Skript (`patch-f1.py`, Muster `patchlib.py`).
+  Diesen Abschnitt von CLAUDE.md: `.claude/md-fly.md` ändern, dann `python .claude/md-fly.py`.
 - `.claude/f-tools.js` laden → `__f.ready()` (wartet auf den Shader), `__f.view(ort, blickpunkt)`,
-  `__f.fly(['KeyW'], bilder)`, `__f.stats()` (ungültige Werte im G-Buffer), `__f.cost(n)`, `__f.gpu(n)`.
-  `run-f1.js` (Stufen × Orte → `window.__res`), `run-f1b.js` (Moduswechsel, Tasten → `window.__res2`).
+  `__f.fly(['KeyW'], bilder)`, `__f.fix(maßstab)`, `__f.move()` (ein Flug-Bild), `__f.still()` (Standbild zu Ende),
+  `__f.stats('g' | 'acc')` (ungültige Werte), `__f.cost(n)`, `__f.gpu(n)`.
+  `run-f2.js` (Stufen: Flug und Stillstand in Echtzeit; Extremfälle; Ersatz-Regelung → `window.__res`,
+  `window.__opt = { parts, levels }`), `run-f1b.js` (Moduswechsel und Tasten in Echtzeit → `window.__res2`).
   Alte Fassung zum Vergleich: `.claude/pre-fly.html`.
