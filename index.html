@@ -110,6 +110,9 @@
   #partScatter { width: 100%; }
   /* Flüssigkeits-Modus (Partikel) */
   #liqTilt { width: 100%; margin: 0 0 12px; }
+  #liqPresets { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  #liqPresets .btn { grid-column: span 2; justify-content: center; }
+  #liqPresets .btn:nth-child(n+4) { grid-column: span 3; }   /* zweite Reihe: zwei breitere Knöpfe */
   #liqDrain, #liqRefill { padding: 8px; }
   body.mode-liquid #cursor { border-width: 1.5px; box-shadow: 0 0 10px var(--brush, #fff); }
   body.mode-liquid.liq-pull:not(.tool-wall):not(.tool-erase) #cursor { border-style: dashed; }   /* gestrichelt, solange die Maus anzieht */
@@ -347,6 +350,9 @@
   </div>
   <div class="sec" data-mode="liquid" id="liqProps">
     <h3>Eigenschaften</h3>
+    <div id="liqPresets"></div>
+    <div class="sub" id="liqPresetHelp"></div>
+    <label class="switch-row" id="liqLookRow" style="margin-bottom:14px">Passenden Look mitwählen <span class="switch on" id="liqLookSwitch"></span></label>
     <div class="row">
       <label for="liqGravity">Schwerkraft <output id="liqGravityOut"></output></label>
       <input id="liqGravity" type="range" min="0" max="2" step="0.01">
@@ -721,7 +727,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid liquid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid liquid"><kbd>E</kbd>Radierer</span><span data-mode="fluid liquid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid liquid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid liquid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>R</kbd>Schieben ↔ Ziehen</span><span data-mode="liquid"><kbd>Klick</kbd>Tropfen + Spritzer</span><span data-mode="liquid"><kbd>T</kbd>Hahn</span><span data-mode="liquid"><kbd>G</kbd>Kippen</span><span data-mode="liquid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="liquid"><kbd>N</kbd>Neu füllen</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid liquid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid liquid"><kbd>E</kbd>Radierer</span><span data-mode="fluid liquid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid liquid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid liquid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>R</kbd>Schieben ↔ Ziehen</span><span data-mode="liquid"><kbd>Klick</kbd>Tropfen + Spritzer</span><span data-mode="liquid"><kbd>T</kbd>Hahn</span><span data-mode="liquid"><kbd>G</kbd>Kippen</span><span data-mode="liquid"><kbd>P</kbd>Preset</span><span data-mode="liquid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="liquid"><kbd>N</kbd>Neu füllen</span>
   </div>
 </div>
 
@@ -853,7 +859,7 @@ const PARAMS = {
   swarmSpeed:  { target: 0.5,  current: 0.5,  def: 0.5  },  // Schwarm: Tempo, mit dem die Partikel von selbst schwimmen
   liqGravity:    { target: 1,    current: 1,    def: 1    },  // Flüssigkeit: Schwerkraft (1 = normal, 0 = schwerelos)
   liqGravityDir: { target: 0,    current: 0,    def: 0    },  // Flüssigkeit: Fallrichtung in Grad (0 = unten, 90 = rechts, ±180 = oben)
-  liqViscosity:  { target: 0.2,  current: 0.2,  def: 0.2  },  // Flüssigkeit: Viskosität = Zähigkeit (0 = dünn wie Wasser, 1 = zäh wie Honig)
+  liqViscosity:  { target: 0.12, current: 0.12, def: 0.12 },  // Flüssigkeit: Viskosität = Zähigkeit (0 = dünn wie Wasser, 1 = zäh wie Honig)
   liqCohesion:   { target: 0.3,  current: 0.3,  def: 0.3  },  // Flüssigkeit: Zusammenhalt = Oberflächenspannung (0 = aus)
   liqStiff:      { target: 0.85, current: 0.85, def: 0.85 },  // Flüssigkeit: Steifigkeit (0 = weich und federnd, 1 = kaum zusammendrückbar)
   liqDensity:    { target: 1,    current: 1,    def: 1    },  // Flüssigkeit: Dichte = wie eng die Partikel gepackt sind
@@ -5935,7 +5941,12 @@ const LIQUID = {
   VISCOSITY: 0.004,  // Viskosität bei 100 %: so schnell gleichen Nachbarn ihr Tempo an (Bildhöhen² pro Sekunde)
   VISC_MAX: 0.6,     // … pro Teilschritt höchstens zu diesem Anteil
   DRAG: 5,           // Viskosität bei 100 %: zusätzliche Bremsung pro Sekunde (zähe Flüssigkeit kriecht)
-  COHESION: 60,      // Zusammenhalt bei 100 %: Zug zwischen Nachbarn (Bildhöhen pro Sekunde², bei Bezugs-Reichweite)
+  COHESION: 150,     // Zusammenhalt bei 100 %: Zug zwischen Nachbarn (Bildhöhen pro Sekunde², bei Bezugs-Reichweite).
+                     // Der Regler wirkt nicht gleichmäßig: unten fein (30 % ≈ 16), oben kräftig – siehe liqCohesion()
+  SKIN_VISC: 0.003,  // Starker Zusammenhalt lässt die Oberfläche "kochen" (die Haut zieht, der Druck schiebt zurück, und das
+                     // schaukelt sich auf). Deshalb gleichen Partikel an der Oberfläche ihr Tempo zusätzlich aneinander an –
+                     // bei 100 % Zusammenhalt so stark (Bildhöhen² pro Sekunde), darunter quadratisch weniger (bei
+                     // Wasser praktisch nichts). Das Innere bleibt so dünnflüssig, wie die Viskosität es vorgibt.
   COH_REF: 0.0127,   // Bezugs-Reichweite dafür (Stufe "Hoch" im Format 16:9). Bei kleineren Partikeln wird der Zug
                      // stärker, damit gleich große Tropfen auf jeder Stufe gleich gut zusammenhalten.
   COH_FROM: 0.5,     // der Zug beginnt bei diesem Abstand (Anteil der Reichweite ≈ normaler Abstand zum Nachbarn)
@@ -6010,6 +6021,8 @@ const liq = {
   kickData: new Float32Array([-10, -10, 1, 0, -10, -10, 1, 0]), kickCount: new Int32Array(2),   // … in der Form für die Shader
   tap: { on: false, x: 0.5, y: 0.94, phase: 0 },  // der Hahn: an/aus, Ort (0..1), Weg seit der letzten Reihe
   drain: 0,               // > 0, solange die Flüssigkeit nach "Leeren" ausgeblendet wird
+  preset: 0,              // Nummer des Presets, dessen Werte gerade eingestellt sind (−1 = eigene Mischung)
+  presetLook: true,       // Schalter: Ein Preset wählt auch den passenden Look
   seed: 1,                // Zähler für den Zufall beim Einfüllen neuer Partikel
   // Hindernisse (eigene Textur, aber Stift, Radierer und Anzeige sind dieselben wie im Fluid-Modus)
   obstacles: null,        // Hindernis-Bild (1 = Hindernis), Doppelpuffer
@@ -6241,6 +6254,8 @@ const liqLambdaSrc = header + `precision highp int;` + liqCommonGLSL + `
   uniform float uRho0;          // Soll-Dichte
   uniform float uStiff;         // Steifigkeit (0..1)
   uniform float uVisc;          // Viskosität: Anteil des Tempo-Unterschieds zu den Nachbarn, der ausgeglichen wird
+  uniform float uSkinVisc;      // … an der Oberfläche zusätzlich (dämpft die "Haut" bei starkem Zusammenhalt)
+  uniform float uViscMax;       // … zusammen höchstens so viel
   float rho; vec2 gsum; float g2;
   // einen Nachbarn (oder sein Spiegelbild) im Abstand r mitzählen; gibt sein Gewicht zurück
   float feel (vec2 r) {
@@ -6297,7 +6312,8 @@ const liqLambdaSrc = header + `precision highp int;` + liqCommonGLSL + `
     }
     float over = max(rho / uRho0 - 1.0, 0.0);                 // so viel zu dicht (0 = passt oder zu locker)
     float lambda = -over * uStiff * uRho0 * uRho0 / max(dot(gsum, gsum) + g2, 1e-3);
-    fragColor = vec4(uVisc * vsum / wsum, lambda, rho / uRho0);
+    float skin = clamp((1.02 - rho / uRho0) * 6.0, 0.0, 1.0);   // gehört das Partikel zur Oberfläche? (Dichte unter dem Soll)
+    fragColor = vec4(min(uVisc + uSkinVisc * skin, uViscMax) * vsum / wsum, lambda, rho / uRho0);
   }`;
 
 // Wegschieben: Jedes Partikel wird von seinen Nachbarn weggeschoben – umso stärker, je höher sein eigener Druck und
@@ -6319,7 +6335,7 @@ const liqPushSrc = header + `precision highp int;` + liqCommonGLSL + `
   uniform vec2 uBounce;         // Abprallen am Rand: x = Anteil des Tempos, der zurückkommt, y = erst ab diesem Tempo
   float lam; vec2 disp;
   // von einem Nachbarn (oder seinem Spiegelbild) im Abstand r weggeschoben werden; lj = dessen Druck,
-  // pull = Stärke des Zusammenhalts (0 bei Spiegelbildern: die Wand zieht nicht an)
+  // pull = Stärke des Zusammenhalts
   void push (vec2 r, float lj, float pull) {
     float r2 = dot(r, r);
     if (r2 >= uH * uH) return;
@@ -6328,6 +6344,13 @@ const liqPushSrc = header + `precision highp int;` + liqCommonGLSL + `
     tight *= tight; tight *= tight;
     float amount = (lam + lj - uSpread * tight) * g + pull * max(q - uCohFrom, 0.0) * (1.0 - q);
     disp -= amount * r / max(q * uH, 1e-9);
+  }
+  // nur der Zusammenhalt (für Spiegelbilder hinter einem Hindernis – dessen Druck ist schon anders berücksichtigt)
+  void cling (vec2 r, float pull) {
+    float r2 = dot(r, r);
+    if (r2 >= uH * uH) return;
+    float q = sqrt(r2) / uH;
+    disp -= pull * max(q - uCohFrom, 0.0) * (1.0 - q) * r / max(q * uH, 1e-9);
   }
   void main () {
     ivec2 id = ivec2(gl_FragCoord.xy);
@@ -6340,6 +6363,14 @@ const liqPushSrc = header + `precision highp int;` + liqCommonGLSL + `
     float skin = uCoh * clamp((1.02 - own.w) * 6.0, 0.0, 1.0);
     float wx = p.x < uH ? 0.0 : p.x > uAspect - uH ? uAspect : -1.0;
     float wy = p.y < uH ? 0.0 : p.y > 1.0 - uH ? 1.0 : -1.0;
+    // Die Haut hört an einer Wand nicht einfach auf: Auch die Spiegelbilder hinter der Wand ziehen mit (die Wand wird
+    // "benetzt"). Ohne sie zöge sich die Haut ständig von der Wand weg – dort, wo die Oberfläche auf die Wand trifft,
+    // brodelte es dann dauerhaft. Ausnahme: die Wand, die gerade "oben" ist (sonst blieben Tropfen an der Decke kleben;
+    // an schrägen Flächen ist das kein Problem, dort rutschen sie ab).
+    vec2 stick = 1.0 - smoothstep(0.8, 0.97, -uUp * vec2(wx == 0.0 ? 1.0 : -1.0, wy == 0.0 ? 1.0 : -1.0));
+    // dasselbe an Hindernissen (on = Richtung vom Hindernis weg, os = Abstand); an waagrechten Unterseiten klebt nichts
+    vec2 on;
+    float os = obstacle(p, on), stickO = os < uH ? 1.0 - smoothstep(0.8, 0.97, dot(on, -uUp)) : 0.0;
     ivec2 c = cellOf(p), size = ivec2(uGridSize);
     for (int j = -3; j <= 3; j++) for (int i = -3; i <= 3; i++) {
       ivec2 cc = c + ivec2(i, j);
@@ -6348,21 +6379,26 @@ const liqPushSrc = header + `precision highp int;` + liqCommonGLSL + `
       if (g.x < -0.5) continue;
       vec2 r = p - g.xy;
       if (dot(r, r) < 1e-12) continue;
-      push(r, g.z, skin * clamp((1.02 - g.w) * 6.0, 0.0, 1.0));   // … mal dasselbe für den Nachbarn: beide ziehen gleich stark
+      float pull = skin * clamp((1.02 - g.w) * 6.0, 0.0, 1.0);    // … mal dasselbe für den Nachbarn: beide ziehen gleich stark
+      push(r, g.z, pull);
       if (i == 0 && j == 0) disp += uRescue * r / max(length(r), 1e-9);   // gleiches Rasterfeld: abrücken
       vec2 m = p + g.xy - 2.0 * vec2(wx, wy);
-      if (wx >= 0.0) push(vec2(m.x, r.y), g.z, 0.0);
-      if (wy >= 0.0) push(vec2(r.x, m.y), g.z, 0.0);
-      if (wx >= 0.0 && wy >= 0.0) push(m, g.z, 0.0);
+      if (wx >= 0.0) push(vec2(m.x, r.y), g.z, pull * stick.x);
+      if (wy >= 0.0) push(vec2(r.x, m.y), g.z, pull * stick.y);
+      if (wx >= 0.0 && wy >= 0.0) push(m, g.z, pull * stick.x * stick.y);
+      // Spiegelbild des Nachbarn hinter der Oberfläche des Hindernisses (als wäre sie dort eben)
+      if (stickO > 0.0) cling(r + 2.0 * (os - dot(r, on)) * on, pull * stickO);
     }
     vec2 m = 2.0 * (p - vec2(wx, wy));
-    if (wx >= 0.0) push(vec2(m.x, 0.0), lam, 0.0);
-    if (wy >= 0.0) push(vec2(0.0, m.y), lam, 0.0);
-    if (wx >= 0.0 && wy >= 0.0) push(m, lam, 0.0);
+    float mine = skin * clamp((1.02 - own.w) * 6.0, 0.0, 1.0);
+    if (wx >= 0.0) push(vec2(m.x, 0.0), lam, mine * stick.x);
+    if (wy >= 0.0) push(vec2(0.0, m.y), lam, mine * stick.y);
+    if (wx >= 0.0 && wy >= 0.0) push(m, lam, mine * stick.x * stick.y);
     // Hindernis in Reichweite: Es schiebt zurück wie die Flüssigkeit, für die es beim Messen der Dichte gezählt hat
-    vec2 on;
-    float os = obstacle(p, on);
-    if (os < uH) disp -= 2.0 * lam * uRho0 * 1.4 * pow(1.0 - clamp(os / uH, 0.0, 1.0), 1.8) * on;
+    if (os < uH) {
+      disp -= 2.0 * lam * uRho0 * 1.4 * pow(1.0 - clamp(os / uH, 0.0, 1.0), 1.8) * on;
+      if (stickO > 0.0) cling(2.0 * os * on, mine * stickO);
+    }
     vec2 dp = disp * uH / uRho0;
     float len = length(dp);
     if (len > uMaxPush) dp *= uMaxPush / len;
@@ -6732,6 +6768,12 @@ function liqResolve() {
   liqPass(liq.state.write);
   liq.state.swap();
 }
+// Zusammenhalt: Reglerstellung (0..1) → Stärke. Im unteren Bereich fein abgestuft (dort liegen Wasser und Öl),
+// nach oben immer kräftiger (Quecksilber).
+function liqCohesion() {
+  const c = PARAMS.liqCohesion.current;
+  return c * (0.3 + 0.7 * c * c) * LIQUID.COHESION;
+}
 // Mehrere Teilschritte rechnen (Dauer je Schritt: liq.H). Die Regler werden hier in die Größen der Rechnung
 // umgerechnet – so, dass sie auf jeder Qualitätsstufe (= Partikelgröße) dasselbe bewirken.
 function liqSimulate(steps) {
@@ -6757,13 +6799,16 @@ function liqSimulate(steps) {
   gl.uniform1f(u.uStiff, LIQUID.STIFF_MIN + (LIQUID.STIFF_MAX - LIQUID.STIFF_MIN) * P.liqStiff.current);
   // Viskosität: gewünschte Stärke (Bildhöhen² pro Sekunde) → Anteil pro Teilschritt bei dieser Partikelgröße
   const nu = P.liqViscosity.current * P.liqViscosity.current * LIQUID.VISCOSITY;
-  gl.uniform1f(u.uVisc, Math.min(nu * H / (0.208 * d * d), LIQUID.VISC_MAX));
+  const share = H / (0.208 * d * d), coh = liqCohesion();
+  gl.uniform1f(u.uVisc, Math.min(nu * share, LIQUID.VISC_MAX));
+  gl.uniform1f(u.uSkinVisc, LIQUID.SKIN_VISC * (coh / LIQUID.COHESION) ** 2 * share);
+  gl.uniform1f(u.uViscMax, LIQUID.VISC_MAX);
   u = use('liqPush');
   liqUniforms(u);
   gl.uniform1f(u.uSpread, LIQUID.SPREAD);
   gl.uniform1f(u.uSpreadW, (1 - LIQUID.SPREAD_AT * LIQUID.SPREAD_AT) ** 3);
   // Zusammenhalt: Beschleunigung → Verschiebung pro Teilschritt (in den Einheiten des Shaders)
-  const from = LIQUID.COH_FROM, pull = P.liqCohesion.current * LIQUID.COHESION * (LIQUID.COH_REF / h) ** 2;
+  const from = LIQUID.COH_FROM, pull = coh * (LIQUID.COH_REF / h) ** 2;
   gl.uniform1f(u.uCoh, pull * H * H * liq.rho0 / (h * (1 - from) * (1 - from) / 4));
   gl.uniform1f(u.uCohFrom, from);
   gl.uniform1f(u.uRescue, LIQUID.RESCUE * liq.rho0);
@@ -6826,6 +6871,7 @@ function updateLiquid(dt) {
   }
   liqShowTap();
   liqShowInfo(dt);
+  liqShowPreset();
   // Feste Teilschritte: Die Schrittdauer hängt nur von der Partikelgröße ab, nicht von der Bildrate. Ein Bild
   // rechnet so viele ganze Schritte, wie in seine Zeit passen; der Rest wird für das nächste Bild aufgehoben.
   // (Kommt ein sehr langes Bild – z. B. nach einem Tab-Wechsel –, wird die überzählige Zeit einfach verworfen.)
@@ -7123,8 +7169,56 @@ function liqTilt(dir) {
   audioTock(false);
   toast('Fallrichtung: ' + fallDirLabel(t));
 }
+// ----- Presets -----
+// Ein Preset ist nichts weiter als eine Reglerstellung: Es setzt die Zielwerte von Viskosität, Zusammenhalt,
+// Steifigkeit und Dichte; die Flüssigkeit verwandelt sich dann von selbst weich (alle Regler laufen ihrem Ziel
+// hinterher). Ist der Schalter "Passenden Look mitwählen" an, kommt der Look dazu, der am besten passt.
+//   set = Reglerwerte der Flüssigkeit, look = Name des Looks, lookSet = Look-Regler (z. B. Metall-Typ)
+const LIQ_PRESETS = [
+  { name: 'Wasser', look: 'Wasser',
+    help: 'Dünnflüssig und spritzig: schwappt lange nach und zerstäubt in feine Tropfen.',
+    set: { liqViscosity: 0.12, liqCohesion: 0.3, liqStiff: 0.85, liqDensity: 1 } },
+  { name: 'Öl', look: 'Seifenblase / Ölfilm',
+    help: 'Fließt weich und ruhig, spritzt kaum und kommt schnell zur Ruhe.',
+    set: { liqViscosity: 0.5, liqCohesion: 0.2, liqStiff: 0.85, liqDensity: 0.92 } },
+  { name: 'Honig', look: 'Metallic', lookSet: { metal: 1 },
+    help: 'Zäh: kriecht langsam, türmt sich auf und sackt gemächlich zusammen.',
+    set: { liqViscosity: 1, liqCohesion: 0.5, liqStiff: 0.85, liqDensity: 1.1 } },
+  { name: 'Gel', look: 'Glas / Kristall',
+    help: 'Weich und wabbelig: lässt sich zusammendrücken, federt nach und hält gut zusammen.',
+    set: { liqViscosity: 0.65, liqCohesion: 0.9, liqStiff: 0.25, liqDensity: 1 } },
+  { name: 'Quecksilber', look: 'Metallic', lookSet: { metal: 0 },
+    help: 'Schwer und dünnflüssig mit sehr hoher Oberflächenspannung: zieht sich zu Perlen und dicken Tropfen zusammen.',
+    set: { liqViscosity: 0.05, liqCohesion: 1, liqStiff: 1, liqDensity: 1.35 } },
+];
+function setLiqPreset(i, silent) {
+  const p = LIQ_PRESETS[i];
+  for (const [k, v] of Object.entries(p.set)) PARAMS[k].target = v;
+  if (silent) return;
+  if (liq.presetLook) {
+    for (const [k, v] of Object.entries(p.lookSet || {})) PARAMS[k].target = v;
+    setLook(LOOKS.findIndex(l => l.name === p.look));
+  }
+  audioTock(false);
+  toast('Flüssigkeit: ' + p.name);
+}
+// Welches Preset ist gerade eingestellt? (Knopf hervorheben; verstellt man einen Regler, ist es keins mehr)
+function liqShowPreset() {
+  const i = LIQ_PRESETS.findIndex(p => Object.entries(p.set).every(([k, v]) => Math.abs(PARAMS[k].target - v) < 1e-6));
+  if (i === liq.preset && liqPresetBox.dataset.shown) return;
+  liq.preset = i;
+  liqPresetBox.dataset.shown = '1';
+  [...liqPresetBox.children].forEach((b, j) => b.classList.toggle('active', j === i));
+  $('liqPresetHelp').textContent = i < 0 ? 'Eigene Mischung.' : LIQ_PRESETS[i].help;
+}
+function setLiqPresetLook(on) {
+  liq.presetLook = on;
+  $('liqLookSwitch').classList.toggle('on', on);
+  toast(on ? 'Presets wählen den passenden Look mit' : 'Presets ändern nur noch die Flüssigkeit');
+}
 function liqKey(e, bracket) {
   lookKeys(e, bracket);                                      // 1–0 und ← → wählen den Look, wie im Fluid-Modus
+  if (e.code === 'KeyP') setLiqPreset((Math.max(liq.preset, -1) + 1) % LIQ_PRESETS.length);   // nächstes Preset
   if (e.code === 'Space') { liqDrain(); e.preventDefault(); }
   if (e.code === 'KeyN') liqRefill();
   if (e.code === 'KeyR') setLiqPush(-liq.push);
@@ -7147,6 +7241,18 @@ bindSlider('liqRange',      PARAMS.liqRange,      v => Math.round(v * 100) + ' %
 bindSlider('liqSplash',     PARAMS.liqSplash,     v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('liqDrop',       PARAMS.liqDrop,       v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('liqJet',        PARAMS.liqJet,        v => Math.round(v * 100) + ' %');
+// Presets: Knöpfe entstehen aus LIQ_PRESETS
+const liqPresetBox = $('liqPresets');
+LIQ_PRESETS.forEach((p, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.title = p.help;
+  btn.innerHTML = `<span>${p.name}</span>`;
+  btn.addEventListener('click', () => { setLiqPreset(i); btn.blur(); });
+  liqPresetBox.appendChild(btn);
+});
+liqShowPreset();
+$('liqLookRow').addEventListener('click', e => { e.preventDefault(); setLiqPresetLook(!liq.presetLook); });
 const liqPushBox = $('liqPush');
 for (const b of liqPushBox.children) b.addEventListener('click', () => { setLiqPush(Number(b.dataset.push)); b.blur(); });
 setLiqPush(1, true);
