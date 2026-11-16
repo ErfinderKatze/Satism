@@ -55,6 +55,8 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 
 ## Aktueller Stand
 - Alles in **einer Datei**: `index.html` (HTML, CSS, JavaScript, GLSL-Shader). Öffnen per Doppelklick im Browser.
+- **In Arbeit: fünfter Modus „3D-Fraktal-Flug“** (Abschnitt ganz unten; dort steht, welcher Schritt fertig ist und
+  welcher als nächster kommt). Man fliegt selbst durch ein 3D-Fraktal (Mandelbulb), gerechnet per Raymarching.
 - **Vier Modi in einer App:** Fluid, Mandelbrot, Partikel und Flüssigkeit (Partikel). Umschalten mit `Tab`
   (Umschalt + `Tab` = zurück) oder im Panel-Abschnitt „Modus“, mit weicher Überblendung (0,8 s). Panel, Paletten,
   Bloom, Flacker-Reduktion, Qualität, FPS, Ton und Auto-Play gibt es nur einmal – sie gelten für alle Modi (Abschnitt
@@ -113,7 +115,10 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - **Flacker-Reduktion** (Abschnitt unten): Schalter „Flackern reduzieren“ im Panel-Abschnitt „Qualität“.
 - **Schwerkraft & Hindernisse** (Abschnitt unten): Regler Schwerkraft/Fallrichtung, Werkzeuge Farbe/Hindernis/Radierer.
 - Bedienung in jedem Modus: `Tab` = Modus wechseln, `H` = Panel, `F` = FPS, `Q` = eine Qualitätsstufe höher (schaltet
-  Auto ab), `A` = Auto-Play, `M` = stumm.
+  Auto ab), `A` = Auto-Play (im 3D-Flug `P`, weil `A` dort fliegt), `M` = stumm.
+- Bedienung 3D-Fraktal-Flug: Klick = Maus fangen (bewegen = umsehen, `Esc` = frei) oder mit gedrückter Maustaste
+  ziehen, `W` `A` `S` `D` = fliegen, Leertaste / `C` = hoch / runter, Umschalt = schneller, Pfeiltasten = umsehen,
+  `R` = zurück zum Start, `P` = Auto-Play.
 - Bedienung Fluid: Maus bewegen = malen, Klick = Farbklecks, Leertaste = leeren, `1`–`9`/`0` = Look wählen,
   `←`/`→` = Look weiterschalten, `W` = Hindernis-Stift an/aus, `E` = Radierer an/aus, `X` = alle Hindernisse löschen,
   rechte Maustaste ziehen = Hindernis zeichnen (mit Umschalt-Taste = radieren).
@@ -477,8 +482,9 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   `draw(target, dt, time)` (Bild zeichnen; `target` = Szenen-Textur oder `null` = Bildschirm), `bloomShare()` (0..1),
   `autoplayStart()`, `autoplayStop()`, `autoplay(dt)`, `pointerMove/Down/Up(e)`, `pointerLeave()`, `key(e, bracket)`,
   `qualityInfo(q)`; optional `wheel(e)`, `idle()` (true = es wird gerade nichts Teures gerechnet → die
-  Auto-Qualität schaltet dann nicht hoch), `label` (kurzer Name für den Modus-Knopf) und `looks` (Look-Stand, falls
-  der Modus die Looks benutzt – siehe „Look-System“).
+  Auto-Qualität schaltet dann nicht hoch), `label` (kurzer Name für den Modus-Knopf), `looks` (Look-Stand, falls
+  der Modus die Looks benutzt – siehe „Look-System“) und `autoplayKey` (Taste für Auto-Play, falls der Modus `A`
+  selbst braucht – der 3D-Flug nimmt `P`).
 - Panel-Teile dürfen zu mehreren Modi gehören: `data-mode="fluid liquid"` (der Abschnitt „Look“ und seine
   Tastenhinweise). Die Regel dafür entsteht aus allen vorkommenden `data-mode`-Werten (`display: none !important`,
   sonst gewinnt bei den Look-Knöpfen die Regel `#looks button`).
@@ -1178,3 +1184,93 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - Echte Maus-Eingaben in der Vorschau: `hover` an mehreren Stellen bewegt die Hand, `left_click` setzt Tropfen,
   `left_click_drag` mit Werkzeug „Hindernis“ zeichnet. Bildschirmfotos entstehen sehr schnell nach der Eingabe –
   ein Tropfen hängt darauf scheinbar noch in der Luft.
+
+## 3D-Fraktal-Flug (in Arbeit: Schritt 1 von 6 fertig)
+- **Ausbauplan:** 1 Kern (Raymarching, Distanzschätzer Mandelbulb, Licht, Farben, einfache Flugsteuerung) ✅ ·
+  2 Leistung und Genauigkeit (Auflösung passt sich an, im Stillstand verfeinern, Kamera kann nicht in die Oberfläche,
+  Grenze der 32-Bit-Zahlen, Extremfälle) ⬜ · 3 weitere Fraktale (Mandelbox, Menger-Schwamm, Sierpinski-Pyramide,
+  3D-Julia) und Faltungs-Baukasten ⬜ · 4 Bedienung (Mausrad = Tempo, Rollen, Bremsen, Regler je Fraktal,
+  Zufalls-Knopf, Kamera speichern) ⬜ · 5 Presets, Textcode, Screenshot/Hintergrundbild ⬜ · 6 Ton, Kameraflug als
+  Bildschirmschoner, Flacker-Reduktion, Panel ⬜.
+- **Nächster Schritt: 2.** Nach Schritt 3 anhalten und auf „weiter“ des Nutzers warten.
+- Code: Abschnitt `// ---------- 3D-Fraktal-Flug ----------` in `index.html` (direkt vor `// ----- Moduswechsel -----`),
+  Konstanten in `FLY`, Aufwand je Qualitätsstufe in `FLY_LEVELS`, Fraktale in `FLY_KINDS`, Zustand in `fly`,
+  Modus-Objekt `id: 'flight'`. Gearbeitet wird auf dem Git-Zweig `3d-fraktal-flug` (nicht `master`).
+
+### Technik (Schritt 1)
+- **Raymarching:** Für jeden Bildpunkt läuft ein Strahl von der Kamera los. An jeder Stelle sagt der
+  **Distanzschätzer** (GLSL-Funktion `de(p)`), wie weit es mindestens bis zur Oberfläche ist – um diese Strecke
+  springt der Strahl weiter. Treffer, sobald der Abstand kleiner ist als `FLY.HIT` (0,75) Bildpunkte (die Schwelle
+  wächst mit der Entfernung mit: `gEps = max(t · uPix, uEpsMin)`).
+- **Distanzschätzer Mandelbulb** (`FLY_KINDS[0].glsl`, ausführlich im Code kommentiert): z → z^n + c in
+  Kugelkoordinaten (Abstand hoch n, beide Winkel mal n; Pol-Achse = y). Mitgerechnet wird `dz` (wie stark winzige
+  Unterschiede wachsen: `dz ← n · r^(n−1) · dz + 1`). Abstand ≈ `0,5 · ln(r) · r / dz`, abgebrochen erst bei r > 16.
+  Potenz als Regler (2–16, Standard 8, `PARAMS.flyPower`).
+- **Detailgrad nach Entfernung:** Die Formel bricht ab, sobald ihre Details feiner als ein Bildpunkt wären
+  (`dz · gEps > uLod`, `FLY.LOD` = 2). Ferne Stellen brauchen so nur 4–5 Durchgänge. Für Normalen, Schatten und Ritzen
+  wird danach mit **fester** Durchgangszahl gerechnet (`gIter = gUsed`, `gEps = 0`) – sonst rauschen die Normalen.
+- **Gemeinsame Struktur für alle Fraktale:** Shader = `flyHead` + `kind.glsl` (nur `de()`) + `flyMain` (Strahlen, Licht,
+  Schatten, Nebel, Farben). `de()` liest `gIter`/`gEps` und schreibt `gUsed`/`gTrap`. Neues Fraktal = Eintrag in
+  `FLY_KINDS` (`id`, `name`, `home`, `orbit`, `bound()`, `uniforms(u)`, `glsl`).
+- **Licht:** Normale aus vier Messpunkten (Tetraeder, `gradient`), Sonne mit weichem Schatten (`shadow`: zweiter
+  Strahl, Halbschatten aus `10 · d / t`), Himmelslicht und etwas Gegenlicht mal Verschattung in Ritzen (`occlusion`:
+  bis 5 Messpunkte über der Oberfläche), Stirnlampe an der Kamera (reicht 8 Kamera-Abstände weit), Glanzlicht.
+  Alle Licht-Maße hängen an `uPixRef` (Bildpunkt eines 1080-Zeilen-Bilds), nicht an der gerade benutzten Auflösung.
+- **Farben per Orbit-Trap:** `gTrap` = wie nah z den Achsen-Ebenen und dem Mittelpunkt kam; Palettenstelle =
+  `uColorShift + uColorScale · (1,5 · √trap.w + 0,6 · trap.x + 0,35 · trap.z)`, Helligkeits-Maserung aus `trap.y`.
+- **Farben werden als Anteile gespeichert:** Der Strahlen-Shader schreibt nicht Rot/Grün/Blau, sondern die Anteile
+  der fünf Palettenfarben plus Weiß in zwei Texturen (`fly.g`, RGBA16F, `flyTarget` = Ziel mit zwei Texturen).
+  `addColor(t, menge)` rechnet wie `palette(t)`. Der billige Shader `flyResolve` setzt die aktuelle Palette ein
+  (`uPalette`). Folge: Palettenwechsel braucht keine neue Strahlen-Rechnung; Mitteln mehrerer Bilder bleibt exakt.
+- **Glow/Nebel:** Glühen um die Umrisse (Strahlen, die knapp verfehlen: `exp(−Winkel / 0,012)`), Glühen in Ritzen
+  (`0,5 · (1 − ao)³`, heller als Weiß → gemeinsamer Bloom), Nebel `1 − exp(−t / uFogDist)` mit
+  `uFogDist = FLY.FOG (40) · fly.scale` (Sichtweite = 40 Kamera-Abstände), dunkler, palettengetönter Hintergrund.
+- **Hüllkugel:** Strahlen beginnen am Eintritt in die Kugel `kind.bound() · 1,12` und enden am Austritt bzw. bei
+  `7 · uFogDist`; Strahlen daran vorbei kosten keinen Schritt.
+- **Messfühler** (`flyProbe`, `uTask = 1`): derselbe Shader rechnet für 1 Bildpunkt Abstand und Richtung zur Oberfläche
+  an der Kamera; abgeholt ohne die Grafikkarte aufzuhalten (PBO + `fenceSync`, wie `readPartStats`), nach einem Sprung
+  einmal direkt (`flyProbe(true)`). `flyClear()` = letzte Messung minus seither geflogene Strecke (sicherer Wert).
+- **Flug:** Kamera = Ort + Quaternion (frei drehbar). Maus-Blick: Klick fängt die Maus (Pointer Lock), sonst Ziehen;
+  Pfeiltasten drehen auch. `W A S D`, Leertaste/`C` hoch/runter, Umschalt = 3× Tempo. Tempo in „Abständen zur
+  Oberfläche pro Sekunde“ (`FLY.SPEED` 0,9) mit Trägheit (`ACCEL` 5/s, Ausrollen `GLIDE` 2,2/s). Auf die Oberfläche zu
+  höchstens ¼ des freien Abstands pro Bild, insgesamt höchstens die Hälfte; Untergrenze `flyEpsMin() · 40`.
+- **Sprung** (`flyJump`, Taste `R` = Start): Bild blendet 0,5 s ab und auf, in der Mitte wird die Kamera versetzt.
+- **Auto-Play (vorläufig):** ruhiger Rundflug (`flyAutoplay` gibt ein Ziel vor, geflogen wird über denselben Weg wie
+  von Hand). Taste **`P`** statt `A` (Modus-Eigenschaft `autoplayKey`; `A` fliegt nach links).
+- **Shader wird erst beim ersten Besuch übersetzt**, im Hintergrund (`KHR_parallel_shader_compile`), ≈ 0,5 s;
+  solange bleibt das Bild schwarz und die Info-Zeile meldet es.
+
+### Messwerte Schritt 1 (1920×1080, Testrechner; „Bild“ = ganzes Bild mit Bloom, CPU + GPU; noch ohne die Tricks aus Schritt 2)
+| Stufe | Fraktal-Bild | Übersicht | im Tal (Abstand 0,1) | nah (0,02) | sehr nah (0,008) |
+|---|---|---|---|---|---|
+| Niedrig | 960×540 | 0,9 ms | 4,1 ms | 4,5 ms | 5,2 ms |
+| Mittel | 1248×702 | 1,5 ms | 6,6 ms | 8,6 ms | 10,0 ms |
+| Hoch | 1536×864 | 2,4 ms | 11,0 ms | 14,3 ms | 16,9 ms |
+| Ultra | 1920×1080 | 3,3 ms | 18,3 ms | 24,3 ms | 29,0 ms |
+| Extrem | 1920×1080 | 3,5 ms | 18,9 ms | 25,8 ms | 31,0 ms |
+| Maximum | 1920×1080 | 3,5 ms | 19,2 ms | 27,1 ms | 32,3 ms |
+- 60 FPS halten nah an der Oberfläche nur Niedrig/Mittel/(Hoch); Ultra und höher 37–50 FPS → Aufgabe von Schritt 2.
+- Keine GL-Fehler, keine ungültigen Werte im Bild (alle Stufen × 4 Orte), 54 Moduswechsel durch alle fünf Modi
+  fehlerfrei, Fluid-Prüfsummen wie in der alten Fassung (dieselben drei Hauptwerte; seltene Ausreißer in beiden).
+- Flug geprüft: `W` gehalten nähert sich der Oberfläche immer langsamer und bleibt bei 7,6 · 10⁻⁵ stehen (nie
+  hindurch); Potenz 2/3/4,5/16 sehen richtig aus.
+
+### Fallstricke
+- `near`, `far`, `half` nicht als Namen im Shader. `atan(x, z + 1e-20)` und `max(r, 1e-20)`: ohne das gibt es auf der
+  Pol-Achse ungültige Werte. Die Ausgabe wird mit `max(min(…))` begrenzt – ein einziger ungültiger Bildpunkt würde
+  sich im Bloom über das Bild ausbreiten.
+- Der Messfühler wird innerhalb EINES JavaScript-Aufrufs nie fertig → in Tests `flyProbe(true)` benutzen
+  (`__f.fly` macht das). Mit veralteter Messung bleibt die Kamera einfach stehen (sicher, aber kein Test des Flugs).
+- Helligkeit: Flächen dürfen nicht durchgehend über der Bloom-Schwelle (0,4) liegen, sonst legt sich ein rosa
+  Schleier über alles (erste Fassung: Sonne 1,25, Ritzen-Glühen 1,6, Umriss-Glühen 0,035 breit → verworfen).
+- Rand des Bildes wirkt bei 70° Blickwinkel gestreckt (normale Perspektive, kein Fehler).
+- **Maus fangen konnte in der Vorschau nicht geprüft werden** (der Test-Browser erlaubt es nicht); Ziehen ist geprüft.
+
+### Testen
+- `.claude/flight.js` (Code-Abschnitt) und `.claude/flight-panel.html` (Panel) bearbeiten, dann
+  `python .claude/splice-fly.py` – **nicht direkt in `index.html` ändern**, der nächste Lauf überschreibt es.
+  Änderungen außerhalb des Abschnitts (CSS, `PARAMS`, Tasten) per Patch-Skript (`patch-f1.py`, Muster `patchlib.py`).
+- `.claude/f-tools.js` laden → `__f.ready()` (wartet auf den Shader), `__f.view(ort, blickpunkt)`,
+  `__f.fly(['KeyW'], bilder)`, `__f.stats()` (ungültige Werte im G-Buffer), `__f.cost(n)`, `__f.gpu(n)`.
+  `run-f1.js` (Stufen × Orte → `window.__res`), `run-f1b.js` (Moduswechsel, Tasten → `window.__res2`).
+  Alte Fassung zum Vergleich: `.claude/pre-fly.html`.

@@ -136,6 +136,10 @@
   /* Mandelbrot-Modus: schmaler Ring als Cursor; gestrichelt, solange die Julia-Form festgehalten ist */
   body.mode-mandel #cursor { border-width: 1.5px; box-shadow: 0 0 8px var(--brush, #fff); }
   body.frac-frozen #cursor { border-style: dashed; box-shadow: none; }
+  /* 3D-Fraktal-Flug: schmaler Ring als Cursor; ist die Maus gefangen, sitzt er als kleiner Zielpunkt in der Bildmitte */
+  body.mode-flight #cursor { border-width: 1.5px; box-shadow: 0 0 8px var(--brush, #fff); }
+  body.mode-flight.fly-locked #cursor { opacity: .55; }
+  #flyHome { width: 100%; margin-top: 4px; }
   /* Bloom-Regler treten zurück, wenn der Glow ausgeschaltet ist */
   #bloomControls, #swarmControls { transition: opacity .4s var(--smooth); }
   #bloomControls.unused, #swarmControls.unused { opacity: .35; }
@@ -676,6 +680,21 @@
       <input id="partGlow" type="range" min="0.3" max="3" step="0.05">
     </div>
   </div>
+  <!-- 3D-Fraktal-Flug -->
+  <div class="sec" data-mode="flight">
+    <h3>3D-Fraktal</h3>
+    <div class="sub" style="margin-top:0">Klick ins Bild fängt die Maus: Bewegen = umsehen, <b>Esc</b> gibt sie frei (oder mit gedrückter Maustaste ziehen). <b>W A S D</b> = fliegen, <b>Leertaste</b> / <b>C</b> = hoch / runter, <b>Umschalt</b> = schneller. Je näher an der Oberfläche, desto langsamer wird der Flug von selbst.</div>
+    <div class="row" style="margin-top:12px">
+      <label for="flyPower">Potenz <output id="flyPowerOut"></output></label>
+      <input id="flyPower" type="range" min="2" max="16" step="0.05">
+    </div>
+    <div class="row">
+      <label for="flySpeed">Flug-Tempo <output id="flySpeedOut"></output></label>
+      <input id="flySpeed" type="range" min="0.2" max="3" step="0.05">
+    </div>
+    <button class="btn" id="flyHome"><span>Zurück zum Start</span><kbd>R</kbd></button>
+    <div class="sub" id="flyInfo"></div>
+  </div>
   <div class="sec" id="paletteSection">
     <h3>Farbpalette</h3>
     <div id="palettes"></div>
@@ -727,7 +746,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid liquid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid liquid"><kbd>E</kbd>Radierer</span><span data-mode="fluid liquid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid liquid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid liquid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>R</kbd>Schieben ↔ Ziehen</span><span data-mode="liquid"><kbd>Klick</kbd>Tropfen + Spritzer</span><span data-mode="liquid"><kbd>T</kbd>Hahn</span><span data-mode="liquid"><kbd>G</kbd>Kippen</span><span data-mode="liquid"><kbd>P</kbd>Preset</span><span data-mode="liquid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="liquid"><kbd>N</kbd>Neu füllen</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span data-mode="fluid mandel particles liquid"><kbd>A</kbd>Auto-Play</span><span data-mode="flight"><kbd>P</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid liquid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid liquid"><kbd>E</kbd>Radierer</span><span data-mode="fluid liquid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid liquid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid liquid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>R</kbd>Schieben ↔ Ziehen</span><span data-mode="liquid"><kbd>Klick</kbd>Tropfen + Spritzer</span><span data-mode="liquid"><kbd>T</kbd>Hahn</span><span data-mode="liquid"><kbd>G</kbd>Kippen</span><span data-mode="liquid"><kbd>P</kbd>Preset</span><span data-mode="liquid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="liquid"><kbd>N</kbd>Neu füllen</span><span data-mode="flight"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>Fliegen</span><span data-mode="flight"><kbd>Leertaste</kbd><kbd>C</kbd>Hoch / runter</span><span data-mode="flight"><kbd>Umschalt</kbd>Schneller</span><span data-mode="flight"><kbd>Klick</kbd>Maus fangen</span><span data-mode="flight"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd>Umsehen</span><span data-mode="flight"><kbd>R</kbd>Zum Start</span>
   </div>
 </div>
 
@@ -868,6 +887,13 @@ const PARAMS = {
   liqSplash:     { target: 1,    current: 1,    def: 1    },  // Flüssigkeit: Stärke des Spritzers bei Klick (0 = aus)
   liqDrop:       { target: 1,    current: 1,    def: 1    },  // Flüssigkeit: Größe des Tropfens bei Klick (0 = keiner)
   liqJet:        { target: 0.5,  current: 0.5,  def: 0.5  },  // Flüssigkeit: Breite des Strahls (Hahn, gedrückte Maustaste)
+  flyPower:      { target: 8,    current: 8,    def: 8    },  // 3D-Flug: Potenz n der Mandelbulb (z → z^n + c)
+  flyIter:       { target: 20,   current: 20,   def: 20   },  // 3D-Flug: höchstens so viele Durchgänge der Fraktal-Formel (Detail-Obergrenze)
+  flySpeed:      { target: 1,    current: 1,    def: 1    },  // 3D-Flug: Flug-Tempo (Faktor)
+  flyFog:        { target: 1,    current: 1,    def: 1    },  // 3D-Flug: Nebel (1 = normal, größer = dichter)
+  flyGlow:       { target: 0.5,  current: 0.5,  def: 0.5  },  // 3D-Flug: Glühen um die Umrisse und in den Ritzen (0 = aus)
+  flyShadow:     { target: 1,    current: 1,    def: 1    },  // 3D-Flug: Stärke der Schatten (0 = keine)
+  flyColor:      { target: 1,    current: 1,    def: 1    },  // 3D-Flug: Farbdichte = wie oft die Palette über das Fraktal läuft
   forceStrength: { target: 1,   current: 1,   def: 1   },  // Partikel-Kräfte: Stärke der ausgewählten (bzw. nächsten) Kraft
   forceRange:    { target: 0.2, current: 0.2, def: 0.2 },  // Partikel-Kräfte: Reichweite (Anteil der Bildhöhe)
   forceDir:      { target: 0,   current: 0,   def: 0   },  // Partikel-Kräfte: Windrichtung in Grad (0 = rechts, 90 = oben)
@@ -2781,7 +2807,8 @@ window.addEventListener('keydown', e => {
   // [ und ] brauchen auf deutschen Tastaturen AltGr (zählt als Strg+Alt) – deshalb vor der Sperre für Tastenkombinationen prüfen
   const bracket = e.key === '[' ? -1 : e.key === ']' ? 1 : 0;
   if (e.repeat || e.metaKey || (!bracket && (e.ctrlKey || e.altKey))) return;
-  if (e.code === 'KeyA') { autoplay.active ? stopAutoplay() : startAutoplay(true); return; }
+  // (Auto-Play: Taste A – außer der Modus braucht sie selbst und nennt mit autoplayKey eine andere, siehe 3D-Flug)
+  if (e.code === (MODES[modeIndex].autoplayKey || 'KeyA')) { autoplay.active ? stopAutoplay() : startAutoplay(true); return; }
   userActive();
   // Modus wechseln: Tab = nächster, Umschalt + Tab = voriger
   if (e.code === 'Tab') { setMode((modeIndex + (e.shiftKey ? MODES.length - 1 : 1)) % MODES.length); return; }
@@ -3644,6 +3671,7 @@ updateAudioInfo();
 //   qualityInfo(q)         Text für die Info-Zeile unter dem Qualitäts-Regler
 //   looks (optional)       Look-Stand, falls der Modus die Looks benutzt (siehe makeLooks) – dann gelten Look-Knöpfe
 //                          und Look-Tasten für ihn
+//   autoplayKey (optional) Taste für Auto-Play in diesem Modus (Standard: A; der 3D-Flug braucht A zum Fliegen → P)
 // Neuer Modus = ein Objekt in MODES + Panel-Abschnitte mit data-mode="id". Ein Modus, der nicht zu sehen ist,
 // kostet nichts (er wird weder gerechnet noch gezeichnet) und behält seinen Zustand.
 
@@ -7555,6 +7583,786 @@ MODES.push({
     const n = v => v.toLocaleString('de-DE');
     ensureLiqFields();
     return `Platz für ${n(liq.side * liq.side)} Partikel<br>${n(Math.round(1 / liq.H))} Rechenschritte pro Sekunde · Such-Raster ${liq.gw}×${liq.gh}<br>Dichte-Feld ${liq.field.w}×${liq.field.h}`;
+  },
+});
+
+// ---------- 3D-Fraktal-Flug ----------
+// Man fliegt selbst durch ein dreidimensionales Fraktal. Das Bild entsteht komplett auf der Grafikkarte, ohne Dreiecke:
+//
+// "Raymarching" (Strahlen verfolgen): Für jeden Bildpunkt läuft ein Strahl von der Kamera in die Szene. Ein Fraktal hat
+// keine Formel "hier ist die Oberfläche" – man kann nur für einen einzelnen Punkt nachrechnen, ob er dazugehört.
+// Deshalb tastet sich der Strahl vor: An jeder Stelle fragt er den DISTANZSCHÄTZER (Funktion de): "Wie weit ist es von
+// hier aus MINDESTENS bis zur Oberfläche?" Um diese Strecke darf er gefahrlos weiterspringen – eine Kugel mit diesem
+// Radius um ihn herum ist garantiert leer. Weit weg vom Fraktal sind die Sprünge riesig, in der Nähe werden sie immer
+// kleiner. Ist der Abstand kleiner als ein Bildpunkt, gilt die Oberfläche als getroffen.
+//
+// Der Distanzschätzer ist also das Herzstück. Wie er für die Mandelbulb funktioniert, steht bei FLY_KINDS.
+//
+// Zwei Schritte pro Bild (beide auf der Grafikkarte):
+//   1) Strahlen verfolgen und beleuchten (teuer): schreibt für jeden Bildpunkt NICHT die fertige Farbe, sondern die
+//      ANTEILE der fünf Palettenfarben (plus einen Anteil Weiß) in zwei Texturen (fly.g, "G-Buffer").
+//   2) Auflösen (billig, Shader flyResolve): Anteile × aktuelle Palette = Farbe. Ein Palettenwechsel braucht deshalb
+//      keine neue Strahlen-Rechnung, und das Mitteln mehrerer Bilder (Kantenglättung) bleibt farblich exakt.
+// Danach läuft der gemeinsame Weg aller Modi (Flacker-Bremse, Bloom).
+//
+// Maßstab: Alles richtet sich nach dem ABSTAND DER KAMERA ZUR OBERFLÄCHE (fly.dist). Den misst die Grafikkarte mit
+// demselben Distanzschätzer an der Kamera-Position ("Messfühler", uTask = 1); die Antwort wird abgeholt, ohne die
+// Grafikkarte aufzuhalten (wie bei den Kennzahlen der Partikel-Modi). Flugtempo, Nebel und Stirnlampe hängen an diesem
+// Abstand – deshalb fühlt sich der Flug in jeder Tiefe gleich an, und man kann nicht in die Oberfläche hineinfliegen.
+const FLY = {
+  FOV: 70,                  // senkrechter Blickwinkel in Grad
+  LOOK: 0.0026,             // Maus-Blick: Drehung (Bogenmaß) pro Pixel Mausweg
+  LOOK_EASE: 22,            // wie schnell die Kamera der Maus folgt (pro Sekunde; größer = direkter, kleiner = träger)
+  KEY_TURN: 1.3,            // Pfeiltasten: Drehtempo in Bogenmaß pro Sekunde
+  SPEED: 0.9,               // Flugtempo bei 100 %: so viele "Abstände zur Oberfläche" pro Sekunde
+  TURBO: 3,                 // Umschalt-Taste: Faktor aufs Tempo
+  ACCEL: 5,                 // wie schnell das Tempo dem Tastendruck folgt (pro Sekunde)
+  GLIDE: 2.2,               // wie schnell die Kamera ausrollt, wenn keine Taste gedrückt ist (Trägheit)
+  REACH_MAX: 1.2,           // weit weg vom Fraktal zählt fürs Tempo höchstens dieser Abstand (sonst würde man rasen)
+  WORLD: 7,                 // weiter als so weit vom Mittelpunkt kann man nicht wegfliegen
+  HIT: 0.75,                // Treffer, sobald der Abstand kleiner ist als so viele Bildpunkte (kleiner = feiner, teurer)
+  LOD: 2,                   // Detailgrad: Die Fraktal-Formel hört auf, sobald ihre Details feiner als 1/LOD Bildpunkte sind
+  FLOAT_EPS: 1.2e-7,        // Genauigkeit der 32-Bit-Zahlen der Grafikkarte (bezogen auf Werte um 1)
+  EPS_FLOOR: 16,            // feiner als so viele dieser Rundungsschritte wird nie gerechnet (sonst rauscht das Bild)
+  FOG: 40,                  // Nebel: Sichtweite in "Abständen zur Oberfläche" (bei Regler 100 %)
+  BLINK: 0.5,               // Sprung an einen anderen Ort: Dauer der Blende (Bild wird kurz dunkel) in Sekunden
+  SUN: [0.55, 0.62, 0.56],  // Richtung zur Sonne (wird beim Start auf Länge 1 gebracht)
+};
+
+// Rechenaufwand je Qualitätsstufe (gleiche Reihenfolge wie QUALITY: Niedrig … Maximum):
+// scale = Auflösung des Fraktal-Bilds als Vielfaches der Bildschirmauflösung, steps = höchstens so viele Schritte pro
+// Strahl, shadow = Schritte für den Schatten-Strahl, ao = Messpunkte für die Verschattung in Ritzen
+const FLY_LEVELS = [
+  { scale: 0.5,  steps: 90,  shadow: 16, ao: 2 },
+  { scale: 0.65, steps: 120, shadow: 24, ao: 3 },
+  { scale: 0.8,  steps: 150, shadow: 32, ao: 4 },
+  { scale: 1,    steps: 190, shadow: 40, ao: 5 },
+  { scale: 1,    steps: 250, shadow: 56, ao: 5 },
+  { scale: 1,    steps: 320, shadow: 72, ao: 5 },
+];
+
+// ----- kleine Rechenhilfen: Vektoren [x, y, z] und Drehungen -----
+const vAdd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const vSub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const vMul = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+const vDot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const vCross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const vLen = a => Math.hypot(a[0], a[1], a[2]);
+const vNorm = a => { const l = vLen(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+// Drehungen werden als "Quaternion" [x, y, z, w] gespeichert: vier Zahlen, die eine beliebige Drehung im Raum
+// beschreiben. Anders als drei Winkel haben sie keine Sprünge und keine gesperrten Richtungen – die Kamera kann sich
+// frei in jede Lage drehen (auch auf den Kopf).
+const qMul = (a, b) => [
+  a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+  a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+  a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+  a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
+const qAxis = (axis, angle) => { const s = Math.sin(angle / 2); return [axis[0] * s, axis[1] * s, axis[2] * s, Math.cos(angle / 2)]; };
+const qNorm = q => { const l = Math.hypot(q[0], q[1], q[2], q[3]) || 1; return [q[0] / l, q[1] / l, q[2] / l, q[3] / l]; };
+// Vektor v mit der Drehung q drehen
+function qRot(q, v) {
+  const x = q[0], y = q[1], z = q[2], w = q[3];
+  const tx = 2 * (y * v[2] - z * v[1]), ty = 2 * (z * v[0] - x * v[2]), tz = 2 * (x * v[1] - y * v[0]);
+  return [v[0] + w * tx + (y * tz - z * ty), v[1] + w * ty + (z * tx - x * tz), v[2] + w * tz + (x * ty - y * tx)];
+}
+// Drehung, mit der die Kamera in Richtung fwd schaut (upHint = wo ungefähr "oben" sein soll)
+function qLook(fwd, upHint = [0, 1, 0]) {
+  const f = vNorm(fwd);
+  let r = vCross(f, upHint);
+  if (vLen(r) < 1e-4) r = vCross(f, [1, 0, 0]);
+  r = vNorm(r);
+  const u = vCross(r, f);
+  // Achsen der Kamera (rechts r, oben u, nach hinten −f) als Drehmatrix → Quaternion (Standard-Umrechnung)
+  const m00 = r[0], m10 = r[1], m20 = r[2], m01 = u[0], m11 = u[1], m21 = u[2], m02 = -f[0], m12 = -f[1], m22 = -f[2];
+  const tr = m00 + m11 + m22;
+  let q;
+  if (tr > 0) { const s = Math.sqrt(tr + 1) * 2; q = [(m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s, s / 4]; }
+  else if (m00 > m11 && m00 > m22) { const s = Math.sqrt(1 + m00 - m11 - m22) * 2; q = [s / 4, (m01 + m10) / s, (m02 + m20) / s, (m21 - m12) / s]; }
+  else if (m11 > m22) { const s = Math.sqrt(1 + m11 - m00 - m22) * 2; q = [(m01 + m10) / s, s / 4, (m12 + m21) / s, (m02 - m20) / s]; }
+  else { const s = Math.sqrt(1 + m22 - m00 - m11) * 2; q = [(m02 + m20) / s, (m12 + m21) / s, s / 4, (m10 - m01) / s]; }
+  return qNorm(q);
+}
+// weich von Drehung a zu Drehung b (t = 0..1), immer auf dem kürzeren Weg
+function qMix(a, b, t) {
+  const s = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3] < 0 ? -1 : 1;
+  return qNorm([a[0] + (b[0] * s - a[0]) * t, a[1] + (b[1] * s - a[1]) * t, a[2] + (b[2] * s - a[2]) * t, a[3] + (b[3] * s - a[3]) * t]);
+}
+
+// ----- Die Fraktale -----
+// Jedes Fraktal ist ein Eintrag in dieser Liste. Sein GLSL-Teil enthält genau eine Funktion "float de(vec3 p)":
+// den Distanzschätzer. Alles andere (Strahlen, Licht, Schatten, Nebel, Farben, Leistungstricks) ist für alle gleich.
+//   de() liest:    gIter (so viele Durchgänge der Formel sind erlaubt), gEps (Größe eines Bildpunkts an dieser Stelle)
+//   de() schreibt: gUsed (so viele Durchgänge wurden gebraucht), gTrap ("Orbit-Trap", siehe unten)
+//   bound()        Radius einer Kugel um den Mittelpunkt, in der das ganze Fraktal liegt
+//   uniforms(u)    setzt die eigenen Regler-Werte des Fraktals
+//   home           Start-Kamera: Ort und der Punkt, auf den sie schaut
+const FLY_KINDS = [
+  {
+    id: 'bulb', name: 'Mandelbulb',
+    home: { pos: [0.95, 0.75, 2.35], look: [0, 0, 0] },
+    orbit: 2.6,                                      // Auto-Play: Radius der Rundflug-Bahn
+    bound: () => Math.pow(2, 1 / (PARAMS.flyPower.current - 1)) * 1.03,
+    uniforms(u) { gl.uniform1f(u.uPower, PARAMS.flyPower.current); },
+    // Die Mandelbulb ist das Apfelmännchen in 3D: dieselbe Rechnung z → z^n + c, nur ist z jetzt ein Punkt im Raum.
+    // "Hoch n" heißt hier: den Punkt in Kugelkoordinaten ausdrücken (Abstand r vom Mittelpunkt, zwei Winkel),
+    // den Abstand hoch n nehmen und beide Winkel mit n malnehmen. c ist der Punkt, an dem wir messen (p).
+    // Bleibt z bei immer neuen Durchgängen klein, gehört p zum Fraktal; wächst z über alle Grenzen, liegt p außerhalb.
+    //
+    // DER DISTANZSCHÄTZER: Neben z wird eine zweite Zahl mitgerechnet, dz. Sie beantwortet: "Wenn ich den Startpunkt
+    // um ein winziges Stück verschiebe – um das Wievielfache verschiebt sich dann z?" (die Ableitung). Bei jedem
+    // Durchgang wird ein Unterschied um den Faktor n · r^(n−1) gestreckt (wie bei x^n: Ableitung n · x^(n−1)),
+    // und der Startpunkt selbst kommt als c wieder dazu (+ 1):      dz ← n · r^(n−1) · dz + 1
+    // Am Ende ist z auf den Abstand r angewachsen, und winzige Unterschiede sind auf das dz-Fache gewachsen. Dann ist
+    //      Abstand zur Oberfläche ≈ 0,5 · ln(r) · r / dz
+    // Anschaulich: r / dz ist die Strecke, um die man den STARTPUNKT verschieben müsste, damit sich das ERGEBNIS um
+    // seine eigene Größe ändert. Dicht am Fraktal ist dz riesig (winzige Verschiebungen ändern alles) → kleiner Abstand.
+    // Der Faktor 0,5 · ln(r) gleicht aus, dass z außerhalb nicht gleichmäßig, sondern explosionsartig wächst.
+    // Die Formel stimmt umso besser, je größer r am Ende ist – deshalb wird erst bei r > 16 abgebrochen (m > 256).
+    //
+    // DETAILGRAD: Jeder Durchgang fügt feinere Details hinzu (etwa n-mal feiner). dz verrät, wie fein sie schon sind.
+    // Sobald sie kleiner als ein Bildpunkt wären (dz · gEps > uLod), wird abgebrochen – weit entfernte Stellen kommen so
+    // mit wenigen Durchgängen aus und flimmern nicht. Der Punkt gilt dann als "auf der Oberfläche" (Ergebnis < gEps).
+    //
+    // ORBIT-TRAP (für die Farben): Unterwegs wird gemerkt, wie nah z den drei Achsen-Ebenen und dem Mittelpunkt
+    // jemals gekommen ist (gTrap). Diese vier Zahlen sind für benachbarte Punkte ähnlich und zeichnen die Struktur
+    // des Fraktals nach – daraus wird die Stelle auf der Palette.
+    glsl: `
+      uniform float uPower;         // Potenz n
+      float de (vec3 p) {
+        vec3 z = p;
+        float m = dot(z, z);        // m = r² (Abstand vom Mittelpunkt zum Quadrat)
+        float dz = 1.0;
+        gTrap = vec4(abs(z), m);
+        gUsed = 0;
+        for (int i = 0; i < gIter; i++) {
+          float r = max(sqrt(m), 1e-20);
+          float rn = pow(r, uPower - 1.0);
+          dz = uPower * rn * dz + 1.0;
+          // z hoch n: beide Winkel mal n, Abstand hoch n (die y-Achse ist die "Pol-Achse" der Kugelkoordinaten)
+          float b = uPower * acos(clamp(z.y / r, -1.0, 1.0));
+          float a = uPower * atan(z.x, z.z + 1e-20);
+          z = p + rn * r * vec3(sin(b) * sin(a), cos(b), sin(b) * cos(a));
+          m = dot(z, z);
+          gTrap = min(gTrap, vec4(abs(z), m));
+          gUsed = i + 1;
+          if (m > 256.0 || dz * gEps > uLod) break;
+        }
+        return 0.25 * log(max(m, 1e-20)) * sqrt(m) / dz;    // = 0,5 · ln(r) · r / dz
+      }`,
+  },
+];
+
+// ----- Shader -----
+// Gemeinsamer Anfang: Ausgänge, Regler-Werte und die Größen, über die sich Distanzschätzer und Rest verständigen
+const flyHead = `#version 300 es
+  precision highp float;
+  precision highp int;
+  layout(location = 0) out vec4 outA;   // Anteile der Palettenfarben 0–3
+  layout(location = 1) out vec4 outB;   // x = Anteil der Palettenfarbe 4, y = Anteil Weiß, z = Entfernung, w = 1
+  uniform int uTask;            // 0 = Bild rechnen, 1 = Messfühler (Abstand und Richtung zur Oberfläche an der Kamera)
+  uniform vec3 uCam;            // Ort der Kamera
+  uniform vec3 uFwd, uRight, uUp;   // Blickrichtung und Bildachsen (uRight/uUp: halbe Bildbreite/-höhe in 1 Einheit Entfernung)
+  uniform vec2 uRes;            // Größe des ganzen gerechneten Bildes in Bildpunkten
+  uniform vec2 uOffset;         // Verschiebung des gerade gerechneten Ausschnitts (für Kacheln; sonst 0)
+  uniform vec2 uJitter;         // Verschiebung innerhalb des Bildpunkts (für die Kantenglättung; sonst 0)
+  uniform float uPix;           // Treffer-Schwelle: Größe eines Bildpunkts in 1 Einheit Entfernung (wächst mit der Entfernung mit)
+  uniform float uPixRef;        // dasselbe für ein Bild mit 1080 Zeilen: feste Bezugsgröße für Schatten, Ritzen und Glühen
+                                // (damit das Licht nicht von der gerade benutzten Auflösung abhängt)
+  uniform float uEpsMin;        // feiner geht es nicht: Grenze der Rechengenauigkeit der Grafikkarte
+  uniform float uNear, uFar;    // Strahlen starten bei uNear (so weit ist um die Kamera garantiert frei) und enden bei uFar
+  uniform float uBound;         // Radius der Kugel um den Mittelpunkt, in der das Fraktal liegt
+  uniform int uSteps;           // höchstens so viele Schritte pro Strahl
+  uniform int uIter;            // höchstens so viele Durchgänge der Fraktal-Formel
+  uniform float uLod;           // Detailgrad (siehe FLY.LOD)
+  uniform float uFudge;         // Sicherheitsfaktor auf die Sprungweite (1 = volle geschätzte Strecke)
+  uniform int uShadowSteps, uAoTaps;
+  uniform vec3 uSun;            // Richtung zur Sonne
+  uniform float uReach;         // geglätteter Abstand Kamera–Oberfläche: Maßstab für die Stirnlampe
+  uniform float uFogDist;       // Nebel: nach dieser Strecke sind 63 % verschluckt
+  uniform float uGlow;          // Stärke des Glühens (Umrisse und Ritzen)
+  uniform float uShadow;        // Stärke der Schatten (0 = keine)
+  uniform float uColorScale, uColorShift;   // Farben: wie oft die Palette durchlaufen wird, und Verschiebung
+
+  float gEps;        // Größe eines Bildpunkts an der Stelle, die gerade gemessen wird (für den Detailgrad)
+  int gIter;         // so viele Durchgänge der Formel sind gerade erlaubt
+  int gUsed;         // so viele hat der letzte Aufruf von de() gebraucht
+  vec4 gTrap;        // Orbit-Trap des letzten Aufrufs von de()
+`;
+
+const flyMain = `
+  // Farben werden nicht als Rot/Grün/Blau gesammelt, sondern als Anteile der fünf Palettenfarben (gW, gW4) plus ein
+  // Anteil Weiß (gWhite). addColor trägt "palette(t) · amount" ein – dieselbe Rechnung wie palette() in paletteGLSL,
+  // nur ohne die Palette selbst. Erst der Shader flyResolve setzt die echten Farben ein.
+  vec4 gW = vec4(0.0);
+  float gW4 = 0.0, gWhite = 0.0;
+  void addColor (float t, float amount) {
+    t = fract(t) * 5.0;
+    float i = min(floor(t), 4.0), j = mod(i + 1.0, 5.0);
+    float f = smoothstep(0.0, 1.0, t - i);
+    const vec4 IDX = vec4(0.0, 1.0, 2.0, 3.0);
+    gW += amount * ((1.0 - f) * vec4(equal(vec4(i), IDX)) + f * vec4(equal(vec4(j), IDX)));
+    gW4 += amount * ((1.0 - f) * float(i == 4.0) + f * float(j == 4.0));
+  }
+
+  // Orbit-Trap → Stelle auf der Palette (vor allem die größte Nähe zum Mittelpunkt, dazu die Nähe zu zwei Achsen-Ebenen)
+  float trapColor (vec4 trap) { return 1.5 * sqrt(trap.w) + 0.6 * trap.x + 0.35 * trap.z; }
+
+  // Vier Messpunkte in den Ecken eines Tetraeders: Aus den vier Abständen ergibt sich die Richtung, in der der Abstand
+  // am schnellsten wächst. Die zeigt senkrecht von der Oberfläche weg ("Normale") – daraus entsteht das Licht.
+  const vec3 TAPS[4] = vec3[4](vec3(1.0, -1.0, -1.0), vec3(-1.0, -1.0, 1.0), vec3(-1.0, 1.0, -1.0), vec3(1.0, 1.0, 1.0));
+  vec3 gradient (vec3 p, float h) {
+    vec3 g = vec3(0.0);
+    for (int i = 0; i < 4; i++) g += TAPS[i] * de(p + TAPS[i] * h);
+    return g;
+  }
+
+  // Weicher Schatten: ein zweiter Strahl von der Oberfläche zur Sonne. Trifft er etwas, liegt die Stelle im Schatten.
+  // Streift er nur knapp an etwas vorbei (kleiner Abstand d nach kurzer Strecke t), gibt es Halbschatten: je knapper,
+  // desto dunkler (d / t ist der Winkel, unter dem das Hindernis die Sonne fast verdeckt).
+  float shadow (vec3 p, float px) {
+    float res = 1.0, t = px * 4.0;
+    for (int i = 0; i < uShadowSteps; i++) {
+      float d = de(p + uSun * t);
+      res = min(res, 10.0 * d / t);
+      if (res < 0.004 || t > 3.0 * uBound) break;
+      t += max(d, px);
+    }
+    res = clamp(res, 0.0, 1.0);
+    return res * res * (3.0 - 2.0 * res);
+  }
+
+  // Verschattung in Ritzen ("Ambient Occlusion"): Ein paar Messpunkte senkrecht über der Oberfläche. Im Freien ist der
+  // Abstand dort so groß wie die Höhe h über der Oberfläche; in einer Ritze ist die gegenüberliegende Wand näher.
+  float occlusion (vec3 p, vec3 n, float px) {
+    float occ = 0.0, w = 1.0, sum = 0.0;
+    for (int i = 1; i <= uAoTaps; i++) {
+      float h = px * 1.5 * float(i * i);
+      occ += w * clamp(1.0 - de(p + n * h) / h, 0.0, 1.0);
+      sum += w;
+      w *= 0.75;
+    }
+    return 1.0 - occ / max(sum, 1e-3);
+  }
+
+  // Messfühler: Abstand zur Oberfläche an der Kamera (w) und die Richtung von der Oberfläche weg (xyz, nicht normiert)
+  void probe () {
+    gIter = uIter; gEps = 0.0;
+    float d = de(uCam);
+    outA = vec4(gradient(uCam, max(abs(d) * 0.1, uEpsMin * 4.0)), d);
+    outB = vec4(0.0);
+  }
+
+  void main () {
+    if (uTask == 1) { probe(); return; }
+    // Strahl durch diesen Bildpunkt
+    vec2 ndc = (gl_FragCoord.xy + uOffset + uJitter) / uRes * 2.0 - 1.0;
+    vec3 rd = normalize(uFwd + ndc.x * uRight + ndc.y * uUp);
+
+    // Das Fraktal liegt in einer Kugel um den Mittelpunkt: Strahlen daran vorbei brauchen keinen einzigen Schritt,
+    // alle anderen beginnen erst am Eintritt und enden am Austritt.
+    float bq = dot(uCam, rd), disc = bq * bq - dot(uCam, uCam) + uBound * uBound;
+    float t = uNear, tEnd = -1.0;
+    if (disc > 0.0) { float s = sqrt(disc); t = max(uNear, -bq - s); tEnd = min(uFar, -bq + s); }
+
+    // Schritt für Schritt vor: jeweils um den geschätzten Abstand. cone merkt sich, wie knapp der Strahl an der
+    // Oberfläche vorbeigekommen ist (als Winkel) – daraus wird das Glühen um die Umrisse.
+    float d = 0.0, cone = 1e9, tCone = t;
+    int state = 0;                // 0 = am Fraktal vorbei, 1 = Treffer, 2 = Schritte aufgebraucht
+    gIter = uIter;
+    if (tEnd > t) {
+      state = 2;
+      for (int i = 0; i < uSteps; i++) {
+        gEps = max(t * uPix, uEpsMin);
+        d = de(uCam + rd * t);
+        if (d < gEps) { state = 1; break; }
+        if (d < cone * t) { cone = d / t; tCone = t; }
+        t += d * uFudge;
+        if (t > tEnd) { state = 0; break; }
+      }
+    }
+
+    float fog = 1.0, depth = uFar;
+    if (state > 0) {
+      vec3 p = uCam + rd * t;
+      vec4 trap = gTrap;
+      float eps = gEps;
+      float px = max(t * uPixRef, uEpsMin);         // Bezugsgröße fürs Licht (unabhängig von der Auflösung)
+      depth = t;
+      // Ab hier mit fester Zahl an Durchgängen rechnen (so viele wie am Treffpunkt): Würde jeder Messpunkt für sich
+      // entscheiden, wann er aufhört, gäbe es Sprünge zwischen Nachbarn und damit verrauschte Normalen.
+      gIter = max(gUsed, 1); gEps = 0.0;
+      vec3 n = gradient(p, eps);
+      n = dot(n, n) > 0.0 ? normalize(n) : -rd;
+      float ao = occlusion(p, n, px);
+      float sun = max(dot(n, uSun), 0.0);
+      if (sun > 0.0 && uShadow > 0.0) sun *= mix(1.0, shadow(p + n * px * 2.0, px), uShadow);
+      // Licht: Sonne (mit Schatten), Himmel von oben, etwas Gegenlicht, dazu eine Stirnlampe an der Kamera, damit man
+      // auch in dunklen Höhlen etwas sieht (sie reicht nur einige Kamera-Abstände weit)
+      float sky = 0.5 + 0.5 * n.y;
+      float head = max(dot(n, -rd), 0.0) / (1.0 + pow(t / (uReach * 8.0), 2.0));
+      float light = sun + (0.18 * sky + 0.04 + 0.08 * max(dot(n, -uSun), 0.0) + 0.25 * head) * ao;
+      if (state == 2) light *= 0.4;                 // steckengebliebener Strahl: meist eine enge, dunkle Ritze
+      float spec = pow(max(dot(n, normalize(uSun - rd)), 0.0), 40.0) * sun * 0.45;
+      // Farbe aus der Orbit-Trap: Stelle auf der Palette und eine Helligkeits-Maserung
+      float tc = uColorShift + uColorScale * trapColor(trap);
+      float albedo = 0.5 + 0.5 * smoothstep(0.0, 0.5, trap.y);
+      fog = 1.0 - exp(-t / uFogDist);
+      addColor(tc, light * albedo * (1.0 - fog));
+      gWhite += spec * (1.0 - fog);
+      // Glühen in den Ritzen: wo wenig Himmelslicht hinkommt, leuchtet das Fraktal von innen (heller als Weiß → Bloom)
+      addColor(tc + 0.12, uGlow * 0.5 * pow(1.0 - ao, 3.0) * (1.0 - fog));
+    }
+    // Glühen um die Umrisse: Strahlen, die das Fraktal knapp verfehlen, leuchten in seiner Farbe
+    if (state == 0 && cone < 0.5) {
+      float halo = uGlow * exp(-cone / 0.012) * exp(-tCone / uFogDist);
+      if (halo > 0.004) {
+        gIter = uIter; gEps = max(tCone * uPix, uEpsMin);
+        de(uCam + rd * tCone);
+        addColor(uColorShift + uColorScale * trapColor(gTrap) + 0.12, halo);
+      }
+    }
+    // Nebel und Hintergrund: dunkel, leicht in zwei Palettenfarben getönt, zur Sonne hin etwas heller
+    float haze = fog * (0.035 + 0.05 * pow(max(dot(rd, uSun), 0.0), 3.0) + 0.02 * rd.y);
+    addColor(0.55, haze * 0.7);
+    addColor(0.05, haze * 0.4);
+    gWhite += fog * 0.006;
+
+    // (max(min(…)) fängt auch ungültige Werte ab – ein einziger davon würde sich im Bloom über das Bild ausbreiten)
+    outA = max(min(gW, vec4(64.0)), vec4(0.0));
+    outB = vec4(max(min(vec2(gW4, gWhite), vec2(64.0)), vec2(0.0)), depth, 1.0);
+  }`;
+
+// Auflösen: Anteile der fünf Palettenfarben (und Weiß) × aktuelle Palette = Farbe
+programs.flyResolve = makeProgram(header + `
+  uniform sampler2D uA, uB;
+  uniform vec3 uPalette[5];
+  uniform vec2 uUvScale;        // genutzter Teil der Texturen (1 = alles)
+  uniform float uLevel;         // Helligkeit (für die Blende beim Sprung an einen anderen Ort)
+  void main () {
+    vec2 uv = vUv * uUvScale;
+    vec4 a = texture(uA, uv), b = texture(uB, uv);
+    vec3 col = a.x * uPalette[0] + a.y * uPalette[1] + a.z * uPalette[2] + a.w * uPalette[3] + b.x * uPalette[4] + vec3(b.y);
+    fragColor = vec4(col * uLevel, 1.0);
+  }`);
+
+// Die Fraktal-Shader sind groß und brauchen beim Übersetzen spürbar Zeit. Sie werden deshalb erst übersetzt, wenn
+// man das Fraktal zum ersten Mal sieht – und zwar im Hintergrund (falls der Browser das kann, Erweiterung
+// KHR_parallel_shader_compile), damit das Bild dabei nicht stehen bleibt. flyProgram liefert null, solange es dauert.
+const flyParallel = gl.getExtension('KHR_parallel_shader_compile');
+function flyProgram(i) {
+  const kind = FLY_KINDS[i];
+  let e = kind.prog;
+  if (!e) {
+    e = kind.prog = { program: gl.createProgram(), fs: gl.createShader(gl.FRAGMENT_SHADER), uniforms: null, ready: false, failed: false, t0: performance.now() };
+    gl.shaderSource(e.fs, flyHead + kind.glsl + flyMain);
+    gl.compileShader(e.fs);
+    gl.attachShader(e.program, vs);
+    gl.attachShader(e.program, e.fs);
+    gl.bindAttribLocation(e.program, 0, 'aPos');
+    gl.linkProgram(e.program);
+  }
+  if (e.ready) return e;
+  if (e.failed || (flyParallel && !gl.getProgramParameter(e.program, flyParallel.COMPLETION_STATUS_KHR))) return null;
+  if (!gl.getProgramParameter(e.program, gl.LINK_STATUS)) {
+    e.failed = true;
+    console.error('3D-Fraktal: Shader-Fehler (' + kind.name + ')\n' + (gl.getShaderInfoLog(e.fs) || gl.getProgramInfoLog(e.program)));
+    toast('Dieses Fraktal kann die Grafikkarte nicht rechnen');
+    return null;
+  }
+  e.uniforms = {};
+  const n = gl.getProgramParameter(e.program, gl.ACTIVE_UNIFORMS);
+  for (let k = 0; k < n; k++) {
+    const name = gl.getActiveUniform(e.program, k).name;
+    e.uniforms[name] = gl.getUniformLocation(e.program, name);
+  }
+  e.ready = true;
+  e.ms = Math.round(performance.now() - e.t0);
+  return e;
+}
+
+// ----- Zustand -----
+const fly = {
+  kind: 0,                    // gewähltes Fraktal (Index in FLY_KINDS)
+  pos: [0, 0, 3],             // Ort der Kamera
+  quat: [0, 0, 0, 1],         // Drehung der Kamera
+  vel: [0, 0, 0],             // Tempo, gemessen in "Abständen zur Oberfläche pro Sekunde" (wird beim Bewegen mit reach malgenommen)
+  turn: [0, 0],               // Drehung, die die Maus schon verlangt hat, die Kamera aber noch nicht ausgeführt hat
+  keys: new Set(),            // gerade gedrückte Flug-Tasten
+  drag: null,                 // läuft gerade ein Ziehen mit der Maus?
+  locked: false,              // Maus gefangen ("Pointer Lock")?
+  dist: 1,                    // Abstand zur Oberfläche an der Stelle probePos (letzte Antwort des Messfühlers)
+  grad: [0, 0, 1],            // Richtung von der Oberfläche weg, dort
+  probePos: [0, 0, 3],
+  probe: { target: null, buffer: null, sync: null, pos: null, data: new Float32Array(4) },
+  reach: 1,                   // Abstand, mit dem das Tempo gerade malgenommen wird (läuft weich nach)
+  scale: 1,                   // geglätteter Abstand für Nebel und Stirnlampe
+  speedNow: 0,                // aktuelles Tempo in Einheiten pro Sekunde (für die Anzeige)
+  auto: null,                 // Auto-Play: wohin die Kamera will ({ to, look })
+  autoAngle: 0,
+  jump: null,                 // läuft gerade ein Sprung an einen anderen Ort? ({ pos, quat, t })
+  g: null,                    // G-Buffer (zwei Texturen, siehe oben)
+  waiting: false,             // Shader wird noch übersetzt
+  infoTimer: 0,
+};
+const FLY_SUN = vNorm(FLY.SUN);
+const FLY_MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyC', 'ShiftLeft', 'ShiftRight', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+
+// Kamera an einen Ort setzen und auf einen Punkt schauen lassen (ohne Übergang)
+function flySetPose(pos, look) {
+  fly.pos = pos.slice();
+  fly.quat = qLook(vSub(look, pos));
+  fly.vel = [0, 0, 0]; fly.turn = [0, 0];
+}
+flySetPose(FLY_KINDS[0].home.pos, FLY_KINDS[0].home.look);
+
+// ----- Puffer -----
+// Ziel mit ZWEI Texturen (der Shader schreibt in beide gleichzeitig): die Anteile der Palettenfarben
+function flyTarget(w, h) {
+  const fbo = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.activeTexture(gl.TEXTURE0);
+  const tex = [0, 1].map(i => {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, t, 0);
+    return t;
+  });
+  gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+  gl.viewport(0, 0, w, h);
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  return {
+    fbo, tex, w, h,
+    attach(i, unit) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex[i]); return unit; },
+    free() { gl.deleteTexture(tex[0]); gl.deleteTexture(tex[1]); gl.deleteFramebuffer(fbo); },
+  };
+}
+function ensureFlyBuffers() {
+  const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+  const s = Math.min(FLY_LEVELS[qualityLevel].scale, maxTextureSize / Math.max(W, H));
+  const w = Math.max(8, Math.round(W * s)), h = Math.max(8, Math.round(H * s));
+  if (fly.g && fly.g.w === w && fly.g.h === h) return;
+  if (fly.g) fly.g.free();
+  fly.g = flyTarget(w, h);
+}
+
+// ----- Kamera und Regler-Werte an den Shader übergeben -----
+// feinste sinnvolle Genauigkeit an der Kamera: Die Grafikkarte rechnet mit ca. 7 Stellen. Je weiter die Kamera vom
+// Mittelpunkt entfernt ist, desto gröber sind die kleinsten Schritte, die sie noch unterscheiden kann.
+const flyEpsMin = () => FLY.FLOAT_EPS * FLY.EPS_FLOOR * Math.max(1, Math.abs(fly.pos[0]), Math.abs(fly.pos[1]), Math.abs(fly.pos[2]));
+// Abstand zur Oberfläche, der JETZT mindestens frei ist: die letzte Messung minus der Strecke, die die Kamera seither
+// geflogen ist (sie kann der Oberfläche höchstens um diese Strecke näher gekommen sein)
+const flyClear = () => Math.max(0, fly.dist - vLen(vSub(fly.pos, fly.probePos)));
+
+function flyUniforms(u, w, h, task) {
+  const f = fly, kind = FLY_KINDS[f.kind], L = FLY_LEVELS[qualityLevel];
+  const tanHalf = Math.tan(FLY.FOV * Math.PI / 360);
+  const pixel = 2 * tanHalf / h;                             // Größe eines Bildpunkts in 1 Einheit Entfernung
+  const fogDist = FLY.FOG * f.scale / Math.max(PARAMS.flyFog.current, 0.01);
+  gl.uniform1i(u.uTask, task);
+  gl.uniform3fv(u.uCam, f.pos);
+  gl.uniform3fv(u.uFwd, qRot(f.quat, [0, 0, -1]));
+  gl.uniform3fv(u.uRight, vMul(qRot(f.quat, [1, 0, 0]), tanHalf * w / h));
+  gl.uniform3fv(u.uUp, vMul(qRot(f.quat, [0, 1, 0]), tanHalf));
+  gl.uniform2f(u.uRes, w, h);
+  gl.uniform2f(u.uOffset, 0, 0);
+  gl.uniform2f(u.uJitter, 0, 0);
+  gl.uniform1f(u.uPix, pixel * FLY.HIT);
+  gl.uniform1f(u.uPixRef, 2 * tanHalf / 1080);
+  gl.uniform1f(u.uEpsMin, flyEpsMin());
+  gl.uniform1f(u.uNear, flyClear() * 0.5);
+  gl.uniform1f(u.uFar, fogDist * 7);                         // dahinter hat der Nebel alles verschluckt
+  gl.uniform1f(u.uBound, kind.bound() * 1.12);               // (etwas größer: Platz für das Glühen um die Umrisse)
+  gl.uniform1i(u.uSteps, L.steps);
+  gl.uniform1i(u.uIter, Math.round(PARAMS.flyIter.current));
+  gl.uniform1f(u.uLod, FLY.LOD);
+  gl.uniform1f(u.uFudge, kind.fudge || 1);
+  gl.uniform1i(u.uShadowSteps, L.shadow);
+  gl.uniform1i(u.uAoTaps, L.ao);
+  gl.uniform3fv(u.uSun, FLY_SUN);
+  gl.uniform1f(u.uReach, f.scale);
+  gl.uniform1f(u.uFogDist, fogDist);
+  gl.uniform1f(u.uGlow, PARAMS.flyGlow.current);
+  gl.uniform1f(u.uShadow, PARAMS.flyShadow.current);
+  gl.uniform1f(u.uColorScale, PARAMS.flyColor.current);
+  gl.uniform1f(u.uColorShift, 0.08);
+  kind.uniforms(u);
+}
+
+// ----- Messfühler: Abstand zur Oberfläche an der Kamera -----
+// Ein einziger Bildpunkt wird mit uTask = 1 gerechnet. Die Antwort wird in einen Zwischenspeicher geschrieben und erst
+// abgeholt, wenn sie fertig ist (meist ein, zwei Bilder später) – direktes Zurücklesen würde die Grafikkarte aufhalten.
+// now = true: sofort auf die Antwort warten (nur nach einem Sprung, wenn der alte Wert nichts mehr taugt).
+function flyProbe(now) {
+  const f = fly, P = f.probe, e = flyProgram(f.kind);
+  const take = () => {
+    const d = P.data, l = Math.hypot(d[0], d[1], d[2]);
+    if (!isFinite(d[3])) return;
+    f.dist = d[3];
+    f.probePos = P.pos;
+    if (l > 0 && isFinite(l)) f.grad = [d[0] / l, d[1] / l, d[2] / l];
+  };
+  if (P.sync) {                                              // läuft noch eine Abfrage? fertig → abholen
+    const state = gl.clientWaitSync(P.sync, 0, 0);
+    if (state === gl.TIMEOUT_EXPIRED && !now) return;
+    gl.deleteSync(P.sync);
+    P.sync = null;
+    if (state !== gl.WAIT_FAILED && state !== gl.TIMEOUT_EXPIRED) {
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, P.buffer);
+      gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, P.data);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      take();
+    }
+  }
+  if (!e) return;
+  if (!P.target) P.target = createFBO(1, 1, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+  if (!P.buffer) P.buffer = gl.createBuffer();
+  gl.disable(gl.BLEND);
+  gl.useProgram(e.program);
+  flyUniforms(e.uniforms, 1, 1, 1);
+  blit(P.target);
+  P.pos = f.pos.slice();
+  if (now) {
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.FLOAT, P.data);
+    take();
+    return;
+  }
+  gl.bindBuffer(gl.PIXEL_PACK_BUFFER, P.buffer);
+  // (den Zwischenspeicher vor jeder Abfrage neu anlegen – sonst meldet der Browser jedes Mal eine Leistungs-Warnung)
+  gl.bufferData(gl.PIXEL_PACK_BUFFER, P.data.byteLength, gl.STREAM_READ);
+  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.FLOAT, 0);
+  gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+  P.sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+  gl.flush();
+}
+
+// ----- Bedienung -----
+// Maus fangen ("Pointer Lock"): Der Mauszeiger verschwindet, und jede Mausbewegung dreht die Kamera – wie in einem
+// Spiel. Esc (oder ein weiterer Klick) gibt die Maus wieder frei. Klappt das Fangen nicht, bleibt das Ziehen.
+function flyLock(on) {
+  if (!on) { if (document.pointerLockElement === canvas) document.exitPointerLock(); return; }
+  try {
+    const p = canvas.requestPointerLock();
+    if (p && p.catch) p.catch(() => {});
+  } catch (err) { /* nicht schlimm: Umsehen geht auch mit gedrückter Maustaste */ }
+}
+document.addEventListener('pointerlockchange', () => {
+  fly.locked = document.pointerLockElement === canvas;
+  document.body.classList.toggle('fly-locked', fly.locked);
+  if (MODES[modeIndex].id === 'flight') toast(fly.locked ? 'Maus gefangen – Esc oder Klick gibt sie frei' : 'Maus wieder frei');
+});
+function flyPointerMove(e) {
+  const f = fly;
+  if (f.locked) {
+    f.turn[0] += e.movementX * FLY.LOOK;
+    f.turn[1] += e.movementY * FLY.LOOK;
+  } else {
+    showCursor(e.clientX, e.clientY);
+    if (!f.drag) return;
+    const dx = e.clientX - f.drag.x, dy = e.clientY - f.drag.y;
+    f.drag.x = e.clientX; f.drag.y = e.clientY;
+    f.drag.travel += Math.hypot(dx, dy);
+    // Maus: Bewegung nach rechts = nach rechts schauen. Finger: das Bild wird "angefasst" und mitgezogen (umgekehrt).
+    const dir = f.drag.touch ? -1 : 1;
+    f.turn[0] += dx * FLY.LOOK * dir;
+    f.turn[1] += dy * FLY.LOOK * dir;
+  }
+  lastPaint = performance.now();
+  hideHint();
+}
+function flyPointerDown(e) {
+  const f = fly;
+  if (!f.locked) {
+    showCursor(e.clientX, e.clientY);
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* nicht schlimm: Ziehen endet dann am Fensterrand */ }
+  }
+  f.drag = { x: e.clientX, y: e.clientY, travel: 0, button: e.button, touch: e.pointerType === 'touch' };
+}
+function flyPointerUp(e) {
+  const d = fly.drag;
+  if (!d) return;
+  fly.drag = null;
+  // kurzer Klick ohne Ziehen: Maus fangen bzw. wieder freigeben
+  if (e.type === 'pointerup' && d.travel < 5 && d.button === 0 && !d.touch) flyLock(!fly.locked);
+}
+// Gedrückt gehaltene Tasten (die gemeinsame Tasten-Behandlung meldet nur das erste Drücken, nicht das Loslassen)
+window.addEventListener('keydown', e => {
+  if (MODES[modeIndex].id !== 'flight' || e.ctrlKey || e.altKey || e.metaKey || !FLY_MOVE_KEYS.has(e.code)) return;
+  const arrow = e.code.startsWith('Arrow');
+  if (arrow && e.target instanceof HTMLInputElement) return;   // Pfeiltasten gehören dort dem Regler
+  if (arrow || e.code === 'Space') e.preventDefault();
+  fly.keys.add(e.code);
+});
+window.addEventListener('keyup', e => fly.keys.delete(e.code));
+window.addEventListener('blur', () => fly.keys.clear());
+
+// Sprung an einen anderen Ort: Das Bild blendet kurz ab, die Kamera wird versetzt, das Bild blendet wieder auf.
+// (Ein Flug auf gerader Linie dorthin könnte mitten durch das Fraktal führen.)
+function flyJump(pos, look) {
+  fly.jump = { pos, look, t: 0, done: false };
+}
+function flyHome() {
+  const home = FLY_KINDS[fly.kind].home;
+  flyJump(home.pos, home.look);
+  audioClear();
+  toast('Zurück zum Start');
+}
+function flyKey(e) {
+  if (e.code === 'KeyR') flyHome();
+}
+
+// ----- einmal pro Bild: Eingaben, Flug -----
+function updateFlight(dt, now) {
+  const f = fly, K = f.keys, held = c => (K.has(c) ? 1 : 0);
+  flyProbe(false);
+
+  // Sprung: in der Mitte der Blende wird die Kamera versetzt
+  if (f.jump) {
+    f.jump.t += dt / FLY.BLINK;
+    if (!f.jump.done && f.jump.t >= 0.5) {
+      f.jump.done = true;
+      flySetPose(f.jump.pos, f.jump.look);
+      flyProbe(true);
+      f.scale = f.reach = clampNum(f.dist, flyEpsMin(), FLY.REACH_MAX);
+    }
+    if (f.jump.t >= 1) f.jump = null;
+  }
+
+  // Umsehen: Die Maus (oder die Pfeiltasten) geben vor, wie weit gedreht werden soll; die Kamera holt das weich,
+  // aber sehr schnell nach. Gedreht wird um die eigenen Achsen der Kamera (rechts/links um ihr "oben", hoch/runter
+  // um ihr "rechts") – so gibt es keine gesperrten Richtungen.
+  f.turn[0] += (held('ArrowRight') - held('ArrowLeft')) * FLY.KEY_TURN * dt;
+  f.turn[1] += (held('ArrowDown') - held('ArrowUp')) * FLY.KEY_TURN * dt;
+  const kt = 1 - Math.exp(-FLY.LOOK_EASE * dt), yaw = f.turn[0] * kt, pitch = f.turn[1] * kt;
+  f.turn[0] -= yaw; f.turn[1] -= pitch;
+  if (Math.abs(yaw) + Math.abs(pitch) > 1e-7) f.quat = qNorm(qMul(qMul(f.quat, qAxis([0, 1, 0], -yaw)), qAxis([1, 0, 0], -pitch)));
+
+  // Wunsch-Richtung aus den Tasten (rechts, hoch, vorwärts) bzw. vom Auto-Play
+  const right = qRot(f.quat, [1, 0, 0]), up = qRot(f.quat, [0, 1, 0]), fwd = qRot(f.quat, [0, 0, -1]);
+  const wx = held('KeyD') - held('KeyA'), wy = held('Space') - held('KeyC'), wz = held('KeyW') - held('KeyS');
+  const wl = Math.hypot(wx, wy, wz), flying = wl > 0;
+  let want = [0, 0, 0];
+  if (flying) {
+    const speed = FLY.SPEED * PARAMS.flySpeed.current * (held('ShiftLeft') || held('ShiftRight') ? FLY.TURBO : 1) / wl;
+    want = vAdd(vAdd(vMul(right, wx * speed), vMul(up, wy * speed)), vMul(fwd, wz * speed));
+    // (gedrückt gehaltene Tasten melden sich nicht ständig neu – ohne das würde nach 30 s der Bildschirmschoner starten)
+    autoplay.lastInput = now;
+    lastPaint = now;
+  } else if (f.auto) {
+    // Auto-Play: zum Ziel auf der Rundflug-Bahn steuern und dabei zum Blickpunkt drehen
+    want = vMul(vSub(f.auto.to, f.pos), 0.6 / Math.max(f.reach, 1e-6));
+    const l = vLen(want), max = FLY.SPEED * 1.5;
+    if (l > max) want = vMul(want, max / l);
+    f.quat = qMix(f.quat, qLook(vSub(f.auto.look, f.pos)), 1 - Math.exp(-0.9 * dt));
+  }
+  // Trägheit: Das Tempo läuft dem Wunsch weich hinterher; ohne Taste rollt die Kamera langsam aus
+  const ka = 1 - Math.exp(-(flying || f.auto ? FLY.ACCEL : FLY.GLIDE) * dt);
+  for (let i = 0; i < 3; i++) f.vel[i] += (want[i] - f.vel[i]) * ka;
+
+  // Bewegen. Das Tempo ist "Abstände zur Oberfläche pro Sekunde": Nah an der Oberfläche wird die Kamera von selbst
+  // langsam, weit weg schnell – man kann sich beliebig feinen Details nähern, ohne hindurchzurasen.
+  const clear = flyClear(), floor = flyEpsMin() * 40;       // floor: näher geht es nicht (Grenze der Rechengenauigkeit)
+  f.reach += (Math.min(clear, FLY.REACH_MAX) - f.reach) * (1 - Math.exp(-12 * dt));
+  f.reach = clampNum(f.reach, floor, Math.max(clear, floor));
+  let step = vMul(f.vel, f.reach * dt);
+  // Der Anteil der Bewegung, der AUF die Oberfläche zu führt, darf höchstens ein Viertel des freien Abstands sein
+  const toward = -vDot(step, f.grad), allow = Math.max(0, clear - floor) * 0.25;
+  if (toward > allow) step = vAdd(step, vMul(f.grad, toward - allow));
+  // … und insgesamt nie mehr als der halbe freie Abstand in einem Bild (schützt bei großen Zeitsprüngen)
+  const sl = vLen(step), maxStep = Math.max(clear, floor) * 0.5;
+  if (sl > maxStep) step = vMul(step, maxStep / sl);
+  f.pos = vAdd(f.pos, step);
+  // nicht ins Leere davonfliegen
+  const far = vLen(f.pos);
+  if (far > FLY.WORLD) f.pos = vMul(f.pos, FLY.WORLD / far);
+  f.speedNow = sl / Math.max(dt, 1e-6);
+
+  // Maßstab für Nebel und Stirnlampe: folgt dem Abstand gemächlich (sonst würde der Nebel beim Vorbeiflug pumpen)
+  const target = clampNum(clear, floor, FLY.REACH_MAX);
+  f.scale *= Math.exp(Math.log(target / f.scale) * (1 - Math.exp(-2.5 * dt)));
+
+  // Cursor: kleiner Ring; ist die Maus gefangen, sitzt er als Zielpunkt in der Bildmitte
+  if (f.locked) showCursor(window.innerWidth / 2, window.innerHeight / 2);
+  cursorEl.style.setProperty('--brush', paletteColor(0.4));
+  cursorEl.style.setProperty('--size', f.locked ? '10px' : '20px');
+  if (f.drag && !f.locked) cursorScale = Math.min(cursorScale, 0.8);
+
+  f.infoTimer -= dt;
+  if (f.infoTimer <= 0) {                                    // Info-Zeile nur 4× pro Sekunde aktualisieren
+    f.infoTimer = 0.25;
+    const num = v => (v < 1e-9 ? '0' : v >= 0.1 ? v.toFixed(2) : v >= 0.001 ? v.toFixed(4) : v.toExponential(1)).replace('.', ',');
+    $('flyInfo').innerHTML = f.waiting ? 'Das Fraktal wird vorbereitet …'
+      : `Abstand zur Oberfläche ${num(Math.max(clear, 0))} · Tempo ${num(f.speedNow)} pro Sekunde`;
+  }
+}
+
+// Auto-Play (vorläufig): ein ruhiger Rundflug um das Fraktal, der Blick bleibt auf der Mitte
+function flyAutoplay(dt) {
+  const f = fly;
+  if (!autoplay.active) { f.auto = null; return; }
+  const R = FLY_KINDS[f.kind].orbit;
+  f.autoAngle += 0.07 * dt * (1 - 0.4 * PARAMS.calm.current);
+  const a = f.autoAngle, lat = 0.3 * Math.sin(a * 0.43);
+  f.auto = { to: [R * Math.sin(a) * Math.cos(lat), R * Math.sin(lat), R * Math.cos(a) * Math.cos(lat)], look: [0, 0, 0] };
+}
+
+// ----- einmal pro Bild: zeichnen -----
+function drawFlight(target) {
+  const f = fly, e = flyProgram(f.kind);
+  ensureFlyBuffers();
+  gl.disable(gl.BLEND);
+  f.waiting = !e;
+  if (e) {
+    gl.useProgram(e.program);
+    flyUniforms(e.uniforms, f.g.w, f.g.h, 0);
+    blit(f.g);
+  }
+  // Auflösen: Anteile × Palette. Bei einem Sprung blendet das Bild kurz ab und wieder auf.
+  const u = use('flyResolve');
+  gl.uniform1i(u.uA, f.g.attach(0, 0));
+  gl.uniform1i(u.uB, f.g.attach(1, 1));
+  gl.uniform3fv(u['uPalette[0]'], currentPalette);
+  gl.uniform2f(u.uUvScale, 1, 1);
+  gl.uniform1f(u.uLevel, f.jump ? smooth01(Math.abs(1 - 2 * Math.min(f.jump.t, 1))) : 1);
+  blit(target);
+}
+
+// ----- Panel -----
+bindSlider('flyPower', PARAMS.flyPower, v => v.toFixed(2).replace('.', ','));
+bindSlider('flySpeed', PARAMS.flySpeed, v => Math.round(v * 100) + ' %');
+$('flyHome').addEventListener('click', e => { flyHome(); e.currentTarget.blur(); });
+
+MODES.push({
+  id: 'flight', name: '3D-Fraktal-Flug', label: '3D-Flug',
+  hint: 'Klick = Maus fangen und umsehen · <b>W A S D</b> = fliegen · <b>Tab</b> = Modus wechseln',
+  autoplayHint: 'Rundflug · Bewege die Maus, um selbst zu fliegen',
+  autoplayKey: 'KeyP',                                       // A wird zum Fliegen gebraucht → Auto-Play startet hier mit P
+  enter() {
+    $('paletteSection').classList.remove('unused');          // Palette und Bloom wirken hier immer
+    $('bloomSection').classList.remove('unused');
+    fly.keys.clear();
+    if (flyProgram(fly.kind)) flyProbe(true);
+  },
+  leave() { fly.drag = null; fly.keys.clear(); flyLock(false); },
+  update: updateFlight,
+  draw: drawFlight,
+  bloomShare: () => 1,
+  autoplayStart() { fly.autoAngle = Math.atan2(fly.pos[0], fly.pos[2]); flyLock(false); },
+  autoplayStop() { fly.auto = null; },
+  autoplay: flyAutoplay,
+  pointerMove: flyPointerMove,
+  pointerDown: flyPointerDown,
+  pointerUp: flyPointerUp,
+  pointerLeave() {},
+  key: flyKey,
+  qualityInfo(q) {
+    ensureFlyBuffers();
+    return `Fraktal ${fly.g.w}×${fly.g.h} · bis ${FLY_LEVELS[qualityLevel].steps} Schritte pro Strahl`;
   },
 });
 
