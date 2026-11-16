@@ -8302,7 +8302,7 @@ const flyMain = `
     }
     // Glühen um die Umrisse: Strahlen, die das Fraktal knapp verfehlen, leuchten in seiner Farbe
     if (state == 0 && cone < 0.5) {
-      float halo = uGlow * exp(-cone / 0.012) * exp(-max(tCone - tIn, 0.0) / uFogDist);
+      float halo = uGlow * 0.6 * exp(-cone / 0.012) * exp(-max(tCone - tIn, 0.0) / uFogDist);
       if (halo > 0.004) {
         gIter = uIter; gEps = max(tCone * uPix, uEpsMin);
         de(uCam + rd * tCone);
