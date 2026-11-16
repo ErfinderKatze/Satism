@@ -5981,7 +5981,7 @@ const LIQUID = {
   KICK_RANGE: 0.11,  // Radius des Spritzers (Bildhöhen)
   DROP: 0.035,       // Radius eines Tropfens bei 100 % (Bildhöhen)
   JET_SPEED: 1.4,    // Tempo, mit dem die Flüssigkeit aus dem Hahn bzw. aus der Maus strömt (Bildhöhen/s)
-  JET_WIDTH: 0.05,   // Breite des Strahls bei 100 % (Bildhöhen)
+  JET_WIDTH: 0.03,   // Breite des Strahls bei 100 % (Bildhöhen)
   HOLD: 0.2,         // so lange muss die Maustaste gehalten werden, bis Flüssigkeit aus der Maus strömt (Sekunden)
   DRAIN: 0.6,        // Dauer des Ausblendens beim Leeren (Sekunden)
   WALL_PEN: 0.028,   // halbe Breite des Hindernis-Stifts (Bildhöhen) – deutlich dicker als ein Partikel, damit nichts durchschlüpft
@@ -7093,12 +7093,15 @@ function liqJet(src, x, y, vx, vy, dt) {
   if (liq.count >= liq.side * liq.side) return -1;
   const width = LIQUID.JET_WIDTH * PARAMS.liqJet.current, gap = 0.9 * liq.d, dir = liqDown();
   const cols = Math.max(1, Math.round(width / liq.d));
-  src.phase += LIQUID.JET_SPEED * dt / gap;
+  // Die Breite geht nur in ganzen Partikeln auf. Damit trotzdem auf jeder Qualitätsstufe gleich viel Flüssigkeit pro
+  // Sekunde kommt, strömt ein zu schmal geratener Strahl etwas schneller (und ein zu breiter etwas langsamer).
+  const speed = LIQUID.JET_SPEED * clampNum(width / (cols * liq.d), 0.75, 1.5);
+  src.phase += speed * dt / gap;
   const rows = Math.min(Math.floor(src.phase), 16);
   if (rows < 1) return 0;
   src.phase -= Math.floor(src.phase);
-  return liqSpawn(rows * cols, { shape: 1, x: x * liq.aspect, y, dir, cols, gap, first: src.phase * gap, width,
-    vx: dir[0] * LIQUID.JET_SPEED + vx, vy: dir[1] * LIQUID.JET_SPEED + vy });
+  return liqSpawn(rows * cols, { shape: 1, x: x * liq.aspect, y, dir, cols, gap, first: src.phase * gap, width: cols * liq.d,
+    vx: dir[0] * speed + vx, vy: dir[1] * speed + vy });
 }
 function liqClick(a) {
   const P = PARAMS, h = liq.hand, before = liq.count;
