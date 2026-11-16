@@ -109,8 +109,19 @@
   /* Partikel-Modus: schmaler Ring als Cursor; gestrichelt, solange die Maus abstößt */
   #partScatter { width: 100%; }
   /* Flüssigkeits-Modus (Partikel) */
-  #liqRefill { width: 100%; margin-top: 10px; }
+  #liqTilt { width: 100%; margin: 0 0 12px; }
+  #liqDrain, #liqRefill { padding: 8px; }
   body.mode-liquid #cursor { border-width: 1.5px; box-shadow: 0 0 10px var(--brush, #fff); }
+  body.mode-liquid.liq-pull:not(.tool-wall):not(.tool-erase) #cursor { border-style: dashed; }   /* gestrichelt, solange die Maus anzieht */
+  /* Der Hahn: kleines Röhrchen, die Öffnung (unten) sitzt genau an seiner Stelle und zeigt in Fallrichtung */
+  #liqTap {
+    position: fixed; left: 0; top: 0; width: 26px; height: 13px; margin: -13px 0 0 -13px; z-index: 1;
+    border-radius: 6px 6px 2px 2px; pointer-events: none; opacity: 0; transform-origin: 50% 100%;
+    border: 1.5px solid var(--brush, #fff); border-bottom-width: 0; background: rgba(14,14,20,.7);
+    box-shadow: 0 0 10px var(--brush, #fff); transition: opacity .3s;
+  }
+  #liqTap.on { opacity: .9; }
+  body.screensaver #liqTap { opacity: 0; transition: opacity 1.8s; }
   body.mode-particles #cursor { border-width: 1.5px; box-shadow: 0 0 10px var(--brush, #fff); }
   body.part-repel #cursor { border-style: dashed; }
   /* Maus zeigt auf eine gesetzte Kraft (greifen/verschieben): größerer, heller Ring */
@@ -258,6 +269,7 @@
 <canvas id="c"></canvas>
 <div id="cursor"></div>
 <div id="brushPreview"></div>
+<div id="liqTap" data-mode="liquid"></div>
 
 <div id="fps" class="glass ui" title="Bilder pro Sekunde (F)">
   <span class="dot"></span><span class="num">– FPS</span><canvas id="graph" width="120" height="36"></canvas><span class="q"></span>
@@ -298,18 +310,43 @@
     </div>
     <div class="hint-reset">Doppelklick auf einen Regler = Standardwert</div>
   </div>
-  <div class="sec" data-mode="fluid">
-    <h3>Hindernisse</h3>
-    <div id="tools">
-      <button class="btn" data-tool="paint"><span>Farbe</span></button>
-      <button class="btn" data-tool="wall"><span>Hindernis</span><kbd>W</kbd></button>
-      <button class="btn" data-tool="erase"><span>Radierer</span><kbd>E</kbd></button>
-    </div>
-    <button class="btn" id="clearObstacles"><span>Alle Hindernisse löschen</span><kbd>X</kbd></button>
-    <div class="sub">Hindernis oder Radierer wählen und mit gedrückter Maustaste ziehen. Schnell zwischendurch: rechte Maustaste ziehen = Hindernis, mit Umschalt-Taste = radieren.</div>
-  </div>
   <div class="sec" data-mode="liquid">
     <h3>Flüssigkeit (Partikel)</h3>
+    <div id="liqPush" class="grid2">
+      <button class="btn" data-push="1"><span>Schieben</span></button>
+      <button class="btn" data-push="-1"><span>Ziehen</span><kbd>R</kbd></button>
+    </div>
+    <div class="sub">Die Maus schiebt die Flüssigkeit vor sich her oder zieht sie an. Klick = ein Tropfen fällt und es spritzt. Maustaste gedrückt halten = Flüssigkeit strömt aus der Maus. Mausrad = Reichweite.</div>
+    <div class="row" style="margin-top:12px">
+      <label for="liqForce">Maus-Kraft <output id="liqForceOut"></output></label>
+      <input id="liqForce" type="range" min="0" max="3" step="0.01">
+    </div>
+    <div class="row">
+      <label for="liqRange">Reichweite <output id="liqRangeOut"></output></label>
+      <input id="liqRange" type="range" min="0.04" max="0.4" step="0.005">
+    </div>
+    <div class="row">
+      <label for="liqSplash">Spritzer (Klick) <output id="liqSplashOut"></output></label>
+      <input id="liqSplash" type="range" min="0" max="2.5" step="0.01">
+    </div>
+    <div class="row" style="margin-bottom:0">
+      <label for="liqDrop">Tropfen (Klick) <output id="liqDropOut"></output></label>
+      <input id="liqDrop" type="range" min="0" max="3" step="0.01">
+    </div>
+    <label class="switch-row" id="liqTapRow"><span>Hahn <kbd>T</kbd></span><span class="switch" id="liqTapSwitch"></span></label>
+    <div class="sub">Füllt Flüssigkeit nach, bis der Vorrat aufgebraucht ist. Taste <b>T</b> setzt den Hahn an die Maus.</div>
+    <div class="row" style="margin:12px 0 0">
+      <label for="liqJet">Strahl <output id="liqJetOut"></output></label>
+      <input id="liqJet" type="range" min="0.3" max="1.5" step="0.01">
+    </div>
+    <div class="sub" id="liqInfo"></div>
+    <div class="grid2" style="margin-top:8px">
+      <button class="btn" id="liqDrain"><span>Leeren</span><kbd>Leertaste</kbd></button>
+      <button class="btn" id="liqRefill"><span>Neu füllen</span><kbd>N</kbd></button>
+    </div>
+  </div>
+  <div class="sec" data-mode="liquid" id="liqProps">
+    <h3>Eigenschaften</h3>
     <div class="row">
       <label for="liqGravity">Schwerkraft <output id="liqGravityOut"></output></label>
       <input id="liqGravity" type="range" min="0" max="2" step="0.01">
@@ -318,6 +355,7 @@
       <label for="liqGravityDir">Fallrichtung <output id="liqGravityDirOut"></output></label>
       <input id="liqGravityDir" type="range" min="-180" max="180" step="5">
     </div>
+    <button class="btn" id="liqTilt"><span>Eimer kippen (90° weiter)</span><kbd>G</kbd></button>
     <div class="row">
       <label for="liqViscosity">Viskosität <output id="liqViscosityOut"></output></label>
       <input id="liqViscosity" type="range" min="0" max="1" step="0.01">
@@ -336,7 +374,16 @@
     </div>
     <div class="hint-reset">Doppelklick auf einen Regler = Standardwert</div>
     <div class="sub">Viskosität = wie zäh (Wasser … Honig) · Zusammenhalt = Oberflächenspannung (Tropfen bleiben beisammen) · Steifigkeit = wie wenig sich die Flüssigkeit zusammendrücken lässt · Dichte = wie eng die Partikel gepackt sind.</div>
-    <button class="btn" id="liqRefill"><span>Neu einfüllen</span><kbd>Leertaste</kbd></button>
+  </div>
+  <div class="sec" data-mode="fluid liquid" id="obstacleSection">
+    <h3>Hindernisse</h3>
+    <div id="tools">
+      <button class="btn" data-tool="paint"><span data-mode="fluid">Farbe</span><span data-mode="liquid">Hand</span></button>
+      <button class="btn" data-tool="wall"><span>Hindernis</span><kbd>W</kbd></button>
+      <button class="btn" data-tool="erase"><span>Radierer</span><kbd>E</kbd></button>
+    </div>
+    <button class="btn" id="clearObstacles"><span>Alle Hindernisse löschen</span><kbd>X</kbd></button>
+    <div class="sub">Hindernis oder Radierer wählen und mit gedrückter Maustaste ziehen. Schnell zwischendurch: rechte Maustaste ziehen = Hindernis, mit Umschalt-Taste = radieren.</div>
   </div>
   <div class="sec" data-mode="fluid liquid">
     <h3>Look</h3>
@@ -674,7 +721,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid liquid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid liquid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>Leertaste</kbd>Neu einfüllen</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid liquid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid liquid"><kbd>E</kbd>Radierer</span><span data-mode="fluid liquid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid liquid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid liquid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>R</kbd>Schieben ↔ Ziehen</span><span data-mode="liquid"><kbd>Klick</kbd>Tropfen + Spritzer</span><span data-mode="liquid"><kbd>T</kbd>Hahn</span><span data-mode="liquid"><kbd>G</kbd>Kippen</span><span data-mode="liquid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="liquid"><kbd>N</kbd>Neu füllen</span>
   </div>
 </div>
 
@@ -724,9 +771,9 @@ const QUALITY = [
   { name: 'Niedrig', sim: 64,  dye: 512,  dpr: 1,        over: 1,   pressure: 12, bloomDiv: 4, bloomLevels: 4, surfaceDiv: 4, foamDiv: 4, fscale: 0.5, iter: 2000, pside: 192, pscale: 0.5, lside: 80 },
   { name: 'Mittel',  sim: 128, dye: 1024, dpr: 1.5,      over: 1,   pressure: 20, bloomDiv: 4, bloomLevels: 5, surfaceDiv: 2, foamDiv: 2, fscale: 0.75, iter: 3000, pside: 320, pscale: 0.75, lside: 128 },
   { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2, fscale: 1, iter: 4500, pside: 512, pscale: 1, lside: 160 },
-  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 6000, pside: 724, pscale: 1, lside: 208 },
-  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 8000, pside: 1024, pscale: 1, lside: 256, heavy: true },
-  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 10000, pside: 1448, pscale: 1, lside: 272, heavy: true },
+  { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 6000, pside: 724, pscale: 1, lside: 184 },
+  { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 8000, pside: 1024, pscale: 1, lside: 196, heavy: true },
+  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 10000, pside: 1448, pscale: 1, lside: 208, heavy: true },
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
@@ -810,6 +857,11 @@ const PARAMS = {
   liqCohesion:   { target: 0.3,  current: 0.3,  def: 0.3  },  // Flüssigkeit: Zusammenhalt = Oberflächenspannung (0 = aus)
   liqStiff:      { target: 0.85, current: 0.85, def: 0.85 },  // Flüssigkeit: Steifigkeit (0 = weich und federnd, 1 = kaum zusammendrückbar)
   liqDensity:    { target: 1,    current: 1,    def: 1    },  // Flüssigkeit: Dichte = wie eng die Partikel gepackt sind
+  liqForce:      { target: 1,    current: 1,    def: 1    },  // Flüssigkeit: Kraft der Maus-Hand (0 = aus)
+  liqRange:      { target: 0.12, current: 0.12, def: 0.12 },  // Flüssigkeit: Reichweite der Maus-Hand (Anteil der Bildhöhe)
+  liqSplash:     { target: 1,    current: 1,    def: 1    },  // Flüssigkeit: Stärke des Spritzers bei Klick (0 = aus)
+  liqDrop:       { target: 1,    current: 1,    def: 1    },  // Flüssigkeit: Größe des Tropfens bei Klick (0 = keiner)
+  liqJet:        { target: 0.5,  current: 0.5,  def: 0.5  },  // Flüssigkeit: Breite des Strahls (Hahn, gedrückte Maustaste)
   forceStrength: { target: 1,   current: 1,   def: 1   },  // Partikel-Kräfte: Stärke der ausgewählten (bzw. nächsten) Kraft
   forceRange:    { target: 0.2, current: 0.2, def: 0.2 },  // Partikel-Kräfte: Reichweite (Anteil der Bildhöhe)
   forceDir:      { target: 0,   current: 0,   def: 0   },  // Partikel-Kräfte: Windrichtung in Grad (0 = rechts, 90 = oben)
@@ -2139,38 +2191,44 @@ function splat(x, y, dx, dy, color, size = 1) {
 let tool = 'paint';                                         // aktives Werkzeug: 'paint' (Farbe), 'wall' (Hindernis), 'erase' (Radierer)
 const obstaclePen = { active: false, erase: false, last: null };   // läuft gerade ein Hindernis-Strich?
 
-// Strich bis zur Bildposition (x, y) weiterzeichnen bzw. -radieren
-function obstacleStroke(x, y) {
+// Strich bis zur Bildposition (x, y) weiterzeichnen bzw. -radieren.
+// set = Hindernis-Bild (Standard: das des Fluid-Modus; der Flüssigkeits-Modus hat ein eigenes),
+// radius = halbe Strichbreite als Anteil der Bildhöhe (Standard: so breit wie der Pinsel-Ring, aber nie so dünn,
+// dass die Strömung auf niedriger Qualitätsstufe hindurchsickert)
+function obstacleStroke(x, y, set = obstacles, radius = Math.max(0.02, brushDiameterPx(PARAMS.brush.current) / 2 / canvas.clientHeight)) {
   const from = obstaclePen.last || [x, y];
   const u = use('obstacleBrush');
-  gl.uniform2fv(u.texelSize, obstacles.texel);
-  gl.uniform1i(u.uTarget, obstacles.read.attach(0));
+  gl.uniform2fv(u.texelSize, set.texel);
+  gl.uniform1i(u.uTarget, set.read.attach(0));
   gl.uniform2f(u.uA, from[0], from[1]);
   gl.uniform2f(u.uB, x, y);
-  // so breit wie der Pinsel-Ring, aber nie so dünn, dass die Strömung auf niedriger Qualitätsstufe hindurchsickert
-  gl.uniform1f(u.uRadius, Math.max(0.02, brushDiameterPx(PARAMS.brush.current) / 2 / canvas.clientHeight));
+  gl.uniform1f(u.uRadius, radius);
   gl.uniform1f(u.uAspect, canvas.width / canvas.height);
   gl.uniform1f(u.uErase, obstaclePen.erase ? 1 : 0);
-  blit(obstacles.write);
-  obstacles.swap();
+  blit(set.write);
+  set.swap();
   obstaclePen.last = [x, y];
-  if (!obstaclePen.erase) obstaclesExist = true;
+  if (!obstaclePen.erase && set === obstacles) obstaclesExist = true;
 }
-function clearObstacles() {
-  for (const f of [obstacles.read, obstacles.write]) {
+// ein Hindernis-Bild ganz leeren
+function wipeObstacles(set) {
+  for (const f of [set.read, set.write]) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, f.fbo);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
   }
+}
+function clearObstacles() {
+  wipeObstacles(obstacles);
   if (obstaclesExist) audioClear();
   obstaclesExist = false;               // ab jetzt läuft wieder die unveränderte Simulation
   toast('Hindernisse gelöscht');
 }
-// Hindernisse über das fertige Bild des Looks legen (target wie bei drawLook)
-function drawObstacles(target) {
+// Hindernisse über das fertige Bild des Looks legen (target wie bei drawLook, set = Hindernis-Bild)
+function drawObstacles(target, set = obstacles) {
   const u = use('obstacleDraw');
-  gl.uniform1i(u.uObstacle, obstacles.read.attach(0));
-  gl.uniform2fv(u.uTexel, obstacles.texel);
+  gl.uniform1i(u.uObstacle, set.read.attach(0));
+  gl.uniform2fv(u.uTexel, set.texel);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   blit(target);
@@ -2835,13 +2893,16 @@ function setTool(t) {
   tool = t;
   for (const b of toolBox.children) b.classList.toggle('active', b.dataset.tool === t);
   updateToolCursor();
-  toast({ paint: 'Werkzeug: Farbe', wall: 'Hindernis-Stift – mit gedrückter Maustaste zeichnen', erase: 'Radierer – mit gedrückter Maustaste Hindernisse entfernen' }[t]);
+  toast({ paint: MODES[modeIndex].id === 'liquid' ? 'Werkzeug: Hand' : 'Werkzeug: Farbe', wall: 'Hindernis-Stift – mit gedrückter Maustaste zeichnen', erase: 'Radierer – mit gedrückter Maustaste Hindernisse entfernen' }[t]);
 }
 for (const b of toolBox.children) {
   b.classList.toggle('active', b.dataset.tool === tool);
   b.addEventListener('click', () => { setTool(b.dataset.tool); b.blur(); });
 }
-$('clearObstacles').addEventListener('click', e => { clearObstacles(); e.currentTarget.blur(); });
+$('clearObstacles').addEventListener('click', e => {
+  if (MODES[modeIndex].id === 'liquid') liqClearObstacles(); else clearObstacles();   // jeder der beiden Modi hat eigene Hindernisse
+  e.currentTarget.blur();
+});
 
 const paletteBox = $('palettes');
 for (const [name, colors] of Object.entries(PALETTES)) {
@@ -5892,7 +5953,24 @@ const LIQUID = {
                      // zählt ein Partikel mehr Farbmenge – pro 1 % Verdichtung so viele Prozent. Ohne das wäre die
                      // Flüssigkeit für die Looks eine völlig gleichmäßige Fläche; so wird sie nach unten hin "tiefer".
   PRESSURE_MAX: 0.25,// … höchstens bis zu dieser Verdichtung
-  TINT_SPAN: 0.6,    // die Partikel verteilen sich über diesen Teil der Palette (beim Einfüllen: von unten nach oben)
+  TINT_SPAN: 1.0,    // alle Partikel (samt Vorrat) verteilen sich über diesen Teil der Palette – beim Einfüllen von unten
+                     // nach oben; was später aus dem Hahn kommt, hat dadurch eine andere Farbe
+  // Bedienung
+  HAND: 24,          // Hand der Maus bei 100 %: stärkste Beschleunigung, mit der sie Flüssigkeit wegschiebt bzw. heranzieht
+                     // (Bildhöhen pro Sekunde² – zum Vergleich: die Schwerkraft hat 4)
+  CARRY: 14,         // … und so schnell nimmt sie Flüssigkeit in ihrer eigenen Bewegung mit (pro Sekunde)
+  HAND_FOLLOW: 30,   // so schnell folgt die Hand der Maus (pro Sekunde) – weich, aber ohne spürbare Verzögerung
+  HAND_LEVEL: 8,     // so schnell blendet sie ein und aus
+  HAND_SPEED: 3,     // schneller bewegt sich die Hand für die Flüssigkeit nie (Bildhöhen/s)
+  KICK: 2.2,         // Spritzer bei 100 %: so viel Tempo bekommt die Flüssigkeit im Zentrum (Bildhöhen/s)
+  KICK_TIME: 0.05,   // … verteilt über diese Zeit (Sekunden)
+  KICK_RANGE: 0.11,  // Radius des Spritzers (Bildhöhen)
+  DROP: 0.035,       // Radius eines Tropfens bei 100 % (Bildhöhen)
+  JET_SPEED: 1.4,    // Tempo, mit dem die Flüssigkeit aus dem Hahn bzw. aus der Maus strömt (Bildhöhen/s)
+  JET_WIDTH: 0.05,   // Breite des Strahls bei 100 % (Bildhöhen)
+  HOLD: 0.2,         // so lange muss die Maustaste gehalten werden, bis Flüssigkeit aus der Maus strömt (Sekunden)
+  DRAIN: 0.6,        // Dauer des Ausblendens beim Leeren (Sekunden)
+  WALL_PEN: 0.028,   // halbe Breite des Hindernis-Stifts (Bildhöhen) – deutlich dicker als ein Partikel, damit nichts durchschlüpft
 };
 
 const liq = {
@@ -5919,6 +5997,26 @@ const liq = {
   flow: null,             // mittlere Strömung an jeder Stelle (in den Einheiten des Fluid-Modus)
   curl: null,             // Drehung der Strömung
   sprites: null,          // Bild der einzelnen Partikel (nur für den Look "Partikel")
+  // Bedienung
+  pointer: null,          // Mausposition im Bild (0..1, y nach oben) oder null = Maus ist nicht im Bild
+  hand: { x: 0, y: 0, vx: 0, vy: 0, level: 0 },   // die "Hand": folgt der Maus weich (Ort in Bildhöhen, Tempo, 0..1 = wie stark sie wirkt)
+  push: 1,                // 1 = die Hand schiebt die Flüssigkeit weg, −1 = sie zieht sie an
+  pushNow: 1,             // … weich nachgezogen
+  auto: null,             // Ort der unsichtbaren Hand im Auto-Play (0..1) oder null
+  held: false, heldTime: 0,   // linke Maustaste gedrückt? wie lange schon?
+  handPause: 0,           // > 0: die Hand lässt gerade los (kurz nach einem Klick), damit der neue Tropfen frei fallen kann
+  pour: { phase: 0, told: false },   // Strahl aus der Maus: Weg seit der letzten Partikel-Reihe; "voll" schon gemeldet?
+  kicks: [],              // laufende Spritzer (höchstens 2): { x, y (Bildhöhen), s = Stärke, left = Restzeit, n = Partikelzahl beim Klick }
+  kickData: new Float32Array([-10, -10, 1, 0, -10, -10, 1, 0]), kickCount: new Int32Array(2),   // … in der Form für die Shader
+  tap: { on: false, x: 0.5, y: 0.94, phase: 0 },  // der Hahn: an/aus, Ort (0..1), Weg seit der letzten Reihe
+  drain: 0,               // > 0, solange die Flüssigkeit nach "Leeren" ausgeblendet wird
+  seed: 1,                // Zähler für den Zufall beim Einfüllen neuer Partikel
+  // Hindernisse (eigene Textur, aber Stift, Radierer und Anzeige sind dieselben wie im Fluid-Modus)
+  obstacles: null,        // Hindernis-Bild (1 = Hindernis), Doppelpuffer
+  obstaclesExist: false,
+  seeds: null, dist: null,// Zwischenschritte für das Abstandsfeld
+  sdf: null,              // Abstandsfeld: x = Abstand zum nächsten Hindernis (negativ = darin), yz = Richtung von ihm weg
+  sdfDirty: true,         // true = Hindernisse haben sich geändert → Abstandsfeld neu berechnen
 };
 
 // ----- Shader -----
@@ -5937,17 +6035,51 @@ const liqCommonGLSL = partHashGLSL + `
   uniform float uJitter;        // … je Partikel um bis zu diesen Anteil größer
   uniform float uMaxSpeed;      // schneller wird kein Partikel
   uniform vec2 uGridSize;       // Anzahl der Rasterfelder (Breite, Höhe)
-  // im Bild bleiben (id = Nummer des Partikels)
+  uniform vec4 uHand;           // Hand der Maus: xy = Ort (Bildhöhen), z = Radius, w = Stärke (+ schiebt weg, − zieht an)
+  uniform vec3 uHandVel;        // … xy = ihr Tempo, z = wie schnell sie Flüssigkeit in ihrer Bewegung mitnimmt (pro Sekunde)
+  uniform vec4 uKick[2];        // Spritzer: xy = Ort (Bildhöhen), z = Radius, w = Beschleunigung
+  uniform ivec2 uKickN;         // … trifft nur Partikel, die beim Klick schon im Bild waren (Nummer kleiner als dieser Wert)
+  uniform vec2 uUp;             // Richtung "nach oben" (gegen die Schwerkraft)
+  uniform sampler2D uObs;       // Hindernisse: x = Abstand zum nächsten (Bildhöhen, negativ = darin), yz = Richtung von ihm weg
+  // Abstand zum nächsten Hindernis; n = Richtung von ihm weg
+  float obstacle (vec2 p, out vec2 n) {
+    vec3 o = texture(uObs, p / vec2(uAspect, 1.0)).xyz;
+    float len = length(o.yz);
+    n = len > 1e-4 ? o.yz / len : vec2(0.0, 1.0);
+    return o.x;
+  }
+  // im Bild und außerhalb der Hindernisse bleiben (id = Nummer des Partikels)
   vec2 inside (vec2 p, vec2 id) {
-    vec2 m = uMargin * (1.0 + uJitter * hash2(id + 0.5));
-    return clamp(p, m, vec2(uAspect, 1.0) - m);
+    vec2 m = uMargin * (1.0 + uJitter * hash2(id + 0.5)), top = vec2(uAspect, 1.0) - m;
+    p = clamp(p, m, top);
+    vec2 n;
+    float s = obstacle(p, n);
+    if (s < m.x) p = clamp(p + n * (m.x - s), m, top);       // im Hindernis (oder zu dicht dran): auf kürzestem Weg hinaus
+    return p;
   }
   // Vorhersage: Wo wäre das Partikel nach diesem Teilschritt, wenn es allein wäre? p = Ort (Bildhöhen), v = Tempo
   void predict (vec4 s, vec2 id, out vec2 p, out vec2 v) {
-    v = (s.zw + uGravity * uDt) * uKeep;
+    vec2 x = s.xy * vec2(uAspect, 1.0), a = uGravity;
+    // Hand der Maus: schiebt weg oder zieht an (in der Mitte null, am stärksten auf halbem Radius, am Rand wieder
+    // null) und nimmt die Flüssigkeit in ihrer eigenen Bewegung mit – wie eine Hand, die durchs Wasser fährt
+    vec2 r = x - uHand.xy;
+    float q2 = dot(r, r) / (uHand.z * uHand.z);
+    if (q2 < 1.0) {
+      float w = (1.0 - q2) * (1.0 - q2);
+      a += r / uHand.z * (3.5 * uHand.w * w) + (uHandVel.xy - s.zw) * (uHandVel.z * w);
+    }
+    // Spritzer: ein kurzer Stoß vom Klick weg und nach oben
+    int k = int(id.x) + int(id.y) * uSide;
+    for (int i = 0; i < 2; i++) {
+      if (k >= uKickN[i]) continue;                           // (der Tropfen, der beim selben Klick entsteht, fällt einfach)
+      r = x - uKick[i].xy;
+      q2 = dot(r, r) / (uKick[i].z * uKick[i].z);
+      if (q2 < 1.0) a += (r / uKick[i].z * 1.5 + uUp) * (uKick[i].w * (1.0 - q2));
+    }
+    v = (s.zw + a * uDt) * uKeep;
     float sp = length(v);
     if (sp > uMaxSpeed) v *= uMaxSpeed / sp;
-    p = inside(s.xy * vec2(uAspect, 1.0) + v * uDt, id);
+    p = inside(x + v * uDt, id);
   }
   // das Rasterfeld, in dem der Punkt p liegt
   ivec2 cellOf (vec2 p) { return ivec2(clamp(floor(p / vec2(uAspect, 1.0) * uGridSize), vec2(0.0), uGridSize - 1.0)); }
@@ -5980,6 +6112,96 @@ const liqResizeSrc = header + `precision highp int;` + partHashGLSL + `
     vec4 s = texelFetch(uOld, ivec2(ko % uOldSide, ko / uOldSide), 0);
     vec2 shift = (hash2(vec2(id) + 0.5) - 0.5) * uSpread;
     fragColor = vec4(clamp(s.xy + shift / vec2(uAspect, 1.0), 0.001, 0.999), s.zw);
+  }`;
+
+// Neue Partikel aus dem Vorrat ins Bild holen (Tropfen, Strahl, Hahn): Die Partikel mit den Nummern uFrom … uFrom + uN − 1
+// bekommen Ort und Tempo, alle anderen bleiben, wie sie sind.
+// uShape 0: Tropfen – eine runde, gleichmäßig gefüllte Scheibe um uPos ("Sonnenblumen-Muster": jedes Partikel sitzt
+//           einen festen Winkel weiter und etwas weiter außen als das vorige)
+// uShape 1: Strahl – Reihen quer zur Richtung uDir; die jüngste Reihe liegt uRows.z vom Ausgang entfernt, jede
+//           weitere um uRows.y weiter (sie ist schon länger unterwegs)
+const liqSpawnSrc = header + `precision highp int;` + partHashGLSL + `
+  uniform sampler2D uState;
+  uniform int uSide, uFrom, uN;
+  uniform float uAspect, uD;         // uD = Partikelabstand
+  uniform int uShape;
+  uniform vec2 uPos, uVel, uDir;     // Ort (Bildhöhen), Tempo, Richtung des Strahls
+  uniform vec3 uRows;                // Strahl: Partikel pro Reihe, Abstand der Reihen, Weg der jüngsten Reihe
+  uniform float uWidth;              // Strahl: Breite
+  uniform float uSeed;
+  void main () {
+    ivec2 id = ivec2(gl_FragCoord.xy);
+    int j = id.x + id.y * uSide - uFrom;
+    if (j < 0 || j >= uN) { fragColor = texelFetch(uState, id, 0); return; }
+    vec2 rnd = hash2(vec2(id) + uSeed) - 0.5, p;             // kleiner Zufall: keine zwei Partikel exakt aufeinander
+    if (uShape == 0) {
+      float a = 2.39996323 * float(j), r = uD * sqrt((float(j) + 0.5) / 3.14159265);
+      p = uPos + r * vec2(cos(a), sin(a)) + 0.2 * uD * rnd;
+    } else {
+      int cols = int(uRows.x), row = j / cols, col = j % cols;
+      float across = ((float(col) + 0.25 + 0.5 * float(row & 1)) / float(cols) - 0.5) * uWidth;   // jede zweite Reihe versetzt
+      p = uPos + uDir * (uRows.z + float(row) * uRows.y) + vec2(-uDir.y, uDir.x) * across + 0.2 * uD * rnd;
+    }
+    p = clamp(p, vec2(0.5 * uD), vec2(uAspect, 1.0) - 0.5 * uD);
+    fragColor = vec4(p / vec2(uAspect, 1.0), uVel + 0.04 * rnd);
+  }`;
+
+// ----- Hindernisse: vom Bild zum Abstandsfeld -----
+// Die Hindernisse liegen als Bild vor (1 = Hindernis). Die Partikel brauchen aber an jeder Stelle zwei Dinge: Wie weit
+// ist das nächste Hindernis weg, und in welche Richtung geht es von ihm fort? Das wird nur dann neu berechnet, wenn sich
+// die Hindernisse ändern ("Jump Flooding"): 1) Jeder Bildpunkt am Rand eines Hindernisses merkt sich die genaue Stelle
+// der Kante. 2) In mehreren Durchgängen fragt jeder Bildpunkt Nachbarn in immer kleineren Sprüngen (… 8, 4, 2, 1), welche
+// Kanten-Stelle sie kennen, und behält die nächste. 3) Daraus der Abstand (im Hindernis negativ) und 4) die Richtung
+// (dorthin, wo der Abstand am schnellsten wächst).
+const liqSeedSrc = header + `
+  uniform sampler2D uMask;
+  uniform vec2 uTexel;
+  uniform float uAspect;
+  void main () {
+    float m = texture(uMask, vUv).r - 0.5, bt = 2.0;
+    vec2 best = vec2(-100.0);                                 // (−100 heißt: kennt noch keine Kante)
+    for (int k = 0; k < 4; k++) {
+      vec2 e = (k == 0 ? vec2(1.0, 0.0) : k == 1 ? vec2(-1.0, 0.0) : k == 2 ? vec2(0.0, 1.0) : vec2(0.0, -1.0)) * uTexel;
+      float mn = texture(uMask, vUv + e).r - 0.5;
+      if (m * mn >= 0.0) continue;                            // Nachbar liegt auf derselben Seite: keine Kante dazwischen
+      float t = m / (m - mn);                                 // die Kante liegt bei diesem Anteil des Wegs zum Nachbarn
+      if (t < bt) { bt = t; best = (vUv + e * t) * vec2(uAspect, 1.0); }
+    }
+    fragColor = vec4(best, 0.0, 1.0);
+  }`;
+const liqJumpSrc = header + `
+  uniform sampler2D uSeeds;
+  uniform vec2 uStep;                                         // Sprungweite
+  uniform float uAspect;
+  void main () {
+    vec2 p = vUv * vec2(uAspect, 1.0), best = vec2(-100.0);
+    float bd = 1e9;
+    for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+      vec2 s = texture(uSeeds, vUv + vec2(i, j) * uStep).xy;
+      if (s.x < -50.0) continue;
+      vec2 r = p - s;
+      float d = dot(r, r);
+      if (d < bd) { bd = d; best = s; }
+    }
+    fragColor = vec4(best, 0.0, 1.0);
+  }`;
+const liqDistSrc = header + `
+  uniform sampler2D uSeeds, uMask;
+  uniform float uAspect;
+  void main () {
+    vec2 s = texture(uSeeds, vUv).xy;
+    float d = s.x < -50.0 ? 10.0 : distance(vUv * vec2(uAspect, 1.0), s);
+    fragColor = vec4(texture(uMask, vUv).r > 0.5 ? -d : d, 0.0, 0.0, 1.0);
+  }`;
+const liqNormalSrc = header + `
+  uniform sampler2D uDist;
+  uniform vec2 uTexel;
+  uniform float uAspect;
+  void main () {
+    vec2 g = vec2(texture(uDist, vUv + vec2(uTexel.x, 0.0)).r - texture(uDist, vUv - vec2(uTexel.x, 0.0)).r,
+                  texture(uDist, vUv + vec2(0.0, uTexel.y)).r - texture(uDist, vUv - vec2(0.0, uTexel.y)).r) / (uTexel * vec2(uAspect, 1.0));
+    float len = length(g);
+    fragColor = vec4(texture(uDist, vUv).r, len > 1e-6 ? g / len : vec2(0.0, 1.0), 1.0);
   }`;
 
 // Such-Raster füllen: jedes Partikel ist ein Punkt, der in sein Rasterfeld schreibt.
@@ -6063,6 +6285,16 @@ const liqLambdaSrc = header + `precision highp int;` + liqCommonGLSL + `
     if (wx >= 0.0) feel(vec2(m.x, 0.0));
     if (wy >= 0.0) feel(vec2(0.0, m.y));
     if (wx >= 0.0 && wy >= 0.0) feel(m);
+    // Hindernis in Reichweite? Es zählt wie dicht gepackte Flüssigkeit hinter seiner Oberfläche: Direkt an der
+    // Oberfläche liegt die halbe Umgebung des Partikels im Hindernis, eine Reichweite entfernt nichts mehr.
+    // (Die Formel ist der Anteil der Gewichtsfunktion, der hinter einer geraden Wand im Abstand os liegt.)
+    vec2 on;
+    float os = obstacle(p, on);
+    if (os < uH) {
+      float oq = 1.0 - clamp(os / uH, 0.0, 1.0);
+      rho += uRho0 * 0.5 * pow(oq, 2.8);
+      gsum += uRho0 * 1.4 * pow(oq, 1.8) * on;
+    }
     float over = max(rho / uRho0 - 1.0, 0.0);                 // so viel zu dicht (0 = passt oder zu locker)
     float lambda = -over * uStiff * uRho0 * uRho0 / max(dot(gsum, gsum) + g2, 1e-3);
     fragColor = vec4(uVisc * vsum / wsum, lambda, rho / uRho0);
@@ -6127,6 +6359,10 @@ const liqPushSrc = header + `precision highp int;` + liqCommonGLSL + `
     if (wx >= 0.0) push(vec2(m.x, 0.0), lam, 0.0);
     if (wy >= 0.0) push(vec2(0.0, m.y), lam, 0.0);
     if (wx >= 0.0 && wy >= 0.0) push(m, lam, 0.0);
+    // Hindernis in Reichweite: Es schiebt zurück wie die Flüssigkeit, für die es beim Messen der Dichte gezählt hat
+    vec2 on;
+    float os = obstacle(p, on);
+    if (os < uH) disp -= 2.0 * lam * uRho0 * 1.4 * pow(1.0 - clamp(os / uH, 0.0, 1.0), 1.8) * on;
     vec2 dp = disp * uH / uRho0;
     float len = length(dp);
     if (len > uMaxPush) dp *= uMaxPush / len;
@@ -6162,14 +6398,14 @@ const liqSplatVertex = `#version 300 es
   precision highp sampler2D;
   uniform sampler2D uState;
   uniform sampler2D uPred;     // w = Dichte des Partikels (1 = normal gepackt)
-  uniform int uSide, uCount;
+  uniform int uSide;
   uniform float uAspect;
   uniform float uAhead;        // Zeit seit dem letzten Rechenschritt: die Partikel werden so weit vorausgezeichnet
   uniform float uSize;         // Durchmesser des Flecks in Bildpunkten
   uniform int uWhat;
   uniform float uAmount;       // Farbmenge in der Mitte des Flecks
   uniform vec2 uPressure;      // Druck sichtbar machen: Stärke und größte Verdichtung, die noch zählt
-  uniform float uPhase, uSpan; // Palettenposition: wandernde Verschiebung + Spanne über alle Partikel
+  uniform float uPhase, uSpan; // Palettenposition: wandernde Verschiebung + Spanne über alle Partikel (samt Vorrat)
   uniform float uFlow;         // Umrechnung des Tempos in die Einheiten der Looks
   out vec4 vData;
   void main () {
@@ -6177,7 +6413,7 @@ const liqSplatVertex = `#version 300 es
     vec4 s = texelFetch(uState, id, 0);
     if (uWhat == 0) {
       // Palettenposition als Winkel (so mischen sich Farben sauber, genau wie beim Malen im Fluid-Modus)
-      float a = 6.2831853 * (uPhase + uSpan * float(gl_VertexID) / float(uCount));
+      float a = 6.2831853 * (uPhase + uSpan * float(gl_VertexID) / float(uSide * uSide));
       float amount = uAmount * (1.0 + uPressure.x * clamp(texelFetch(uPred, id, 0).w - 1.0, 0.0, uPressure.y));
       vData = amount * vec4(1.0, cos(a), sin(a), 0.0);
     } else vData = vec4(s.zw * uFlow, 1.0, 0.0);
@@ -6195,13 +6431,16 @@ const liqSplatSrc = `#version 300 es
   }`;
 // Dichte-Feld fertig machen: Am Bildrand fehlt die Hälfte der Nachbarn (hinter der Wand liegen keine Partikel) –
 // dort sähe die Flüssigkeit dünner aus, als sie ist. Ausgleich: durch den Anteil des Flecks teilen, der im Bild liegt.
+// Dasselbe gilt an Hindernissen.
 const liqFieldSrc = header + `
   uniform sampler2D uField;
+  uniform sampler2D uObs;      // Abstandsfeld der Hindernisse
   uniform vec2 uReach;         // Radius eines Flecks als Anteil der Bildbreite / Bildhöhe
   void main () {
     vec2 s = clamp(min(vUv, 1.0 - vUv) / uReach, 0.0, 1.0);
     vec2 part = 1.0 - 0.5 * pow(1.0 - s, vec2(2.5));
-    fragColor = texture(uField, vUv) / (part.x * part.y);
+    float o = clamp(texture(uObs, vUv).x / uReach.y, 0.0, 1.0);
+    fragColor = texture(uField, vUv) / (part.x * part.y * (1.0 - 0.5 * pow(1.0 - o, 2.5)));
   }`;
 // Mittlere Strömung: Summe der Tempos geteilt durch die Summe der Gewichte (ganz am Rand läuft sie auf null aus)
 const liqFlowSrc = header + `
@@ -6237,10 +6476,11 @@ const liqSpritesVertex = `#version 300 es
 const liqSpritesSrc = `#version 300 es
   precision highp float;
   in vec3 vColor;
+  uniform float uFade;         // beim Leeren: 1 → 0
   out vec4 fragColor;
   void main () {
     vec2 q = gl_PointCoord * 2.0 - 1.0;
-    float r2 = dot(q, q), a = smoothstep(1.0, 0.72, r2);
+    float r2 = dot(q, q), a = smoothstep(1.0, 0.72, r2) * uFade;
     // zum Rand dunkler, oben links ein kleiner Lichtfleck – wirkt wie eine Kugel
     vec3 c = vColor * (1.0 - 0.5 * r2) + 0.3 * smoothstep(0.55, 0.0, length(q + 0.32));
     fragColor = vec4(c * a, a);
@@ -6252,6 +6492,11 @@ function liqCompile() {
   const t0 = performance.now();
   programs.liqInit = makeProgram(liqInitSrc);
   programs.liqResize = makeProgram(liqResizeSrc);
+  programs.liqSpawn = makeProgram(liqSpawnSrc);
+  programs.liqSeed = makeProgram(liqSeedSrc);
+  programs.liqJump = makeProgram(liqJumpSrc);
+  programs.liqDist = makeProgram(liqDistSrc);
+  programs.liqNormal = makeProgram(liqNormalSrc);
   programs.liqGrid = makeProgram(liqGridSrc, compile(gl.VERTEX_SHADER, liqGridVertex));
   programs.liqLambda = makeProgram(liqLambdaSrc);
   programs.liqPush = makeProgram(liqPushSrc);
@@ -6323,7 +6568,60 @@ function ensureLiqBuffers() {
   }
   liq.gw = Math.min(size(liq.h, aspect), maxW);
   liq.gh = Math.min(size(liq.h, 1), maxH);
+  // Hindernisse: eigenes Bild, so fein wie im Fluid-Modus; bleibt bei Stufen- und Größenwechsel erhalten
+  const obs = resolution(CONFIG.OBSTACLE_RES);
+  if (!liq.obstacles || liq.obstacles.w !== obs.w || liq.obstacles.h !== obs.h) {
+    liq.obstacles = resizeDoubleFBO(liq.obstacles, obs.w, obs.h, gl.R8, gl.RED, gl.UNSIGNED_BYTE);
+    for (const f of [liq.seeds, liq.dist, liq.sdf]) if (f) f.free();
+    liq.seeds = createDoubleFBO(obs.w, obs.h, gl.RG32F, gl.RG, gl.FLOAT, gl.NEAREST);
+    liq.dist = createFBO(obs.w, obs.h, gl.R32F, gl.RED, gl.FLOAT, gl.NEAREST);
+    liq.sdf = createFBO(obs.w, obs.h, gl.RGBA16F, gl.RGBA);
+    liq.sdfDirty = true;
+  }
+  if (liq.sdfDirty) liqBuildSdf();
   if (liq.fresh) liqFill();
+}
+
+// Abstandsfeld der Hindernisse neu berechnen (nur nötig, wenn sie sich geändert haben – siehe die Shader oben)
+function liqBuildSdf() {
+  liq.sdfDirty = false;
+  gl.disable(gl.BLEND);
+  const o = liq.obstacles, A = liq.aspect;
+  if (!liq.obstaclesExist) {                                  // keine Hindernisse: überall "weit weg"
+    gl.bindFramebuffer(gl.FRAMEBUFFER, liq.sdf.fbo);
+    gl.clearColor(10, 0, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    return;
+  }
+  let u = use('liqSeed');
+  gl.uniform1i(u.uMask, o.read.attach(0));
+  gl.uniform2fv(u.uTexel, o.texel);
+  gl.uniform1f(u.uAspect, A);
+  blit(liq.seeds.write);
+  liq.seeds.swap();
+  u = use('liqJump');
+  gl.uniform1f(u.uAspect, A);
+  let jump = 1;
+  while (jump * 2 < Math.max(o.w, o.h)) jump *= 2;
+  for (;;) {                                                  // Sprünge … 8, 4, 2, 1 und zum Schluss noch einmal 1
+    const last = jump < 1, s = Math.max(1, jump);
+    gl.uniform1i(u.uSeeds, liq.seeds.read.attach(0));
+    gl.uniform2f(u.uStep, s / o.w, s / o.h);
+    blit(liq.seeds.write);
+    liq.seeds.swap();
+    if (last) break;
+    jump /= 2;
+  }
+  u = use('liqDist');
+  gl.uniform1i(u.uSeeds, liq.seeds.read.attach(0));
+  gl.uniform1i(u.uMask, o.read.attach(1));
+  gl.uniform1f(u.uAspect, A);
+  blit(liq.dist);
+  u = use('liqNormal');
+  gl.uniform1i(u.uDist, liq.dist.attach(0));
+  gl.uniform2fv(u.uTexel, o.texel);
+  gl.uniform1f(u.uAspect, A);
+  blit(liq.sdf);
 }
 
 // Partikel neu einfüllen: als Block an der linken Seite, der dann zusammensackt und durchs Bild schwappt
@@ -6339,6 +6637,33 @@ function liqFill() {
   blit(liq.state.read); blit(liq.state.write);
   liq.fresh = false;
   liq.acc = 0;
+  liq.drain = 0;
+}
+
+// n neue Partikel aus dem Vorrat ins Bild holen. o = { shape: 0 Tropfen / 1 Strahl, x, y (Bildhöhen), vx, vy,
+// und für den Strahl: dir, cols, gap, first, width } – siehe liqSpawnSrc. Gibt zurück, wie viele es wurden.
+function liqSpawn(n, o) {
+  n = Math.min(n, liq.side * liq.side - liq.count);
+  if (n <= 0 || liq.drain > 0) return 0;
+  gl.disable(gl.BLEND);
+  const u = use('liqSpawn');
+  gl.uniform1i(u.uState, liq.state.read.attach(0));
+  gl.uniform1i(u.uSide, liq.side);
+  gl.uniform1i(u.uFrom, liq.count);
+  gl.uniform1i(u.uN, n);
+  gl.uniform1f(u.uAspect, liq.aspect);
+  gl.uniform1f(u.uD, liq.d);
+  gl.uniform1i(u.uShape, o.shape);
+  gl.uniform2f(u.uPos, o.x, o.y);
+  gl.uniform2f(u.uVel, o.vx || 0, o.vy || 0);
+  gl.uniform2fv(u.uDir, o.dir || [0, -1]);
+  gl.uniform3f(u.uRows, o.cols || 1, o.gap || 0, o.first || 0);
+  gl.uniform1f(u.uWidth, o.width || 0);
+  gl.uniform1f(u.uSeed, (liq.seed++ % 4096) + 0.5);
+  liq.count += n;
+  liqPass(liq.state.write);                                  // (alle Zeilen mit Partikeln; die vorhandenen werden unverändert übernommen)
+  liq.state.swap();
+  return n;
 }
 
 // ----- einmal pro Bild: rechnen -----
@@ -6360,6 +6685,14 @@ function liqUniforms(u) {
   gl.uniform1f(u.uMaxSpeed, LIQUID.MAX_SPEED);
   gl.uniform2f(u.uGridSize, liq.gw, liq.gh);
   gl.uniform1f(u.uRho0, liq.rho0);
+  // Bedienung: Hand der Maus, Spritzer, Hindernisse
+  const h = liq.hand, force = PARAMS.liqForce.current, down = liqDown();
+  gl.uniform4f(u.uHand, h.x, h.y, Math.max(PARAMS.liqRange.current, 0.01), force * LIQUID.HAND * h.level * liq.pushNow);
+  gl.uniform3f(u.uHandVel, h.vx, h.vy, LIQUID.CARRY * h.level * Math.min(1, force));
+  gl.uniform4fv(u['uKick[0]'], liq.kickData);
+  gl.uniform2iv(u.uKickN, liq.kickCount);
+  gl.uniform2f(u.uUp, -down[0], -down[1]);
+  gl.uniform1i(u.uObs, 3);
 }
 // Ein Rechen-Durchgang über alle Partikel im Bild (nur die Zeilen der Textur, in denen welche stehen)
 function liqPass(target) {
@@ -6406,6 +6739,17 @@ function liqSimulate(steps) {
   gl.disable(gl.BLEND);
   const g = P.liqGravity.current * LIQUID.GRAVITY, a = P.liqGravityDir.current * Math.PI / 180;
   liq.gravity = [Math.sin(a) * g, -Math.cos(a) * g];        // 0° = unten, 90° = rechts, ±180° = oben
+  // Spritzer: Jeder wirkt KICK_TIME lang als Beschleunigung. Endet er mitten in diesem Bild, wird sie entsprechend
+  // schwächer – so ist der Stoß bei jeder Bildrate gleich groß.
+  const span = steps * H;
+  for (let i = 0; i < 2; i++) {
+    const k = liq.kicks[i];
+    liq.kickData.set(k ? [k.x, k.y, LIQUID.KICK_RANGE, k.s * LIQUID.KICK / LIQUID.KICK_TIME * Math.min(1, k.left / Math.max(span, 1e-6))] : [-10, -10, 1, 0], i * 4);
+    liq.kickCount[i] = k ? k.n : 0;
+    if (k) k.left -= span;
+  }
+  liq.kicks = liq.kicks.filter(k => k.left > 0);
+  liq.sdf.attach(3);
   let u = use('liqGrid');
   liqUniforms(u);
   u = use('liqLambda');
@@ -6430,8 +6774,58 @@ function liqSimulate(steps) {
   for (let i = 0; i < steps; i++) { liqMeasure(); liqResolve(); liq.tick++; }
 }
 
+// Die "Hand": folgt der Maus weich (im Auto-Play einer unsichtbaren Bahn) und blendet weich ein und aus.
+// Aus ihrer Bewegung ergibt sich das Tempo, mit dem sie die Flüssigkeit mitnimmt.
+function liqUpdateHand(dt) {
+  const h = liq.hand, A = liq.aspect;
+  const target = autoplay.level > 0.005 && liq.auto ? liq.auto
+    : liq.pointer && !autoplay.active && tool === 'paint' && !obstaclePen.active ? liq.pointer : null;
+  if (target && dt > 0) {
+    const tx = target[0] * A, ty = target[1];
+    if (h.level < 0.02) { h.x = tx; h.y = ty; h.vx = h.vy = 0; }   // taucht dort auf, wo die Maus ist (statt quer durchs Bild heranzurasen)
+    const k = 1 - Math.exp(-LIQUID.HAND_FOLLOW * dt);
+    const nx = h.x + (tx - h.x) * k, ny = h.y + (ty - h.y) * k;
+    let vx = (nx - h.x) / dt, vy = (ny - h.y) / dt;
+    const sp = Math.hypot(vx, vy);
+    if (sp > LIQUID.HAND_SPEED) { vx *= LIQUID.HAND_SPEED / sp; vy *= LIQUID.HAND_SPEED / sp; }
+    const kv = 1 - Math.exp(-25 * dt);
+    h.vx += (vx - h.vx) * kv; h.vy += (vy - h.vy) * kv;
+    h.x = nx; h.y = ny;
+  } else {
+    const f = Math.exp(-12 * dt);
+    h.vx *= f; h.vy *= f;
+  }
+  // Beim Klicken und solange die Maustaste gehalten wird, lässt die Hand los: Der Tropfen bzw. der Strahl, der an der
+  // Maus entsteht, soll frei fallen und nicht gleich wieder weggeschoben werden.
+  liq.handPause = Math.max(0, liq.handPause - dt);
+  const open = liq.held || liq.handPause > 0;
+  h.level += ((target && !open ? 1 : 0) - h.level) * (1 - Math.exp(-LIQUID.HAND_LEVEL * dt));
+  liq.pushNow += (liq.push - liq.pushNow) * (1 - Math.exp(-10 * dt));   // Schieben ↔ Ziehen wechselt weich
+}
+
 function updateLiquid(dt) {
   ensureLiqBuffers();
+  liqUpdateHand(dt);
+  // Leeren: erst blendet die Flüssigkeit aus, dann sind alle Partikel wieder Vorrat
+  if (liq.drain > 0) {
+    liq.drain -= dt;
+    if (liq.drain <= 0) { liq.drain = 0; liq.count = 0; }
+  }
+  // Nachfüllen: der Hahn und die gedrückte Maustaste
+  if (liq.tap.on && liqJet(liq.tap, liq.tap.x, liq.tap.y, 0, 0, dt) < 0) {
+    setLiqTap(false, null, true);
+    toast('Voll – der Hahn ist zu. Leertaste leert.');
+  }
+  if (liq.held && liq.pointer && tool === 'paint') {
+    liq.heldTime += dt;
+    const h = liq.hand;
+    if (liq.heldTime > LIQUID.HOLD && liqJet(liq.pour, liq.pointer[0], liq.pointer[1], 0.6 * h.vx, 0.6 * h.vy, dt) < 0 && !liq.pour.told) {
+      liq.pour.told = true;                                  // (nur einmal pro Tastendruck melden)
+      toast('Voll – Leertaste leert');
+    }
+  }
+  liqShowTap();
+  liqShowInfo(dt);
   // Feste Teilschritte: Die Schrittdauer hängt nur von der Partikelgröße ab, nicht von der Bildrate. Ein Bild
   // rechnet so viele ganze Schritte, wie in seine Zeit passen; der Rest wird für das nächste Bild aufgehoben.
   // (Kommt ein sehr langes Bild – z. B. nach einem Tab-Wechsel –, wird die überzählige Zeit einfach verworfen.)
@@ -6441,8 +6835,10 @@ function updateLiquid(dt) {
   if (steps > LIQUID.MAX_STEPS) { steps = LIQUID.MAX_STEPS; liq.acc = 0; }
   if (steps > 0 && liq.count > 0) liqSimulate(steps);
   liq.phase += 0.012 * dt * (1 - 0.6 * PARAMS.calm.current);
+  // Cursor-Ring: so groß wie die Hand (bzw. wie der Hindernis-Stift)
+  const ring = tool === 'paint' && !obstaclePen.active ? PARAMS.liqRange.current : LIQUID.WALL_PEN;
   cursorEl.style.setProperty('--brush', paletteColor(liq.phase + 0.3));
-  cursorEl.style.setProperty('--size', '26px');
+  cursorEl.style.setProperty('--size', Math.max(14, 2 * ring * canvas.clientHeight).toFixed(1) + 'px');
   $('liqGravityDirRow').classList.toggle('unused', PARAMS.liqGravity.target === 0);
 }
 
@@ -6474,6 +6870,8 @@ function liqDrawPoints(target) {
   gl.drawArrays(gl.POINTS, 0, liq.count);
   gl.bindVertexArray(null);
 }
+// Beim Leeren blendet die Flüssigkeit weich aus (1 = voll zu sehen, 0 = weg)
+function liqFade() { return liq.drain > 0 ? smooth01(clampNum(liq.drain / LIQUID.DRAIN, 0, 1)) : 1; }
 // Aus den Partikeln die Bilder machen, die die Looks lesen: Dichte-Feld (Farbmenge + Palettenposition),
 // mittlere Strömung und deren Drehung
 function liqUpdateFields() {
@@ -6488,12 +6886,11 @@ function liqUpdateFields() {
   gl.uniform1i(u.uState, liq.state.read.attach(0));
   gl.uniform1i(u.uPred, liq.pred.attach(1));
   gl.uniform1i(u.uSide, liq.side);
-  gl.uniform1i(u.uCount, Math.max(1, liq.count));
   gl.uniform1f(u.uAspect, liq.aspect);
   gl.uniform1f(u.uAhead, liq.acc);
   gl.uniform1i(u.uWhat, 0);
   gl.uniform1f(u.uSize, 2 * radius);
-  gl.uniform1f(u.uAmount, LIQUID.BODY * 3 * dPx * dPx / (Math.PI * radius * radius));
+  gl.uniform1f(u.uAmount, liqFade() * LIQUID.BODY * 3 * dPx * dPx / (Math.PI * radius * radius));
   gl.uniform1f(u.uPhase, liq.phase);
   gl.uniform1f(u.uSpan, LIQUID.TINT_SPAN);
   gl.uniform2f(u.uPressure, LIQUID.PRESSURE, LIQUID.PRESSURE_MAX);
@@ -6507,6 +6904,7 @@ function liqUpdateFields() {
 
   u = use('liqField');
   gl.uniform1i(u.uField, f.attach(0));
+  gl.uniform1i(u.uObs, liq.sdf.attach(1));
   gl.uniform2f(u.uReach, radius / f.w, radius / f.h);
   blit(liq.dye);
   u = use('liqFlow');
@@ -6535,6 +6933,7 @@ function liqDrawSprites() {
   gl.uniform1f(u.uSize, clampNum(1.15 * liq.d * f.h * PARAMS.dotSize.current, 1.5, liqMaxPoint));
   gl.uniform1f(u.uPhase, liq.phase);
   gl.uniform1f(u.uColorBy, PARAMS.dotColor.current);
+  gl.uniform1f(u.uFade, liqFade());
   gl.uniform3fv(u['uPalette[0]'], currentPalette);
   liqDrawPoints(liq.sprites);
   gl.disable(gl.BLEND);
@@ -6553,17 +6952,187 @@ function drawLiquid(target, dt, time) {
   ensureLiqBuffers();
   liqUpdateFields();
   drawLooks(liquidLooks, target, dt, time);
+  if (liq.obstaclesExist) drawObstacles(target, liq.obstacles);   // Hindernisse über das Bild legen (wie im Fluid-Modus)
 }
 
 // ----- Bedienung -----
+// Maus bewegen = die Hand schiebt die Flüssigkeit weg (oder zieht sie an) und nimmt sie mit · Klick = Tropfen +
+// Spritzer · Maustaste halten = Strahl aus der Maus · rechte Maustaste ziehen = Hindernis (mit Umschalt = radieren)
+// Mausposition im Bild (0..1, y nach oben)
+function liqMouse(e) {
+  const r = canvas.getBoundingClientRect();
+  return [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height];
+}
+// Richtung, in die es gerade "nach unten" geht (folgt dem Regler Fallrichtung)
+function liqDown() {
+  const a = PARAMS.liqGravityDir.current * Math.PI / 180;
+  return [Math.sin(a), -Math.cos(a)];
+}
+// Spritzer: kurzer Stoß an der Stelle (x, y) im Bild (0..1); s = Stärke (1 = 100 %); n = er trifft nur die Partikel mit
+// kleinerer Nummer (also die, die vor dem Klick schon da waren)
+function liqSplash(x, y, s, n = liq.count) {
+  // ("Flackern reduzieren": Spritzer fallen sanfter aus – weniger umherfliegende helle Tropfen)
+  liq.kicks.push({ x: x * liq.aspect, y, s: s * (1 - 0.4 * PARAMS.calm.current), left: LIQUID.KICK_TIME, n });
+  if (liq.kicks.length > 2) liq.kicks.shift();
+}
+// Tropfen: ein runder Klecks neuer Flüssigkeit an der Stelle (x, y); size = Größe (1 = 100 %), vx, vy = Tempo
+function liqDrop(x, y, size, vx = 0, vy = 0) {
+  const r = LIQUID.DROP * Math.sqrt(size);
+  return liqSpawn(Math.round(Math.PI * r * r / (liq.d * liq.d)), { shape: 0, x: x * liq.aspect, y, vx, vy });
+}
+// Strahl: Ab der Stelle (x, y) strömt Flüssigkeit in Fallrichtung (vx, vy = zusätzliches Tempo, z. B. der Maus). Sie
+// kommt Reihe für Reihe: Immer wenn der Strahl ein Stück weitergeflossen ist, entsteht am Ausgang die nächste Reihe.
+// src merkt sich den Weg seit der letzten Reihe. Gibt die Zahl der neuen Partikel zurück, −1 = der Vorrat ist leer.
+function liqJet(src, x, y, vx, vy, dt) {
+  if (liq.drain > 0) return 0;
+  if (liq.count >= liq.side * liq.side) return -1;
+  const width = LIQUID.JET_WIDTH * PARAMS.liqJet.current, gap = 0.9 * liq.d, dir = liqDown();
+  const cols = Math.max(1, Math.round(width / liq.d));
+  src.phase += LIQUID.JET_SPEED * dt / gap;
+  const rows = Math.min(Math.floor(src.phase), 16);
+  if (rows < 1) return 0;
+  src.phase -= Math.floor(src.phase);
+  return liqSpawn(rows * cols, { shape: 1, x: x * liq.aspect, y, dir, cols, gap, first: src.phase * gap, width,
+    vx: dir[0] * LIQUID.JET_SPEED + vx, vy: dir[1] * LIQUID.JET_SPEED + vy });
+}
+function liqClick(a) {
+  const P = PARAMS, h = liq.hand, before = liq.count;
+  if (P.liqDrop.target > 0) liqDrop(a[0], a[1], P.liqDrop.current, 0.5 * h.vx * h.level, 0.5 * h.vy * h.level);
+  if (P.liqSplash.target > 0) liqSplash(a[0], a[1], P.liqSplash.current, before);
+  // die Hand lässt sofort los – so lange, bis der Tropfen aus ihrer Reichweite gefallen ist
+  h.level = 0;
+  liq.handPause = Math.min(0.6, Math.sqrt(2 * P.liqRange.current / Math.max(1, P.liqGravity.current * LIQUID.GRAVITY)) + 0.05);
+  audioClick(a[0], a[1]);
+  cursorScale = 1.35 - 0.25 * P.calm.current;                // kleiner "Puls" beim Klicken
+}
+// Hindernis-Stift bzw. Radierer bis zur Stelle a weiterziehen (derselbe Stift wie im Fluid-Modus, eigenes Bild)
+function liqWallStroke(a) {
+  ensureLiqBuffers();
+  obstacleStroke(a[0], a[1], liq.obstacles, LIQUID.WALL_PEN);
+  if (!obstaclePen.erase) liq.obstaclesExist = true;
+  liq.sdfDirty = true;                                       // Abstandsfeld wird vor dem nächsten Rechenschritt erneuert
+  lastPaint = performance.now();
+}
+function liqClearObstacles() {
+  ensureLiqBuffers();
+  wipeObstacles(liq.obstacles);
+  if (liq.obstaclesExist) audioClear();
+  liq.obstaclesExist = false;
+  liq.sdfDirty = true;
+  toast('Hindernisse gelöscht');
+}
+function liqPointerMove(e) {
+  const a = liq.pointer = liqMouse(e);
+  showCursor(e.clientX, e.clientY);
+  if (obstaclePen.active) liqWallStroke(a);
+  lastPaint = performance.now();
+  hideHint();
+}
+function liqPointerDown(e) {
+  const a = liq.pointer = liqMouse(e), right = e.button === 2;
+  showCursor(e.clientX, e.clientY);
+  if (right || tool !== 'paint') {                           // Hindernis zeichnen oder radieren
+    obstaclePen.active = true;
+    obstaclePen.erase = right ? e.shiftKey : tool === 'erase';
+    obstaclePen.last = null;
+    updateToolCursor();
+    liqWallStroke(a);                                        // setzt gleich den ersten Punkt
+    audioTock(obstaclePen.erase);
+    return;
+  }
+  if (e.button !== 0) return;
+  liqClick(a);
+  liq.held = true; liq.heldTime = 0;                         // … und solange gehalten: Strahl aus der Maus
+  liq.pour.phase = 0; liq.pour.told = false;
+}
+function liqPointerUp(e) {
+  endObstacleStroke();
+  liq.held = false;
+  if (e && e.pointerType === 'touch') liq.pointer = null;    // Finger weg → Hand blendet aus
+}
+// Mausrad: Reichweite der Hand
+function liqWheel(e) {
+  const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;   // Zeilen/Seiten → Pixel
+  const p = PARAMS.liqRange;
+  p.target = clampNum(p.target * Math.exp(-clampNum(d, -300, 300) * 0.0012), 0.04, 0.4);
+  lastPaint = performance.now();
+}
+// Hand: Schieben (1) oder Ziehen (−1)
+function setLiqPush(dir, silent) {
+  liq.push = dir;
+  for (const b of liqPushBox.children) b.classList.toggle('active', Number(b.dataset.push) === dir);
+  document.body.classList.toggle('liq-pull', dir < 0);
+  if (silent) return;
+  audioTock(dir < 0);
+  toast(dir > 0 ? 'Maus schiebt' : 'Maus zieht an');
+}
+// Hahn auf/zu. at = Stelle im Bild (0..1), an die er gesetzt wird (null = bleibt, wo er ist)
+function setLiqTap(on, at, silent) {
+  const t = liq.tap;
+  if (on && at) { t.x = clampNum(at[0], 0.03, 0.97); t.y = clampNum(at[1], 0.05, 0.97); }
+  t.on = on;
+  t.phase = 0;
+  $('liqTapSwitch').classList.toggle('on', on);
+  if (silent) return;
+  audioTock(!on);
+  toast(on ? 'Hahn auf' : 'Hahn zu');
+}
+// Zeichen für den Hahn: kleines Röhrchen, dessen Öffnung in Fallrichtung zeigt
+const liqTapEl = $('liqTap');
+function liqShowTap() {
+  const t = liq.tap;
+  liqTapEl.classList.toggle('on', t.on);
+  if (!t.on) return;
+  const r = canvas.getBoundingClientRect();
+  liqTapEl.style.transform = `translate3d(${(r.left + t.x * r.width).toFixed(1)}px, ${(r.top + (1 - t.y) * r.height).toFixed(1)}px, 0) rotate(${(-PARAMS.liqGravityDir.current).toFixed(1)}deg)`;
+  liqTapEl.style.setProperty('--brush', paletteColor(liq.phase + 0.3));
+}
+// Infozeile im Panel: wie viel Flüssigkeit im Bild ist (nur neu schreiben, wenn sich etwas geändert hat)
+let liqInfoTimer = 0, liqInfoKey = '';
+function liqShowInfo(dt) {
+  liqInfoTimer -= dt;
+  if (liqInfoTimer > 0) return;
+  liqInfoTimer = 0.2;
+  const cap = liq.side * liq.side, n = liq.drain > 0 ? 0 : liq.count, key = n + '/' + cap;
+  if (key === liqInfoKey) return;
+  liqInfoKey = key;
+  const f = v => v.toLocaleString('de-DE');
+  $('liqInfo').textContent = `Im Bild: ${f(n)} von ${f(cap)} Partikeln (${Math.round(100 * n / cap)} %)` + (n >= cap ? ' – voll' : '');
+}
+// Leeren: Die Flüssigkeit blendet aus, alle Partikel gehen zurück in den Vorrat (Hindernisse bleiben)
+function liqDrain() {
+  if (liq.count > 0 && liq.drain <= 0) liq.drain = LIQUID.DRAIN;
+  audioClear();
+  toast('Geleert');
+}
+// Neu einfüllen: ein Block Flüssigkeit an der linken Seite, der zusammensackt und durchs Bild schwappt
 function liqRefill() {
   liq.fresh = true;
   audioClear();
   toast('Neu eingefüllt');
 }
+// Eimer kippen: Fallrichtung um 90° weiterdrehen (dir = 1: unten → rechts → oben → links, −1: andersherum)
+function liqTilt(dir) {
+  const p = PARAMS.liqGravityDir;
+  let t = Math.round(p.target / 90) * 90 + 90 * dir;
+  // (180° und −180° sind dieselbe Richtung: beim Überschreiten springt die Zahl, nicht die Flüssigkeit)
+  if (t > 180) { t -= 360; p.current -= 360; }
+  if (t < -180) { t += 360; p.current += 360; }
+  p.target = t;
+  if (PARAMS.liqGravity.target === 0) PARAMS.liqGravity.target = PARAMS.liqGravity.def;
+  audioTock(false);
+  toast('Fallrichtung: ' + fallDirLabel(t));
+}
 function liqKey(e, bracket) {
   lookKeys(e, bracket);                                      // 1–0 und ← → wählen den Look, wie im Fluid-Modus
-  if (e.code === 'Space') { liqRefill(); e.preventDefault(); }
+  if (e.code === 'Space') { liqDrain(); e.preventDefault(); }
+  if (e.code === 'KeyN') liqRefill();
+  if (e.code === 'KeyR') setLiqPush(-liq.push);
+  if (e.code === 'KeyT') setLiqTap(!liq.tap.on, liq.pointer);   // Hahn an der Maus auf (ohne Maus im Bild: wo er zuletzt war)
+  if (e.code === 'KeyG') liqTilt(e.shiftKey ? -1 : 1);
+  if (e.code === 'KeyW') setTool(tool === 'wall' ? 'paint' : 'wall');
+  if (e.code === 'KeyE') setTool(tool === 'erase' ? 'paint' : 'erase');
+  if (e.code === 'KeyX') liqClearObstacles();
 }
 
 // ----- Panel -----
@@ -6573,31 +7142,43 @@ bindSlider('liqViscosity',  PARAMS.liqViscosity,  v => Math.round(v * 100) + ' %
 bindSlider('liqCohesion',   PARAMS.liqCohesion,   v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('liqStiff',      PARAMS.liqStiff,      v => Math.round(v * 100) + ' %');
 bindSlider('liqDensity',    PARAMS.liqDensity,    v => Math.round(v * 100) + ' %');
+bindSlider('liqForce',      PARAMS.liqForce,      v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('liqRange',      PARAMS.liqRange,      v => Math.round(v * 100) + ' %');
+bindSlider('liqSplash',     PARAMS.liqSplash,     v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('liqDrop',       PARAMS.liqDrop,       v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+bindSlider('liqJet',        PARAMS.liqJet,        v => Math.round(v * 100) + ' %');
+const liqPushBox = $('liqPush');
+for (const b of liqPushBox.children) b.addEventListener('click', () => { setLiqPush(Number(b.dataset.push)); b.blur(); });
+setLiqPush(1, true);
+$('liqTapRow').addEventListener('click', e => { e.preventDefault(); setLiqTap(!liq.tap.on, null); });
+$('liqDrain').addEventListener('click', e => { liqDrain(); e.currentTarget.blur(); });
 $('liqRefill').addEventListener('click', e => { liqRefill(); e.currentTarget.blur(); });
+$('liqTilt').addEventListener('click', e => { liqTilt(1); e.currentTarget.blur(); });
 
 MODES.push({
   id: 'liquid', name: 'Flüssigkeit (Partikel)', label: 'Flüssigkeit',
-  hint: 'Tausende Partikel verhalten sich wie Wasser · <b>1</b>–<b>0</b>, <b>←</b> <b>→</b> = Look · <b>Leertaste</b> = neu einfüllen · <b>Tab</b> = Modus',
+  hint: 'Maus = schieben · Klick = Tropfen + Spritzer · halten = Strahl · <b>R</b> = ziehen · <b>T</b> = Hahn · <b>G</b> = kippen · <b>Leertaste</b> = leeren · <b>Tab</b> = Modus',
   autoplayHint: 'Auto-Play · Bewege die Maus, um selbst zu spielen',
   looks: liquidLooks,                                        // eigener Look-Stand: die Looks lesen das Dichte-Feld der Partikel
   enter() { showLooks(); },                                  // Panel auf den Look dieses Modus einstellen
-  leave() {},
+  leave() { endObstacleStroke(); liq.held = false; liq.pointer = null; },
   update: updateLiquid,
   draw: drawLiquid,
   bloomShare: () => lookBloomShare(liquidLooks),
-  autoplayStart() {},
+  autoplayStart() { liq.pointer = null; liq.held = false; },
   autoplayStop() {},
   autoplay() {},
-  pointerMove(e) { showCursor(e.clientX, e.clientY); hideHint(); },
-  pointerDown(e) { showCursor(e.clientX, e.clientY); },
-  pointerUp() {},
-  pointerLeave() {},
+  pointerMove: liqPointerMove,
+  pointerDown: liqPointerDown,
+  pointerUp: liqPointerUp,
+  pointerLeave() { liq.pointer = null; },
+  wheel: liqWheel,
   key: liqKey,
   qualityInfo() {
     ensureLiqBuffers();
     const n = v => v.toLocaleString('de-DE');
     ensureLiqFields();
-    return `${n(liq.count)} Partikel im Bild (Platz für ${n(liq.side * liq.side)})<br>${n(Math.round(1 / liq.H))} Rechenschritte pro Sekunde · Such-Raster ${liq.gw}×${liq.gh}<br>Dichte-Feld ${liq.field.w}×${liq.field.h}`;
+    return `Platz für ${n(liq.side * liq.side)} Partikel<br>${n(Math.round(1 / liq.H))} Rechenschritte pro Sekunde · Such-Raster ${liq.gw}×${liq.gh}<br>Dichte-Feld ${liq.field.w}×${liq.field.h}`;
   },
 });
 
