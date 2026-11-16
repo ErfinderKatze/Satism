@@ -98,7 +98,7 @@
   #panel .sec:nth-child(19) { transition-delay: .72s; }
   #panel .sec:nth-child(20) { transition-delay: .76s; }
   /* ---------- Modi ---------- */
-  /* Abschnitte und Tastenkürzel mit data-mode="…" gehören zu einem Modus und sind nur dort zu sehen */
+  /* Abschnitte und Tastenkürzel mit data-mode="…" gehören zu einem Modus (oder mehreren) und sind nur dort zu sehen */
   /* (die Regel dafür wird im Skript aus der Modus-Liste erzeugt, siehe Abschnitt "Modi") */
   .sec[data-mode] { animation: secIn .5s var(--smooth); }    /* gleiten beim Moduswechsel weich herein */
   @keyframes secIn { from { opacity: 0; transform: translateY(8px); } }
@@ -308,7 +308,37 @@
     <button class="btn" id="clearObstacles"><span>Alle Hindernisse löschen</span><kbd>X</kbd></button>
     <div class="sub">Hindernis oder Radierer wählen und mit gedrückter Maustaste ziehen. Schnell zwischendurch: rechte Maustaste ziehen = Hindernis, mit Umschalt-Taste = radieren.</div>
   </div>
-  <div class="sec" data-mode="fluid">
+  <div class="sec" data-mode="liquid">
+    <h3>Flüssigkeit (Partikel)</h3>
+    <div class="row">
+      <label for="liqGravity">Schwerkraft <output id="liqGravityOut"></output></label>
+      <input id="liqGravity" type="range" min="0" max="2" step="0.01">
+    </div>
+    <div class="row" id="liqGravityDirRow">
+      <label for="liqGravityDir">Fallrichtung <output id="liqGravityDirOut"></output></label>
+      <input id="liqGravityDir" type="range" min="-180" max="180" step="5">
+    </div>
+    <div class="row">
+      <label for="liqViscosity">Viskosität <output id="liqViscosityOut"></output></label>
+      <input id="liqViscosity" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="liqCohesion">Zusammenhalt <output id="liqCohesionOut"></output></label>
+      <input id="liqCohesion" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="liqStiff">Steifigkeit <output id="liqStiffOut"></output></label>
+      <input id="liqStiff" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="liqDensity">Dichte <output id="liqDensityOut"></output></label>
+      <input id="liqDensity" type="range" min="0.7" max="1.4" step="0.01">
+    </div>
+    <div class="hint-reset">Doppelklick auf einen Regler = Standardwert</div>
+    <div class="sub">Viskosität = wie zäh (Wasser … Honig) · Zusammenhalt = Oberflächenspannung (Tropfen bleiben beisammen) · Steifigkeit = wie wenig sich die Flüssigkeit zusammendrücken lässt · Dichte = wie eng die Partikel gepackt sind.</div>
+    <button class="btn" id="liqRefill"><span>Neu einfüllen</span><kbd>Leertaste</kbd></button>
+  </div>
+  <div class="sec" data-mode="fluid liquid">
     <h3>Look</h3>
     <div id="looks"></div>
     <!-- Look-Regler: erscheinen nur bei Looks, die sie in "params" angeben -->
@@ -452,6 +482,14 @@
       <label for="stardust">Sternenstaub <output id="stardustOut"></output></label>
       <input id="stardust" type="range" min="0" max="1" step="0.01">
     </div>
+    <div class="row look-param" data-param="dotColor">
+      <label for="dotColor">Farbe nach <output id="dotColorOut"></output></label>
+      <input id="dotColor" type="range" min="0" max="1" step="any">
+    </div>
+    <div class="row look-param" data-param="dotSize">
+      <label for="dotSize">Partikelgröße <output id="dotSizeOut"></output></label>
+      <input id="dotSize" type="range" min="0.5" max="2" step="0.01">
+    </div>
     <div class="row look-param" data-param="envSpin">
       <label for="envSpin">Umgebung drehen <output id="envSpinOut"></output></label>
       <input id="envSpin" type="range" min="0" max="1" step="0.01">
@@ -585,36 +623,6 @@
       <input id="partGlow" type="range" min="0.3" max="3" step="0.05">
     </div>
   </div>
-  <div class="sec" data-mode="liquid">
-    <h3>Flüssigkeit (Partikel)</h3>
-    <div class="row">
-      <label for="liqGravity">Schwerkraft <output id="liqGravityOut"></output></label>
-      <input id="liqGravity" type="range" min="0" max="2" step="0.01">
-    </div>
-    <div class="row" id="liqGravityDirRow">
-      <label for="liqGravityDir">Fallrichtung <output id="liqGravityDirOut"></output></label>
-      <input id="liqGravityDir" type="range" min="-180" max="180" step="5">
-    </div>
-    <div class="row">
-      <label for="liqViscosity">Viskosität <output id="liqViscosityOut"></output></label>
-      <input id="liqViscosity" type="range" min="0" max="1" step="0.01">
-    </div>
-    <div class="row">
-      <label for="liqCohesion">Zusammenhalt <output id="liqCohesionOut"></output></label>
-      <input id="liqCohesion" type="range" min="0" max="1" step="0.01">
-    </div>
-    <div class="row">
-      <label for="liqStiff">Steifigkeit <output id="liqStiffOut"></output></label>
-      <input id="liqStiff" type="range" min="0" max="1" step="0.01">
-    </div>
-    <div class="row">
-      <label for="liqDensity">Dichte <output id="liqDensityOut"></output></label>
-      <input id="liqDensity" type="range" min="0.7" max="1.4" step="0.01">
-    </div>
-    <div class="hint-reset">Doppelklick auf einen Regler = Standardwert</div>
-    <div class="sub">Viskosität = wie zäh (Wasser … Honig) · Zusammenhalt = Oberflächenspannung (Tropfen bleiben beisammen) · Steifigkeit = wie wenig sich die Flüssigkeit zusammendrücken lässt · Dichte = wie eng die Partikel gepackt sind.</div>
-    <button class="btn" id="liqRefill"><span>Neu einfüllen</span><kbd>Leertaste</kbd></button>
-  </div>
   <div class="sec" id="paletteSection">
     <h3>Farbpalette</h3>
     <div id="palettes"></div>
@@ -666,7 +674,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>Leertaste</kbd>Neu einfüllen</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span><kbd>A</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid"><kbd>E</kbd>Radierer</span><span data-mode="fluid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid liquid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid liquid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>Leertaste</kbd>Neu einfüllen</span>
   </div>
 </div>
 
@@ -718,7 +726,7 @@ const QUALITY = [
   { name: 'Hoch',    sim: 192, dye: 1536, dpr: 2,        over: 1,   pressure: 25, bloomDiv: 2, bloomLevels: 6, surfaceDiv: 2, foamDiv: 2, fscale: 1, iter: 4500, pside: 512, pscale: 1, lside: 160 },
   { name: 'Ultra',   sim: 256, dye: 2048, dpr: Infinity, over: 1,   pressure: 35, bloomDiv: 2, bloomLevels: 7, surfaceDiv: 1, foamDiv: 2, fscale: 1, iter: 6000, pside: 724, pscale: 1, lside: 208 },
   { name: 'Extrem',  sim: 384, dye: 3072, dpr: Infinity, over: 1.5, pressure: 50, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 1.5, iter: 8000, pside: 1024, pscale: 1, lside: 256, heavy: true },
-  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 10000, pside: 1448, pscale: 1, lside: 288, heavy: true },
+  { name: 'Maximum', sim: 512, dye: 4096, dpr: Infinity, over: 2,   pressure: 70, bloomDiv: 2, bloomLevels: 8, surfaceDiv: 1, foamDiv: 1, fscale: 2, iter: 10000, pside: 1448, pscale: 1, lside: 272, heavy: true },
 ];
 let qualityMode = 'auto';   // 'auto' oder 'manual'
 let qualityLevel = 2;       // tatsächlich verwendete Stufe (Index in QUALITY)
@@ -774,6 +782,8 @@ const PARAMS = {
   nebula:      { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Galaxie): Struktur (Wolken, Staubbänder, Strahlen), 0 = glatt
   stars:       { target: 0.6,  current: 0.6,  def: 0.6  },  // Look-Regler (Galaxie): Sternenhimmel im Hintergrund, 0 = aus
   stardust:    { target: 0.5,  current: 0.5,  def: 0.5  },  // Look-Regler (Galaxie): mitschwimmender Sternenstaub, 0 = aus
+  dotColor:    { target: 0,    current: 0,    def: 0    },  // Look-Regler (Partikel): Farbe nach … 0 Tempo, 1 Dichte
+  dotSize:     { target: 1,    current: 1,    def: 1    },  // Look-Regler (Partikel): Größe der einzelnen Partikel
   fracDensity: { target: 1,    current: 1,    def: 1    },  // Mandelbrot: Farbdichte = wie eng die Farbbänder liegen
   fracSpeed:   { target: 0.35, current: 0.35, def: 0.35 },  // Mandelbrot: wie schnell die Farben wandern (0 = still)
   fracGlow:    { target: 0.6,  current: 0.6,  def: 0.6  },  // Mandelbrot: Leuchten der Ränder (0 = aus)
@@ -1327,6 +1337,7 @@ const lookHeader = header + `
   uniform float uSpaceGlow;     // Look-Regler "Leuchtkraft" (Galaxie)
   uniform float uNebula;        // Look-Regler "Struktur" (Galaxie)
   uniform float uStars;         // Look-Regler "Sterne" (Galaxie, 0 = aus)
+  uniform sampler2D uSprites;   // Bild der einzelnen Partikel (nur für Looks mit sprites: true, Modus "Flüssigkeit")
 
   // ----- Spiegelnde Oberflächen (gemeinsam für Metallic, Glas … ) -----
   // weiches Rechteck (Softbox) in der Umgebung; p = (Richtung, Höhe), soft = Kantenweichheit
@@ -1805,6 +1816,19 @@ const LOOKS = [
         return col + vec3(0.004, 0.006, 0.016) * (0.6 + 0.8 * cloud);
       }`,
   },
+  {
+    name: 'Partikel',
+    only: 'liquid',      // nur im Modus "Flüssigkeit (Partikel)": dort besteht die Flüssigkeit aus einzelnen Partikeln
+    sprites: true,       // braucht das Bild der einzelnen Partikel (uSprites), das der Modus dafür zeichnet
+    usesPalette: true,
+    params: ['dotColor', 'dotSize'],
+    glsl: `
+      vec3 look (LookInput L) {
+        // jedes Partikel als kleine Kugel (Farbe nach Tempo oder Dichte, siehe liqDrawSprites) vor dunklem Hintergrund
+        vec4 s = texture(uSprites, L.uv);
+        return s.rgb + vec3(0.004, 0.006, 0.014) * (1.0 - s.a);
+      }`,
+  },
 ];
 
 function compile(type, src) {
@@ -2158,15 +2182,46 @@ let lookIndex = 0;        // aktiver Look
 let prevLook = 0;         // Look, von dem gerade weggeblendet wird
 let lookFade = 1;         // 0..1, Fortschritt der Überblendung (1 = fertig)
 
+// Die Looks können von mehreren Modi benutzt werden (Fluid, Flüssigkeit). Jeder dieser Modi hat seinen eigenen
+// "Look-Stand": welcher Look gewählt ist, die laufende Überblendung, sein Schaum-Puffer – und vor allem, woher die
+// Looks ihre Daten lesen ("source"):
+//   id          Kennung des Modus (Looks mit only: '…' gibt es nur dort)
+//   dye         Farb-Textur (Rot = Dichte, Grün/Blau = Dichte · cos/sin des Palettenwinkels)
+//   velocity    Strömung (in Bezugs-Rasterfeldern pro Sekunde, siehe REF_RESOLUTION), curl = deren Drehung
+//   simScale    Umrechnung der Strömungs-Textur auf die Bezugsgröße
+//   sprites, updateSprites(dt)   (nur wo vorhanden) Bild der einzelnen Partikel für Looks mit sprites: true
+// Die Variablen lookIndex, prevLook, lookFade, foamBuf … gelten immer für den Stand, der gerade "eingelegt" ist
+// (useLooks); der vorige Stand wird dabei zurückgeschrieben. So bleibt der ganze Look-Code für alle Modi derselbe.
+function makeLooks(index, source) {
+  return { index, prev: index, fade: 1, foamBuf: null, foamKey: '', foamWasActive: false, foamOwner: -1, source };
+}
+const fluidLooks = makeLooks(0, {
+  id: 'fluid',
+  get dye() { return dye.read; },
+  get velocity() { return velocity.read; },
+  get curl() { return curl; },
+  get simScale() { return QUALITY[qualityLevel].sim / CONFIG.REF_RESOLUTION; },
+});
+let looks = fluidLooks;   // der eingelegte Look-Stand
+function useLooks(L) {
+  if (L === looks) return;
+  Object.assign(looks, { index: lookIndex, prev: prevLook, fade: lookFade, foamBuf, foamKey, foamWasActive, foamOwner });
+  looks = L;
+  ({ index: lookIndex, prev: prevLook, fade: lookFade, foamBuf, foamKey, foamWasActive, foamOwner } = L);
+}
+// Gibt es diesen Look für diesen Look-Stand? (manche Looks brauchen Daten, die nur ein Modus liefert)
+const lookAllowed = (i, L) => !!LOOKS[i] && (!LOOKS[i].only || LOOKS[i].only === L.source.id);
+
 function drawLook(i, alpha, time, target) {
-  const u = use('look' + i);
-  gl.uniform1i(u.uDye, dye.read.attach(0));
+  const u = use('look' + i), src = looks.source;
+  gl.uniform1i(u.uDye, src.dye.attach(0));
   // Nur übergeben, was der Look wirklich benutzt (ungenutzte Uniforms entfernt der Shader-Compiler)
-  if (u.uVelocity) gl.uniform1i(u.uVelocity, velocity.read.attach(1));
-  if (u.uCurl) gl.uniform1i(u.uCurl, curl.attach(2));
+  if (u.uVelocity) gl.uniform1i(u.uVelocity, src.velocity.attach(1));
+  if (u.uCurl) gl.uniform1i(u.uCurl, src.curl.attach(2));
+  if (u.uSprites) gl.uniform1i(u.uSprites, src.sprites.attach(6));
   if (u['uPalette[0]']) gl.uniform3fv(u['uPalette[0]'], currentPalette);
   if (u.uTime) gl.uniform1f(u.uTime, time);
-  if (u.uSimScale) gl.uniform1f(u.uSimScale, QUALITY[qualityLevel].sim / CONFIG.REF_RESOLUTION);
+  if (u.uSimScale) gl.uniform1f(u.uSimScale, src.simScale);
   if (u.uCurlSmooth) gl.uniform1i(u.uCurlSmooth, curlSmooth.attach(3));
   if (u.uSensitivity) gl.uniform1f(u.uSensitivity, PARAMS.sensitivity.current);
   if (u.uDyeMix) gl.uniform1f(u.uDyeMix, PARAMS.dyeMix.current);
@@ -2218,7 +2273,7 @@ function updateCurlSmooth() {
   const u = use('curlDownsample');
   gl.uniform2fv(u.texelSize, curlSmooth.texel);
   gl.uniform2fv(u.uFootprint, curlSmooth.texel);
-  gl.uniform1i(u.uCurl, curl.attach(0));
+  gl.uniform1i(u.uCurl, looks.source.curl.attach(0));
   blit(curlSmooth);
 }
 
@@ -2258,7 +2313,7 @@ function updateSurface() {
 
   // 1) Höhe aus der Dichte
   let u = use('surfaceHeight');
-  gl.uniform1i(u.uDye, dye.read.attach(0));
+  gl.uniform1i(u.uDye, looks.source.dye.attach(0));
   gl.uniform2f(u.uDyeStep, 0.25 / w, 0.25 / h);
   gl.uniform1f(u.uSaturation, CONFIG.SURFACE_SATURATION);
   blit(surfaceA);
@@ -2303,12 +2358,12 @@ function updateFoam(dt, time) {
     }
   }
   foamOwner = owner;
-  const s = QUALITY[qualityLevel].sim / CONFIG.REF_RESOLUTION;
+  const src = looks.source, s = src.simScale, vel = src.velocity;
 
   // 1) Mitführen mit dem vorhandenen Advektions-Shader (derselbe wie für die Farbe); die Abklingrate ist der Zerfall
   let u = use('advection');
-  gl.uniform2f(u.texelSize, velocity.texel[0] * s, velocity.texel[1] * s);
-  gl.uniform1i(u.uVelocity, velocity.read.attach(0));
+  gl.uniform2f(u.texelSize, vel.texel[0] * s, vel.texel[1] * s);
+  gl.uniform1i(u.uVelocity, vel.attach(0));
   gl.uniform1i(u.uSource, foamBuf.read.attach(1));
   gl.uniform1f(u.dt, dt);
   gl.uniform1f(u.dissipation, 3.0 + (0.05 - 3.0) * set.life);  // Haltbarkeit 0 → schnell weg, 1 → bleibt lange
@@ -2318,9 +2373,9 @@ function updateFoam(dt, time) {
   // 2) Neuen Schaum hinzufügen (mit eingebrannter Körnung), nur wo Flüssigkeit ist, nach oben begrenzt
   u = use('foamSource');
   gl.uniform1i(u.uFoam, foamBuf.read.attach(0));
-  gl.uniform1i(u.uDye, dye.read.attach(1));
-  gl.uniform1i(u.uVelocity, velocity.read.attach(2));
-  gl.uniform1i(u.uCurl, curl.attach(3));
+  gl.uniform1i(u.uDye, src.dye.attach(1));
+  gl.uniform1i(u.uVelocity, vel.attach(2));
+  gl.uniform1i(u.uCurl, src.curl.attach(3));
   bindSurface(u, 4);
   gl.uniform1f(u.uSimScale, s);
   gl.uniform1f(u.uAmount, set.amount);
@@ -2418,17 +2473,21 @@ function applyCalm(dt, calm) {
   return calmBuf.read;
 }
 
-// ---------- Bild des Fluid-Modus ----------
-// Wie stark der Glow beim Fluid wirkt: Looks können mit bloom: 0..1 angeben, wie stark er bei ihnen ist
+// ---------- Bild aus den Looks (Fluid-Modus und Flüssigkeits-Modus) ----------
+// Wie stark der Glow wirkt: Looks können mit bloom: 0..1 angeben, wie stark er bei ihnen ist
 // (z. B. 0 bei hellem Papier); beim Look-Wechsel wird weich zwischen beiden Werten überblendet
-function fluidBloomShare() {
+function lookBloomShare(L) {
+  useLooks(L);
   const lookBloom = i => LOOKS[i].bloom === undefined ? 1 : LOOKS[i].bloom;
   const fadeK = lookFade * lookFade * (3 - 2 * lookFade);
   return lookBloom(prevLook) + (lookBloom(lookIndex) - lookBloom(prevLook)) * fadeK;
 }
-// Zeichnet das Bild des Fluid-Modus (aktiver Look, darüber die Hindernisse) in target:
+const fluidBloomShare = () => lookBloomShare(fluidLooks);
+// Zeichnet das Bild des Look-Stands L (aktiver Look, beim Wechsel beide überblendet) in target:
 // die Szenen-Textur, wenn Bloom, Flacker-Reduktion oder eine Modus-Überblendung laufen, sonst null = Bildschirm
-function drawFluid(target, dt, time) {
+function drawLooks(L, target, dt, time) {
+  useLooks(L);
+  if (LOOKS[lookIndex].sprites || (lookFade < 1 && LOOKS[prevLook].sprites)) looks.source.updateSprites(dt);
   if (LOOKS[lookIndex].smoothCurl || (lookFade < 1 && LOOKS[prevLook].smoothCurl)) updateCurlSmooth();
   if (LOOKS[lookIndex].surface || (lookFade < 1 && LOOKS[prevLook].surface)) updateSurface();
   // Schaum nur, wenn ein sichtbarer Look ihn braucht (braucht das Höhenfeld, daher nach updateSurface)
@@ -2450,7 +2509,10 @@ function drawFluid(target, dt, time) {
     drawLook(lookIndex, k, time, target);
     gl.disable(gl.BLEND);
   }
-
+}
+// Bild des Fluid-Modus: der Look, darüber die Hindernisse
+function drawFluid(target, dt, time) {
+  drawLooks(fluidLooks, target, dt, time);
   if (obstaclesExist) drawObstacles(target);
 }
 
@@ -2665,15 +2727,19 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyM') setMuted(!audio.muted);
   MODES[modeIndex].key(e, bracket);
 });
-// Tasten des Fluid-Modus
-function fluidKey(e, bracket) {
-  // Look wählen: 1–9 und 0 direkt (die ersten zehn), Pfeiltasten ← → bzw. , und . bzw. [ und ] schalten durch alle
+// Tasten für die Looks (in jedem Modus, der Looks benutzt):
+// 1–9 und 0 direkt (die ersten zehn), Pfeiltasten ← → bzw. , und . bzw. [ und ] schalten durch alle
+function lookKeys(e, bracket) {
   const digit = /^Digit([0-9])$/.exec(e.code);
   if (digit) setLook((Number(digit[1]) + 9) % 10);
   const onSlider = e.target instanceof HTMLInputElement;   // Pfeiltasten gehören dort dem Regler
   if (bracket) cycleLook(bracket);
   else if ((e.code === 'ArrowRight' && !onSlider) || e.code === 'Period') cycleLook(1);
   else if ((e.code === 'ArrowLeft' && !onSlider) || e.code === 'Comma') cycleLook(-1);
+}
+// Tasten des Fluid-Modus
+function fluidKey(e, bracket) {
+  lookKeys(e, bracket);
   if (e.code === 'Space') { clearCanvas(); e.preventDefault(); }
   if (e.code === 'KeyW') setTool(tool === 'wall' ? 'paint' : 'wall');
   if (e.code === 'KeyE') setTool(tool === 'erase' ? 'paint' : 'erase');
@@ -2791,11 +2857,15 @@ const lookBox = $('looks');
 LOOKS.forEach((look, i) => {
   const btn = document.createElement('button');
   btn.innerHTML = `<span>${look.name}</span>` + (i < 10 ? `<kbd>${(i + 1) % 10}</kbd>` : '');
+  if (look.only) btn.dataset.mode = look.only;               // diesen Look gibt es nur in einem Modus
   btn.addEventListener('click', () => { setLook(i); btn.blur(); });
   lookBox.appendChild(btn);
 });
+// Look wählen – für den Look-Stand des aktiven Modus (jeder Modus merkt sich seinen eigenen Look)
 function setLook(i) {
-  if (i >= LOOKS.length) return;
+  const L = MODES[modeIndex] && MODES[modeIndex].looks || fluidLooks;
+  if (!lookAllowed(i, L)) return;
+  useLooks(L);
   if (i !== lookIndex) {
     prevLook = lookIndex;
     lookIndex = i;
@@ -2810,7 +2880,19 @@ function setLook(i) {
   for (const row of document.querySelectorAll('.look-param')) row.classList.toggle('off', !used.includes(row.dataset.param));
 }
 // zum nächsten (+1) oder vorigen (−1) Look schalten; nach dem letzten geht es wieder von vorn los
-function cycleLook(dir) { setLook((lookIndex + dir + LOOKS.length) % LOOKS.length); }
+function cycleLook(dir) {
+  const L = MODES[modeIndex].looks;
+  if (!L) return;
+  let i = L === looks ? lookIndex : L.index;
+  do i = (i + dir + LOOKS.length) % LOOKS.length; while (!lookAllowed(i, L));
+  setLook(i);
+}
+// Panel auf den Look-Stand des aktiven Modus einstellen (beim Wechsel in einen Modus mit Looks)
+function showLooks() {
+  const L = MODES[modeIndex].looks;
+  useLooks(L);
+  setLook(lookIndex);
+}
 // Bloom: Regler und Schalter (der Schalter blendet den Glow weich ein und aus)
 bindSlider('bloomIntensity', PARAMS.bloomIntensity, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('bloomThreshold', PARAMS.bloomThreshold, v => Math.round(v * 100) + ' %');
@@ -2862,6 +2944,9 @@ bindSlider('spaceGlow',   PARAMS.spaceGlow,   v => v.toFixed(2) + '×');
 bindSlider('nebula',      PARAMS.nebula,      v => v === 0 ? 'glatt' : Math.round(v * 100) + ' %');
 bindSlider('stars',       PARAMS.stars,       v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
 bindSlider('stardust',    PARAMS.stardust,    v => v === 0 ? 'aus' : Math.round(v * 100) + ' %');
+// Farbe der einzelnen Partikel: rastet auf Tempo/Dichte ein, Zwischenstellungen blenden beim Wechsel weich über
+bindSlider('dotColor',    PARAMS.dotColor,    v => ['Tempo', 'Dichte'][v], { snap: v => Math.round(v) });
+bindSlider('dotSize',     PARAMS.dotSize,     v => v.toFixed(2) + '×');
 setLook(0);
 
 function setPalette(name) {
@@ -3490,6 +3575,8 @@ updateAudioInfo();
 //   autoplayStart(), autoplayStop(), autoplay(dt)    Inhalt des Auto-Play
 //   pointerMove(e), pointerDown(e), pointerUp(e), pointerLeave(), key(e, bracket), wheel(e) (optional)   Eingaben
 //   qualityInfo(q)         Text für die Info-Zeile unter dem Qualitäts-Regler
+//   looks (optional)       Look-Stand, falls der Modus die Looks benutzt (siehe makeLooks) – dann gelten Look-Knöpfe
+//                          und Look-Tasten für ihn
 // Neuer Modus = ein Objekt in MODES + Panel-Abschnitte mit data-mode="id". Ein Modus, der nicht zu sehen ist,
 // kostet nichts (er wird weder gerechnet noch gezeichnet) und behält seinen Zustand.
 
@@ -3519,7 +3606,8 @@ MODES.push({
   id: 'fluid', name: 'Fluid',
   hint: 'Maus bewegen = malen · Klick = Farbklecks · <b>Tab</b> = Modus wechseln',
   autoplayHint: 'Auto-Play · Bewege die Maus, um selbst zu malen',
-  enter() { setLook(lookIndex); },                           // Panel wieder auf den aktiven Look einstellen
+  looks: fluidLooks,                                         // eigener Look-Stand (siehe makeLooks)
+  enter() { showLooks(); },                                  // Panel wieder auf den Look dieses Modus einstellen
   leave() { endObstacleStroke(); pointer.init = false; },
   update: updateFluid,
   draw: drawFluid,
@@ -5752,6 +5840,12 @@ MODES.push({
 // Ränder: Nahe am Bildrand "sieht" ein Partikel das Spiegelbild seiner Nachbarn (und von sich selbst) hinter der
 // Wand. Dadurch stimmt die Dichte auch am Rand, und die Wand drückt weich zurück.
 //
+// Darstellung: Die Looks (Wasser, Metallic, Glas …) brauchen keine Partikel, sondern ein Bild der Farbmenge. Dafür
+// wird jedes Partikel als weicher, runder Fleck in ein Bild gezeichnet; die Flecken überlagern sich zu einer
+// glatten Fläche ("Dichte-Feld"). Dieses Bild hat genau das Format der Farb-Textur des Fluid-Modus (Menge +
+// Palettenposition), dazu kommen die mittlere Strömung und deren Drehung – damit laufen alle Looks, der
+// Oberflächen-Baustein, der Schaum und der Bloom unverändert (siehe makeLooks / liquidLooks).
+//
 // Gleiches Gefühl auf jeder Qualitätsstufe: Alle Partikel zusammen füllen immer denselben Anteil des Bildes – mehr
 // Partikel heißt kleinere Partikel. Gerechnet wird in "Bildhöhen" und Sekunden; alles, was von der Partikelgröße
 // abhängt (Schrittdauer, Zähigkeit, Zusammenhalt), wird darauf umgerechnet.
@@ -5791,6 +5885,14 @@ const LIQUID = {
   BOUNCE_FROM: 0.3,  // … erst ab diesem Tempo (Bildhöhen/s); langsamere bleiben einfach liegen
   JITTER: 0.5,       // der Mindestabstand zum Rand ist je Partikel etwas anders (sonst lägen in einer Ecke alle exakt aufeinander)
   DENSITY_MAX: 1.4,  // größter Wert des Reglers "Dichte" (für ihn wird das Such-Raster angelegt)
+  // Darstellung
+  SPLAT: 2.0,        // Radius des weichen Flecks, als der ein Partikel ins Dichte-Feld gezeichnet wird (in Partikelabständen)
+  BODY: 0.7,         // mittlere Farbmenge im Inneren der Flüssigkeit (im Fluid-Modus: kräftige Schlieren ≈ 0,6)
+  PRESSURE: 6,       // Druck sichtbar machen: Wo die Flüssigkeit zusammengedrückt ist (in der Tiefe, beim Aufprall),
+                     // zählt ein Partikel mehr Farbmenge – pro 1 % Verdichtung so viele Prozent. Ohne das wäre die
+                     // Flüssigkeit für die Looks eine völlig gleichmäßige Fläche; so wird sie nach unten hin "tiefer".
+  PRESSURE_MAX: 0.25,// … höchstens bis zu dieser Verdichtung
+  TINT_SPAN: 0.6,    // die Partikel verteilen sich über diesen Teil der Palette (beim Einfüllen: von unten nach oben)
 };
 
 const liq = {
@@ -5810,6 +5912,13 @@ const liq = {
   gravity: [0, -4],       // Schwerkraft, mit der gerade gerechnet wird
   phase: Math.random(),   // wandernde Farbverschiebung
   compileMs: 0,           // so lange hat das Übersetzen der Shader gedauert
+  // Bilder für die Looks (siehe liqUpdateFields)
+  field: null,            // Dichte-Feld, roh: alle Partikel-Flecken aufsummiert
+  dye: null,              // Dichte-Feld, fertig (am Bildrand ausgeglichen) – das lesen die Looks als "Farb-Textur"
+  flowSum: null,          // Summe der Tempos (mit den Flecken gewichtet) und Summe der Gewichte
+  flow: null,             // mittlere Strömung an jeder Stelle (in den Einheiten des Fluid-Modus)
+  curl: null,             // Drehung der Strömung
+  sprites: null,          // Bild der einzelnen Partikel (nur für den Look "Partikel")
 };
 
 // ----- Shader -----
@@ -6045,34 +6154,96 @@ const liqPushSrc = header + `precision highp int;` + liqCommonGLSL + `
     fragColor = vec4(pn / vec2(uAspect, 1.0), vn);
   }`;
 
-// Vorläufige Anzeige: jedes Partikel als weiches Scheibchen, Farbe nach Tempo
-const liqDotsVertex = `#version 300 es
+// Dichte-Feld für die Looks: jedes Partikel als weicher runder Fleck (in der Mitte am stärksten, zum Rand auf null).
+// uWhat 0: Farbmenge + Palettenposition (wie die Farb-Textur des Fluid-Modus), 1: Tempo + Gewicht (für die Strömung)
+const liqSplatVertex = `#version 300 es
+  precision highp float;
+  precision highp int;
+  precision highp sampler2D;
+  uniform sampler2D uState;
+  uniform sampler2D uPred;     // w = Dichte des Partikels (1 = normal gepackt)
+  uniform int uSide, uCount;
+  uniform float uAspect;
+  uniform float uAhead;        // Zeit seit dem letzten Rechenschritt: die Partikel werden so weit vorausgezeichnet
+  uniform float uSize;         // Durchmesser des Flecks in Bildpunkten
+  uniform int uWhat;
+  uniform float uAmount;       // Farbmenge in der Mitte des Flecks
+  uniform vec2 uPressure;      // Druck sichtbar machen: Stärke und größte Verdichtung, die noch zählt
+  uniform float uPhase, uSpan; // Palettenposition: wandernde Verschiebung + Spanne über alle Partikel
+  uniform float uFlow;         // Umrechnung des Tempos in die Einheiten der Looks
+  out vec4 vData;
+  void main () {
+    ivec2 id = ivec2(gl_VertexID % uSide, gl_VertexID / uSide);
+    vec4 s = texelFetch(uState, id, 0);
+    if (uWhat == 0) {
+      // Palettenposition als Winkel (so mischen sich Farben sauber, genau wie beim Malen im Fluid-Modus)
+      float a = 6.2831853 * (uPhase + uSpan * float(gl_VertexID) / float(uCount));
+      float amount = uAmount * (1.0 + uPressure.x * clamp(texelFetch(uPred, id, 0).w - 1.0, 0.0, uPressure.y));
+      vData = amount * vec4(1.0, cos(a), sin(a), 0.0);
+    } else vData = vec4(s.zw * uFlow, 1.0, 0.0);
+    gl_Position = vec4(clamp(s.xy + s.zw * uAhead / vec2(uAspect, 1.0), 0.0, 1.0) * 2.0 - 1.0, 0.0, 1.0);
+    gl_PointSize = uSize;
+  }`;
+const liqSplatSrc = `#version 300 es
+  precision highp float;
+  in vec4 vData;
+  out vec4 fragColor;
+  void main () {
+    vec2 q = gl_PointCoord * 2.0 - 1.0;
+    float k = max(1.0 - dot(q, q), 0.0);
+    fragColor = vData * (k * k);
+  }`;
+// Dichte-Feld fertig machen: Am Bildrand fehlt die Hälfte der Nachbarn (hinter der Wand liegen keine Partikel) –
+// dort sähe die Flüssigkeit dünner aus, als sie ist. Ausgleich: durch den Anteil des Flecks teilen, der im Bild liegt.
+const liqFieldSrc = header + `
+  uniform sampler2D uField;
+  uniform vec2 uReach;         // Radius eines Flecks als Anteil der Bildbreite / Bildhöhe
+  void main () {
+    vec2 s = clamp(min(vUv, 1.0 - vUv) / uReach, 0.0, 1.0);
+    vec2 part = 1.0 - 0.5 * pow(1.0 - s, vec2(2.5));
+    fragColor = texture(uField, vUv) / (part.x * part.y);
+  }`;
+// Mittlere Strömung: Summe der Tempos geteilt durch die Summe der Gewichte (ganz am Rand läuft sie auf null aus)
+const liqFlowSrc = header + `
+  uniform sampler2D uSum;
+  void main () {
+    vec4 s = texture(uSum, vUv);
+    fragColor = vec4(s.xy / max(s.z, 1e-3), 0.0, 1.0);
+  }`;
+
+// Bild der einzelnen Partikel (Look "Partikel"): jedes als kleine Kugel, Farbe nach Tempo oder nach Dichte
+const liqSpritesVertex = `#version 300 es
   precision highp float;
   precision highp int;
   precision highp sampler2D;
   ` + paletteGLSL + `
-  uniform sampler2D uState;
+  uniform sampler2D uState, uPred;
   uniform int uSide;
-  uniform float uAspect;
-  uniform float uAhead;        // Zeit seit dem letzten Rechenschritt: die Punkte werden so weit vorausgezeichnet
+  uniform float uAspect, uAhead;
   uniform float uSize;         // Durchmesser in Bildpunkten
   uniform float uPhase;
+  uniform float uColorBy;      // 0 = Farbe nach Tempo, 1 = nach Dichte
   out vec3 vColor;
   void main () {
-    vec4 s = texelFetch(uState, ivec2(gl_VertexID % uSide, gl_VertexID / uSide), 0);
-    float k = 1.0 - exp(-length(s.zw) * 1.2);                 // Tempo 0..1
-    vColor = palette(uPhase + 0.45 * k) * (0.5 + 0.8 * k);
-    gl_Position = vec4((s.xy + s.zw * uAhead / vec2(uAspect, 1.0)) * 2.0 - 1.0, 0.0, 1.0);
+    ivec2 id = ivec2(gl_VertexID % uSide, gl_VertexID / uSide);
+    vec4 s = texelFetch(uState, id, 0);
+    float fast = 1.0 - exp(-length(s.zw) * 1.2);                                // Tempo 0..1
+    float dense = clamp((texelFetch(uPred, id, 0).w - 0.55) / 0.5, 0.0, 1.0);   // einzeln/Oberfläche 0 … dicht gepackt 1
+    float x = mix(fast, dense, uColorBy);
+    vColor = palette(uPhase + 0.45 * x) * (0.5 + 0.8 * x);
+    gl_Position = vec4(clamp(s.xy + s.zw * uAhead / vec2(uAspect, 1.0), 0.0, 1.0) * 2.0 - 1.0, 0.0, 1.0);
     gl_PointSize = uSize;
   }`;
-const liqDotsSrc = `#version 300 es
+const liqSpritesSrc = `#version 300 es
   precision highp float;
   in vec3 vColor;
   out vec4 fragColor;
   void main () {
     vec2 q = gl_PointCoord * 2.0 - 1.0;
-    float r2 = dot(q, q);
-    fragColor = vec4(vColor * (1.0 - 0.45 * r2), smoothstep(1.0, 0.7, r2));
+    float r2 = dot(q, q), a = smoothstep(1.0, 0.72, r2);
+    // zum Rand dunkler, oben links ein kleiner Lichtfleck – wirkt wie eine Kugel
+    vec3 c = vColor * (1.0 - 0.5 * r2) + 0.3 * smoothstep(0.55, 0.0, length(q + 0.32));
+    fragColor = vec4(c * a, a);
   }`;
 
 // Die Shader werden erst übersetzt, wenn der Modus zum ersten Mal gebraucht wird (der Start der App bleibt schnell)
@@ -6084,7 +6255,10 @@ function liqCompile() {
   programs.liqGrid = makeProgram(liqGridSrc, compile(gl.VERTEX_SHADER, liqGridVertex));
   programs.liqLambda = makeProgram(liqLambdaSrc);
   programs.liqPush = makeProgram(liqPushSrc);
-  programs.liqDots = makeProgram(liqDotsSrc, compile(gl.VERTEX_SHADER, liqDotsVertex));
+  programs.liqSplat = makeProgram(liqSplatSrc, compile(gl.VERTEX_SHADER, liqSplatVertex));
+  programs.liqField = makeProgram(liqFieldSrc);
+  programs.liqFlow = makeProgram(liqFlowSrc);
+  programs.liqSprites = makeProgram(liqSpritesSrc, compile(gl.VERTEX_SHADER, liqSpritesVertex));
   liq.rho0 = liqRestDensity();
   liq.compileMs = performance.now() - t0;
 }
@@ -6273,27 +6447,112 @@ function updateLiquid(dt) {
 }
 
 // ----- einmal pro Bild: zeichnen -----
-function drawLiquid(target) {
-  ensureLiqBuffers();
-  gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.fbo : null);
-  const H = target ? target.h : gl.drawingBufferHeight;
-  gl.viewport(0, 0, target ? target.w : gl.drawingBufferWidth, H);
-  gl.clearColor(0.004, 0.006, 0.014, 1);
+// Größter Punkt, den die Grafikkarte zeichnen kann (für die weichen Flecken)
+const liqMaxPoint = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)[1];
+// Bilder für die Looks anlegen (Größe folgt Fenster und Qualitätsstufe)
+function ensureLiqFields() {
+  const q = QUALITY[qualityLevel], W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+  const w = Math.max(2, Math.round(W * q.pscale)), h = Math.max(2, Math.round(H * q.pscale));
+  if (liq.field && liq.field.w === w && liq.field.h === h) return;
+  for (const f of [liq.field, liq.dye, liq.flowSum, liq.flow, liq.curl, liq.sprites]) if (f) f.free();
+  // Strömung und Drehung in halber Auflösung (sie sind ohnehin weich)
+  const fw = Math.max(2, w >> 1), fh = Math.max(2, h >> 1);
+  liq.field = createFBO(w, h, gl.RGBA16F, gl.RGBA);
+  liq.dye = createFBO(w, h, gl.RGBA16F, gl.RGBA);
+  liq.flowSum = createFBO(fw, fh, gl.RGBA16F, gl.RGBA);
+  liq.flow = createFBO(fw, fh, gl.RG16F, gl.RG);
+  liq.curl = createFBO(fw, fh, gl.R16F, gl.RED);
+  liq.sprites = null;                                         // wird erst angelegt, wenn der Look "Partikel" gebraucht wird
+}
+// alle Partikel als Punkte in target zeichnen (das passende Programm ist schon gewählt)
+function liqDrawPoints(target) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+  gl.viewport(0, 0, target.w, target.h);
+  gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  const u = use('liqDots');
-  gl.uniform1i(u.uState, liq.state.read.attach(0));
-  gl.uniform1i(u.uSide, liq.side);
-  gl.uniform1f(u.uAspect, liq.aspect);
-  gl.uniform1f(u.uAhead, liq.acc);
-  gl.uniform1f(u.uSize, Math.max(2, 1.25 * liq.d * H));
-  gl.uniform1f(u.uPhase, liq.phase);
-  gl.uniform3fv(u['uPalette[0]'], currentPalette);
   gl.bindVertexArray(part.vao);
   gl.drawArrays(gl.POINTS, 0, liq.count);
   gl.bindVertexArray(null);
+}
+// Aus den Partikeln die Bilder machen, die die Looks lesen: Dichte-Feld (Farbmenge + Palettenposition),
+// mittlere Strömung und deren Drehung
+function liqUpdateFields() {
+  ensureLiqFields();
+  const f = liq.field, v = liq.flowSum;
+  // Fleck-Radius in Bildpunkten; die Farbmenge pro Partikel so, dass im Inneren der Flüssigkeit BODY herauskommt –
+  // bei jeder Partikelzahl und Fleckgröße
+  const dPx = liq.d * f.h, radius = clampNum(LIQUID.SPLAT * dPx, 1.5, liqMaxPoint / 2);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE);                               // additiv: die Flecken zählen sich zusammen
+  let u = use('liqSplat');
+  gl.uniform1i(u.uState, liq.state.read.attach(0));
+  gl.uniform1i(u.uPred, liq.pred.attach(1));
+  gl.uniform1i(u.uSide, liq.side);
+  gl.uniform1i(u.uCount, Math.max(1, liq.count));
+  gl.uniform1f(u.uAspect, liq.aspect);
+  gl.uniform1f(u.uAhead, liq.acc);
+  gl.uniform1i(u.uWhat, 0);
+  gl.uniform1f(u.uSize, 2 * radius);
+  gl.uniform1f(u.uAmount, LIQUID.BODY * 3 * dPx * dPx / (Math.PI * radius * radius));
+  gl.uniform1f(u.uPhase, liq.phase);
+  gl.uniform1f(u.uSpan, LIQUID.TINT_SPAN);
+  gl.uniform2f(u.uPressure, LIQUID.PRESSURE, LIQUID.PRESSURE_MAX);
+  liqDrawPoints(f);
+  gl.uniform1i(u.uWhat, 1);
+  gl.uniform1f(u.uSize, 2 * clampNum(LIQUID.SPLAT * liq.d * v.h, 1.5, liqMaxPoint / 2));
+  // Einheit der Strömung im Fluid-Modus: Bezugs-Rasterfelder pro Sekunde (kurze Bildseite = REF_RESOLUTION Felder)
+  gl.uniform1f(u.uFlow, CONFIG.REF_RESOLUTION / Math.min(liq.aspect, 1));
+  liqDrawPoints(v);
   gl.disable(gl.BLEND);
+
+  u = use('liqField');
+  gl.uniform1i(u.uField, f.attach(0));
+  gl.uniform2f(u.uReach, radius / f.w, radius / f.h);
+  blit(liq.dye);
+  u = use('liqFlow');
+  gl.uniform1i(u.uSum, v.attach(0));
+  blit(liq.flow);
+  u = use('curl');                                            // (derselbe Shader wie im Fluid-Modus)
+  gl.uniform2fv(u.texelSize, liq.flow.texel);
+  gl.uniform1i(u.uVelocity, liq.flow.attach(0));
+  blit(liq.curl);
+}
+// Bild der einzelnen Partikel für den Look "Partikel" (wird nur gezeichnet, solange dieser Look zu sehen ist)
+function liqDrawSprites() {
+  const f = liq.field;
+  if (!liq.sprites || liq.sprites.w !== f.w || liq.sprites.h !== f.h) {
+    if (liq.sprites) liq.sprites.free();
+    liq.sprites = createFBO(f.w, f.h, gl.RGBA16F, gl.RGBA);
+  }
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);               // spätere Partikel liegen über früheren
+  const u = use('liqSprites');
+  gl.uniform1i(u.uState, liq.state.read.attach(0));
+  gl.uniform1i(u.uPred, liq.pred.attach(1));
+  gl.uniform1i(u.uSide, liq.side);
+  gl.uniform1f(u.uAspect, liq.aspect);
+  gl.uniform1f(u.uAhead, liq.acc);
+  gl.uniform1f(u.uSize, clampNum(1.15 * liq.d * f.h * PARAMS.dotSize.current, 1.5, liqMaxPoint));
+  gl.uniform1f(u.uPhase, liq.phase);
+  gl.uniform1f(u.uColorBy, PARAMS.dotColor.current);
+  gl.uniform3fv(u['uPalette[0]'], currentPalette);
+  liqDrawPoints(liq.sprites);
+  gl.disable(gl.BLEND);
+}
+// Look-Stand des Modus: eigener Look (Start: "Wasser"), eigene Daten für die Looks
+const liquidLooks = makeLooks(LOOKS.findIndex(l => l.name === 'Wasser'), {
+  id: 'liquid',
+  get dye() { return liq.dye; },
+  get velocity() { return liq.flow; },
+  get curl() { return liq.curl; },
+  get simScale() { return Math.min(liq.flow.w, liq.flow.h) / CONFIG.REF_RESOLUTION; },
+  get sprites() { return liq.sprites; },
+  updateSprites: liqDrawSprites,
+});
+function drawLiquid(target, dt, time) {
+  ensureLiqBuffers();
+  liqUpdateFields();
+  drawLooks(liquidLooks, target, dt, time);
 }
 
 // ----- Bedienung -----
@@ -6302,7 +6561,8 @@ function liqRefill() {
   audioClear();
   toast('Neu eingefüllt');
 }
-function liqKey(e) {
+function liqKey(e, bracket) {
+  lookKeys(e, bracket);                                      // 1–0 und ← → wählen den Look, wie im Fluid-Modus
   if (e.code === 'Space') { liqRefill(); e.preventDefault(); }
 }
 
@@ -6317,16 +6577,14 @@ $('liqRefill').addEventListener('click', e => { liqRefill(); e.currentTarget.blu
 
 MODES.push({
   id: 'liquid', name: 'Flüssigkeit (Partikel)', label: 'Flüssigkeit',
-  hint: 'Tausende Partikel verhalten sich wie Wasser · <b>Leertaste</b> = neu einfüllen · <b>Tab</b> = Modus',
+  hint: 'Tausende Partikel verhalten sich wie Wasser · <b>1</b>–<b>0</b>, <b>←</b> <b>→</b> = Look · <b>Leertaste</b> = neu einfüllen · <b>Tab</b> = Modus',
   autoplayHint: 'Auto-Play · Bewege die Maus, um selbst zu spielen',
-  enter() {
-    $('paletteSection').classList.remove('unused');
-    $('bloomSection').classList.remove('unused');
-  },
+  looks: liquidLooks,                                        // eigener Look-Stand: die Looks lesen das Dichte-Feld der Partikel
+  enter() { showLooks(); },                                  // Panel auf den Look dieses Modus einstellen
   leave() {},
   update: updateLiquid,
   draw: drawLiquid,
-  bloomShare: () => 1,
+  bloomShare: () => lookBloomShare(liquidLooks),
   autoplayStart() {},
   autoplayStop() {},
   autoplay() {},
@@ -6338,7 +6596,8 @@ MODES.push({
   qualityInfo() {
     ensureLiqBuffers();
     const n = v => v.toLocaleString('de-DE');
-    return `${n(liq.count)} Partikel im Bild (Platz für ${n(liq.side * liq.side)})<br>${n(Math.round(1 / liq.H))} Rechenschritte pro Sekunde · Such-Raster ${liq.gw}×${liq.gh}`;
+    ensureLiqFields();
+    return `${n(liq.count)} Partikel im Bild (Platz für ${n(liq.side * liq.side)})<br>${n(Math.round(1 / liq.H))} Rechenschritte pro Sekunde · Such-Raster ${liq.gw}×${liq.gh}<br>Dichte-Feld ${liq.field.w}×${liq.field.h}`;
   },
 });
 
@@ -6346,8 +6605,11 @@ MODES.push({
 // Knöpfe im Panel-Abschnitt "Modus" und die Regel, die Panel-Teile fremder Modi versteckt, entstehen aus der Liste
 const modeBox = $('modes');
 const modeStyle = document.head.appendChild(document.createElement('style'));
+// (data-mode darf mehrere Modi nennen, durch Leerzeichen getrennt – der Teil ist dann in jedem davon zu sehen)
+for (const v of new Set([...document.querySelectorAll('[data-mode]')].map(el => el.dataset.mode))) {
+  modeStyle.textContent += `body${v.split(' ').map(id => `:not(.mode-${id})`).join('')} [data-mode="${v}"] { display: none !important; }\n`;
+}
 MODES.forEach((m, i) => {
-  modeStyle.textContent += `body:not(.mode-${m.id}) [data-mode="${m.id}"] { display: none; }\n`;
   const btn = document.createElement('button');
   btn.className = 'btn';
   btn.innerHTML = `<span>${m.label || m.name}</span>`;      // (label = kurzer Name für den Knopf)
