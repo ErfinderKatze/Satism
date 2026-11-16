@@ -5475,6 +5475,9 @@ function readPartStats(spot) {
   gl.uniform1f(u.uGridNorm, part.gridNow.w * part.gridNow.h / part.gridCount);
   blit(part.stat);
   gl.bindBuffer(gl.PIXEL_PACK_BUFFER, partStat.buffer);
+  // (den Zwischenspeicher vor jeder Abfrage neu anlegen – sonst meldet der Browser bei jeder Abfrage eine
+  // Leistungs-Warnung in der Konsole)
+  gl.bufferData(gl.PIXEL_PACK_BUFFER, partStat.data.byteLength, gl.STREAM_READ);
   gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.FLOAT, 0);
   gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
   partStat.sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
@@ -5982,6 +5985,9 @@ const LIQUID = {
   HOLD: 0.2,         // so lange muss die Maustaste gehalten werden, bis Flüssigkeit aus der Maus strömt (Sekunden)
   DRAIN: 0.6,        // Dauer des Ausblendens beim Leeren (Sekunden)
   WALL_PEN: 0.028,   // halbe Breite des Hindernis-Stifts (Bildhöhen) – deutlich dicker als ein Partikel, damit nichts durchschlüpft
+  // Auto-Play
+  AUTO_TILT: 18,     // der Eimer schaukelt um bis zu so viele Grad
+  AUTO_PAUSE: 18,    // so lange bleibt das volle Becken stehen, bevor es geleert wird (Sekunden)
 };
 
 const liq = {
@@ -6022,6 +6028,12 @@ const liq = {
   tap: { on: false, x: 0.5, y: 0.94, phase: 0 },  // der Hahn: an/aus, Ort (0..1), Weg seit der letzten Reihe
   drain: 0,               // > 0, solange die Flüssigkeit nach "Leeren" ausgeblendet wird
   preset: 0,              // Nummer des Presets, dessen Werte gerade eingestellt sind (−1 = eigene Mischung)
+  // Auto-Play (alles, was es verstellt, liegt hier – die Einstellungen des Nutzers bleiben unberührt)
+  autoTilt: 0,            // zusätzliche Neigung der Fallrichtung in Grad (der Eimer schaukelt)
+  autoPush: 1,            // die unsichtbare Hand schiebt (1) oder zieht (−1)
+  autoTap: { on: false, phase: 0 },   // unsichtbarer Hahn
+  autoT: { pull: 0, drop: 0, wait: 0, phase: 0, flow: 0, running: false },   // Zeitgeber: Wechsel Schieben/Ziehen, nächster Tropfen,
+                          // Pause am vollen Becken, Schübe des Hahns
   presetLook: true,       // Schalter: Ein Preset wählt auch den passenden Look
   seed: 1,                // Zähler für den Zufall beim Einfüllen neuer Partikel
   // Hindernisse (eigene Textur, aber Stift, Radierer und Anzeige sind dieselben wie im Fluid-Modus)
@@ -6441,6 +6453,7 @@ const liqSplatVertex = `#version 300 es
   uniform int uWhat;
   uniform float uAmount;       // Farbmenge in der Mitte des Flecks
   uniform vec2 uPressure;      // Druck sichtbar machen: Stärke und größte Verdichtung, die noch zählt
+  uniform float uSprayDim;     // "Flackern reduzieren": einzeln fliegende Tropfen zählen um diesen Anteil weniger
   uniform float uPhase, uSpan; // Palettenposition: wandernde Verschiebung + Spanne über alle Partikel (samt Vorrat)
   uniform float uFlow;         // Umrechnung des Tempos in die Einheiten der Looks
   out vec4 vData;
@@ -6450,7 +6463,8 @@ const liqSplatVertex = `#version 300 es
     if (uWhat == 0) {
       // Palettenposition als Winkel (so mischen sich Farben sauber, genau wie beim Malen im Fluid-Modus)
       float a = 6.2831853 * (uPhase + uSpan * float(gl_VertexID) / float(uSide * uSide));
-      float amount = uAmount * (1.0 + uPressure.x * clamp(texelFetch(uPred, id, 0).w - 1.0, 0.0, uPressure.y));
+      float rho = texelFetch(uPred, id, 0).w;
+      float amount = uAmount * (1.0 + uPressure.x * clamp(rho - 1.0, 0.0, uPressure.y)) * (1.0 - uSprayDim * (1.0 - smoothstep(0.3, 0.8, rho)));
       vData = amount * vec4(1.0, cos(a), sin(a), 0.0);
     } else vData = vec4(s.zw * uFlow, 1.0, 0.0);
     gl_Position = vec4(clamp(s.xy + s.zw * uAhead / vec2(uAspect, 1.0), 0.0, 1.0) * 2.0 - 1.0, 0.0, 1.0);
@@ -6522,6 +6536,34 @@ const liqSpritesSrc = `#version 300 es
     fragColor = vec4(c * a, a);
   }`;
 
+// Kennzahlen für den Ton: ein winziges Bild (8 × 8), jeder Bildpunkt mittelt über 32 Stichproben-Partikel:
+// Rot = Tempo, Grün = Anteil einzeln fliegender Tropfen (kaum Nachbarn), Blau = Anteil stark zusammengedrückter
+// Partikel (Aufprall). Alpha: Liegt an einer Stelle im Umkreis der Hand ein Partikel? (alle 64 Bildpunkte zusammen
+// ergeben, wie "nass" die Hand ist)
+const liqStatSrc = header + `precision highp int;
+  uniform sampler2D uState, uPred, uGrid;
+  uniform int uSide, uCount;
+  uniform float uAspect;
+  uniform vec2 uGridSize;
+  uniform vec3 uSpot;          // Hand: Ort (Bildhöhen) und Radius
+  void main () {
+    ivec2 px = ivec2(gl_FragCoord.xy);
+    int i = px.x + px.y * 8;
+    vec3 sum = vec3(0.0);
+    for (int j = 0; j < 32; j++) {
+      int k = int((float(i * 32 + j) + 0.5) * float(uCount) / 2048.0);
+      ivec2 id = ivec2(k % uSide, k / uSide);
+      float rho = texelFetch(uPred, id, 0).w;
+      sum += vec3(length(texelFetch(uState, id, 0).zw), step(rho, 0.6), clamp((rho - 1.09) * 12.0, 0.0, 1.0));
+    }
+    // Stelle im Umkreis der Hand (Sonnenblumen-Muster über die 64 Bildpunkte)
+    float a = 2.39996323 * float(i);
+    vec2 p = uSpot.xy + uSpot.z * sqrt((float(i) + 0.5) / 64.0) * vec2(cos(a), sin(a));
+    vec2 c = floor(p / vec2(uAspect, 1.0) * uGridSize);
+    float wet = all(greaterThanEqual(c, vec2(0.0))) && all(lessThan(c, uGridSize)) && texelFetch(uGrid, ivec2(c), 0).x > -0.5 ? 1.0 : 0.0;
+    fragColor = vec4(sum / 32.0, wet);
+  }`;
+
 // Die Shader werden erst übersetzt, wenn der Modus zum ersten Mal gebraucht wird (der Start der App bleibt schnell)
 function liqCompile() {
   if (programs.liqGrid) return;
@@ -6533,6 +6575,7 @@ function liqCompile() {
   programs.liqJump = makeProgram(liqJumpSrc);
   programs.liqDist = makeProgram(liqDistSrc);
   programs.liqNormal = makeProgram(liqNormalSrc);
+  programs.liqStat = makeProgram(liqStatSrc);
   programs.liqGrid = makeProgram(liqGridSrc, compile(gl.VERTEX_SHADER, liqGridVertex));
   programs.liqLambda = makeProgram(liqLambdaSrc);
   programs.liqPush = makeProgram(liqPushSrc);
@@ -6779,8 +6822,8 @@ function liqCohesion() {
 function liqSimulate(steps) {
   const P = PARAMS, H = liq.H, d = liq.d, h = liq.h;
   gl.disable(gl.BLEND);
-  const g = P.liqGravity.current * LIQUID.GRAVITY, a = P.liqGravityDir.current * Math.PI / 180;
-  liq.gravity = [Math.sin(a) * g, -Math.cos(a) * g];        // 0° = unten, 90° = rechts, ±180° = oben
+  const g = P.liqGravity.current * LIQUID.GRAVITY, down = liqDown();
+  liq.gravity = [down[0] * g, down[1] * g];
   // Spritzer: Jeder wirkt KICK_TIME lang als Beschleunigung. Endet er mitten in diesem Bild, wird sie entsprechend
   // schwächer – so ist der Stoß bei jeder Bildrate gleich groß.
   const span = steps * H;
@@ -6845,7 +6888,8 @@ function liqUpdateHand(dt) {
   liq.handPause = Math.max(0, liq.handPause - dt);
   const open = liq.held || liq.handPause > 0;
   h.level += ((target && !open ? 1 : 0) - h.level) * (1 - Math.exp(-LIQUID.HAND_LEVEL * dt));
-  liq.pushNow += (liq.push - liq.pushNow) * (1 - Math.exp(-10 * dt));   // Schieben ↔ Ziehen wechselt weich
+  const dir = autoplay.level > 0.005 && liq.auto ? liq.autoPush : liq.push;
+  liq.pushNow += (dir - liq.pushNow) * (1 - Math.exp(-10 * dt));       // Schieben ↔ Ziehen wechselt weich
 }
 
 function updateLiquid(dt) {
@@ -6856,19 +6900,29 @@ function updateLiquid(dt) {
     liq.drain -= dt;
     if (liq.drain <= 0) { liq.drain = 0; liq.count = 0; }
   }
+  if (autoplay.level < 0.005) liq.autoTilt = 0;              // (Auto-Play ist ganz ausgeblendet)
   // Nachfüllen: der Hahn und die gedrückte Maustaste
-  if (liq.tap.on && liqJet(liq.tap, liq.tap.x, liq.tap.y, 0, 0, dt) < 0) {
-    setLiqTap(false, null, true);
-    toast('Voll – der Hahn ist zu. Leertaste leert.');
+  if (liq.tap.on) {
+    const n = liqJet(liq.tap, liq.tap.x, liq.tap.y, 0, 0, dt);
+    if (n > 0) audioLiqFill(liq.tap.x);
+    if (n < 0) {
+      setLiqTap(false, null, true);
+      toast('Voll – der Hahn ist zu. Leertaste leert.');
+    }
   }
   if (liq.held && liq.pointer && tool === 'paint') {
     liq.heldTime += dt;
     const h = liq.hand;
-    if (liq.heldTime > LIQUID.HOLD && liqJet(liq.pour, liq.pointer[0], liq.pointer[1], 0.6 * h.vx, 0.6 * h.vy, dt) < 0 && !liq.pour.told) {
-      liq.pour.told = true;                                  // (nur einmal pro Tastendruck melden)
-      toast('Voll – Leertaste leert');
+    if (liq.heldTime > LIQUID.HOLD) {
+      const n = liqJet(liq.pour, liq.pointer[0], liq.pointer[1], 0.6 * h.vx, 0.6 * h.vy, dt);
+      if (n > 0) audioLiqFill(liq.pointer[0]);
+      if (n < 0 && !liq.pour.told) {
+        liq.pour.told = true;                                // (nur einmal pro Tastendruck melden)
+        toast('Voll – Leertaste leert');
+      }
     }
   }
+  updateLiqSound(dt);
   liqShowTap();
   liqShowInfo(dt);
   liqShowPreset();
@@ -6939,7 +6993,11 @@ function liqUpdateFields() {
   gl.uniform1f(u.uAmount, liqFade() * LIQUID.BODY * 3 * dPx * dPx / (Math.PI * radius * radius));
   gl.uniform1f(u.uPhase, liq.phase);
   gl.uniform1f(u.uSpan, LIQUID.TINT_SPAN);
-  gl.uniform2f(u.uPressure, LIQUID.PRESSURE, LIQUID.PRESSURE_MAX);
+  // "Flackern reduzieren": Ein Aufprall leuchtet weniger auf, und umherfliegende einzelne Tropfen sind blasser –
+  // beides sind die schnellen, hellen Wechsel eines Spritzers
+  const calm = PARAMS.calm.current;
+  gl.uniform2f(u.uPressure, LIQUID.PRESSURE * (1 - 0.6 * calm), LIQUID.PRESSURE_MAX);
+  gl.uniform1f(u.uSprayDim, 0.6 * calm);
   liqDrawPoints(f);
   gl.uniform1i(u.uWhat, 1);
   gl.uniform1f(u.uSize, 2 * clampNum(LIQUID.SPLAT * liq.d * v.h, 1.5, liqMaxPoint / 2));
@@ -7009,9 +7067,10 @@ function liqMouse(e) {
   const r = canvas.getBoundingClientRect();
   return [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height];
 }
-// Richtung, in die es gerade "nach unten" geht (folgt dem Regler Fallrichtung)
+// Richtung, in die es gerade "nach unten" geht: folgt dem Regler Fallrichtung (0° = unten, 90° = rechts, ±180° = oben);
+// im Auto-Play schaukelt sie zusätzlich ein wenig
 function liqDown() {
-  const a = PARAMS.liqGravityDir.current * Math.PI / 180;
+  const a = (PARAMS.liqGravityDir.current + liq.autoTilt) * Math.PI / 180;
   return [Math.sin(a), -Math.cos(a)];
 }
 // Spritzer: kurzer Stoß an der Stelle (x, y) im Bild (0..1); s = Stärke (1 = 100 %); n = er trifft nur die Partikel mit
@@ -7049,6 +7108,7 @@ function liqClick(a) {
   h.level = 0;
   liq.handPause = Math.min(0.6, Math.sqrt(2 * P.liqRange.current / Math.max(1, P.liqGravity.current * LIQUID.GRAVITY)) + 0.05);
   audioClick(a[0], a[1]);
+  if (P.liqSplash.target > 0) audioLiqSplash(P.liqSplash.current);
   cursorScale = 1.35 - 0.25 * P.calm.current;                // kleiner "Puls" beim Klicken
 }
 // Hindernis-Stift bzw. Radierer bis zur Stelle a weiterziehen (derselbe Stift wie im Fluid-Modus, eigenes Bild)
@@ -7130,7 +7190,7 @@ function liqShowTap() {
   liqTapEl.classList.toggle('on', t.on);
   if (!t.on) return;
   const r = canvas.getBoundingClientRect();
-  liqTapEl.style.transform = `translate3d(${(r.left + t.x * r.width).toFixed(1)}px, ${(r.top + (1 - t.y) * r.height).toFixed(1)}px, 0) rotate(${(-PARAMS.liqGravityDir.current).toFixed(1)}deg)`;
+  liqTapEl.style.transform = `translate3d(${(r.left + t.x * r.width).toFixed(1)}px, ${(r.top + (1 - t.y) * r.height).toFixed(1)}px, 0) rotate(${(-PARAMS.liqGravityDir.current - liq.autoTilt).toFixed(1)}deg)`;
   liqTapEl.style.setProperty('--brush', paletteColor(liq.phase + 0.3));
 }
 // Infozeile im Panel: wie viel Flüssigkeit im Bild ist (nur neu schreiben, wenn sich etwas geändert hat)
@@ -7148,7 +7208,7 @@ function liqShowInfo(dt) {
 // Leeren: Die Flüssigkeit blendet aus, alle Partikel gehen zurück in den Vorrat (Hindernisse bleiben)
 function liqDrain() {
   if (liq.count > 0 && liq.drain <= 0) liq.drain = LIQUID.DRAIN;
-  audioClear();
+  audioLiqDrain();
   toast('Geleert');
 }
 // Neu einfüllen: ein Block Flüssigkeit an der linken Seite, der zusammensackt und durchs Bild schwappt
@@ -7169,6 +7229,213 @@ function liqTilt(dir) {
   audioTock(false);
   toast('Fallrichtung: ' + fallDirLabel(t));
 }
+// ----- Ton -----
+// Klänge wie in den anderen Modi (alles im Code erzeugt, Töne aus der Pentatonik):
+//   - Rühren: Bewegt sich die Hand durch die Flüssigkeit, erklingen gezupfte Töne – je schneller, desto höher und lauter
+//     (dieselbe Funktion wie beim Malen im Fluid-Modus), aber nur, wo auch Flüssigkeit ist
+//   - Plätschern: kurze, weiche "Blubb"-Töne; je mehr Bewegung und je mehr Tropfen durch die Luft fliegen, desto dichter
+//   - Aufprall: Schlägt Flüssigkeit auf (Dammbruch, großer Tropfen), kommt ein dumpfer, weicher Schlag mit Rauschen
+//   - Nachfüllen: Solange Hahn oder Strahl laufen, perlt eine kleine Tonfolge – je voller das Becken, desto höher
+//     (wie bei einer Flasche, die sich füllt)
+//   - die Musik öffnet sich, wenn viel in Bewegung ist
+// Die Zahlen dafür (Tempo, fliegende Tropfen, Aufprall, wie nass die Hand ist) kommen aus einem winzigen Bild, das
+// abgeholt wird, ohne die Grafikkarte aufzuhalten: Die Antwort landet in einem Zwischenspeicher und wird erst
+// gelesen, wenn sie fertig ist – meist ein, zwei Bilder später (so wie im Partikel-Modus).
+const liqStat = {
+  buffer: null, sync: null, target: null, data: new Float32Array(8 * 8 * 4),
+  speed: 0,        // mittleres Tempo der Partikel (Bildhöhen pro Sekunde)
+  spray: 0,        // Anteil einzeln fliegender Tropfen
+  hit: 0,          // Anteil stark zusammengedrückter Partikel
+  wet: 0,          // wie nass die Hand ist (0 = in der Luft, 1 = mitten in der Flüssigkeit)
+  hitSmooth: 0, lastImpact: 0, nextBloop: 0, fillTime: 0, fillStep: 0,
+};
+function readLiqStats() {
+  const S = liqStat;
+  if (S.sync) {                                              // läuft noch eine Abfrage? fertig → abholen
+    const state = gl.clientWaitSync(S.sync, 0, 0);
+    if (state === gl.TIMEOUT_EXPIRED) return false;
+    gl.deleteSync(S.sync);
+    S.sync = null;
+    if (state === gl.WAIT_FAILED) return false;
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, S.buffer);
+    gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, S.data);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);               // (wieder lösen – sonst schlagen andere Abfragen fehl)
+    let speed = 0, spray = 0, hit = 0, wet = 0;
+    for (let i = 0; i < S.data.length; i += 4) { speed += S.data[i]; spray += S.data[i + 1]; hit += S.data[i + 2]; wet += S.data[i + 3]; }
+    S.speed = speed / 64; S.spray = spray / 64; S.hit = hit / 64;
+    S.wet = Math.min(1, wet / 64 / 0.4);                     // (in ruhender Flüssigkeit ist etwa jedes zweite Rasterfeld belegt)
+    return true;
+  }
+  if (liq.count < 1 || liq.drain > 0) { S.speed = S.spray = S.hit = S.wet = 0; return true; }
+  // neue Abfrage anstoßen
+  if (!S.target) {
+    S.target = createFBO(8, 8, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+    S.buffer = gl.createBuffer();
+  }
+  gl.disable(gl.BLEND);
+  const u = use('liqStat'), h = liq.hand;
+  gl.uniform1i(u.uState, liq.state.read.attach(0));
+  gl.uniform1i(u.uPred, liq.pred.attach(1));
+  gl.uniform1i(u.uGrid, liq.grid.attach(2));
+  gl.uniform1i(u.uSide, liq.side);
+  gl.uniform1i(u.uCount, liq.count);
+  gl.uniform1f(u.uAspect, liq.aspect);
+  gl.uniform2f(u.uGridSize, liq.gw, liq.gh);
+  gl.uniform3f(u.uSpot, h.x, h.y, 1.3 * PARAMS.liqRange.current);
+  blit(S.target);
+  gl.bindBuffer(gl.PIXEL_PACK_BUFFER, S.buffer);
+  // (den Zwischenspeicher vor jeder Abfrage neu anlegen – sonst meldet der Browser bei jeder Abfrage eine
+  // Leistungs-Warnung in der Konsole)
+  gl.bufferData(gl.PIXEL_PACK_BUFFER, S.data.byteLength, gl.STREAM_READ);
+  gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.FLOAT, 0);
+  gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+  S.sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+  gl.flush();
+  return false;
+}
+// Ausgang für einen Klang, der links oder rechts im Raum sitzt (pan −1..1)
+function audioAt(pan) {
+  const ctx = audio.ctx, out = ctx.createGain();
+  if (ctx.createStereoPanner) {
+    const p = ctx.createStereoPanner();
+    p.pan.value = clampNum(pan, -0.7, 0.7);
+    out.connect(p); p.connect(audio.sfxBus);
+  } else out.connect(audio.sfxBus);
+  return out;
+}
+// Plätschern: ein kurzer, weicher Ton, dessen Höhe schnell ansteigt – so klingt ein Tropfen oder eine Luftblase im
+// Wasser. level 0..1 = Lautstärke
+function audioLiqBloop(level, pan = rand(-0.7, 0.7)) {
+  const t = audio.ctx.currentTime, f = scaleFreq(Math.floor(rand(8, 16)));
+  const o = tone(f, t, { peak: 0.012 + 0.04 * level, attack: 0.004, decay: 0.09, dest: audioAt(pan) });
+  o.frequency.exponentialRampToValueAtTime(f * rand(1.3, 1.8), t + 0.07);
+}
+// Aufprall: dumpfer, weicher Schlag (tiefer Ton, der absinkt), dazu ein Rauschen wie eine brechende Welle und ein
+// leiser gezupfter Ton. s = Stärke 0..1
+function audioLiqImpact(s) {
+  const t = audio.ctx.currentTime;
+  const thump = tone(120, t, { peak: 0.04 + 0.09 * s, attack: 0.005, decay: 0.3 });
+  thump.frequency.exponentialRampToValueAtTime(55, t + 0.18);
+  const wash = noiseHit(t, { type: 'lowpass', freq: 2400, q: 0.6, peak: 0.02 + 0.06 * s, decay: 0.6 });
+  wash.frequency.exponentialRampToValueAtTime(260, t + 0.5);
+  pluck(scaleFreq(Math.floor(rand(2, 7))), t + 0.03, 0.03 + 0.04 * s, rand(-0.5, 0.5), audio.sfxBus, 1.6);
+}
+// Nachfüllen (Hahn, Strahl aus der Maus): eine perlende Tonfolge, etwa drei Töne pro Sekunde. Die Tonhöhe folgt der
+// Menge im Becken – je voller, desto höher; vier wechselnde Stufen machen daraus eine kleine Melodie. x = Ort (0..1)
+function audioLiqFill(x) {
+  audio.energy = Math.min(1, audio.energy + 0.003);
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  const t = audio.ctx.currentTime, S = liqStat;
+  if (t - S.fillTime < 0.32) return;
+  S.fillTime = t;
+  const i = Math.round(2 + 11 * liq.count / (liq.side * liq.side)) + [0, 2, 1, 3][S.fillStep++ % 4];
+  pluck(scaleFreq(i), t, 0.075, x * 2 - 1, audio.sfxBus, 1.1);
+}
+// Klick: zum "Plop" des Tropfens (audioClick) ein kurzes Spritz-Rauschen; s = Stärke des Spritzers (1 = 100 %)
+function audioLiqSplash(s) {
+  if (!audioReady() || !audio.sfxOn || audio.muted || s <= 0) return;
+  const t = audio.ctx.currentTime, v = Math.min(s, 2.5) / 2.5, soft = 1 - 0.5 * PARAMS.calm.current;
+  const f = noiseHit(t, { type: 'bandpass', freq: 2600, q: 0.7, peak: (0.04 + 0.1 * v) * soft, decay: 0.3 });
+  f.frequency.exponentialRampToValueAtTime(700, t + 0.25);
+}
+// Leeren: zum Wischen drei absteigende "Gluck"-Töne
+function audioLiqDrain() {
+  audioClear();
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  const t = audio.ctx.currentTime;
+  [12, 9, 7].forEach((i, n) => {
+    const f = scaleFreq(i), o = tone(f, t + 0.1 * n, { peak: 0.07, attack: 0.004, decay: 0.12, dest: audioAt(0.3 * (n - 1)) });
+    o.frequency.exponentialRampToValueAtTime(f * 0.6, t + 0.1 * n + 0.1);
+  });
+}
+// einmal pro Bild: läuft nur, wenn der Ton an ist (sonst wird auch nichts gemessen)
+function updateLiqSound(dt) {
+  const S = liqStat, h = liq.hand;
+  if (!audioReady() || audio.ctx.state !== 'running' || audio.muted || !(audio.sfxOn || audio.musicOn)) return;
+  // Rühren: Töne wie beim Malen – wenn die Hand des Nutzers nass ist und sich bewegt
+  const sp = Math.hypot(h.vx, h.vy);
+  if (!autoplay.active && h.level > 0.3 && S.wet > 0.15 && sp > 0.05) audioPaint(sp, 0.6 * sp * dt * S.wet, h.x / liq.aspect);
+  if (!readLiqStats()) return;                               // neue Zahlen gibt es etwa jedes zweite Bild
+  // Musik: viel Bewegung öffnet sie, wie sonst das Malen
+  const act = Math.min(1, S.speed / 0.5);
+  audio.energy = Math.max(audio.energy, Math.min(0.75, S.speed * 1.3));
+  if (!audio.sfxOn) return;
+  const t = audio.ctx.currentTime, soft = 1 - 0.5 * PARAMS.calm.current;
+  audio.brushLevel = Math.max(audio.brushLevel, 0.35 * act * act);   // leises Rauschen, wenn alles in Bewegung ist
+  // Aufprall: Der Anteil zusammengedrückter Partikel springt plötzlich hoch
+  const jump = S.hit - S.hitSmooth;
+  S.hitSmooth += (S.hit - S.hitSmooth) * 0.25;
+  if (jump > 0.012 && t - S.lastImpact > 0.4) {
+    S.lastImpact = t;
+    audioLiqImpact(Math.min(1, jump / 0.1) * soft);
+  }
+  // Plätschern: höchstens etwa zehnmal pro Sekunde, in unregelmäßigen Abständen (sonst klänge es wie eine Maschine)
+  const rate = Math.min(10, 70 * S.spray + 8 * act * act);
+  if (rate > 0.4 && t >= S.nextBloop) {
+    S.nextBloop = t + rand(0.5, 1.6) / rate;
+    audioLiqBloop(Math.min(1, 0.3 + act) * soft);
+  }
+}
+
+// ----- Auto-Play -----
+// Eine unsichtbare Hand rührt auf einer weichen Schleifenbahn durch den unteren Teil des Bildes (meist schiebt sie,
+// zwischendurch zieht sie ein paar Sekunden), der Eimer schaukelt sanft hin und her, ein unsichtbarer Hahn füllt
+// in Schüben nach, und ab und zu fällt ein Tropfen. Ist das Becken voll, bleibt es kurz stehen, wird geleert, und es geht von
+// vorn los. Regler, Preset, Look und der eigene Hahn des Nutzers bleiben unberührt.
+function liqAutoplayStart() {
+  liq.pointer = null; liq.held = false;
+  liq.autoPush = 1;
+  liq.autoTap.on = true; liq.autoTap.phase = 0;
+  Object.assign(liq.autoT, { pull: rand(12, 20), drop: rand(3, 6), wait: 0, phase: rand(0, 6.28), flow: rand(2, 4), running: false });
+  if (liq.count < 1 && liq.drain <= 0) liq.fresh = true;     // leeres Becken: erst einmal einfüllen
+}
+function liqAutoplayStop() {
+  liq.auto = null;                                           // die Hand blendet aus, das Schaukeln klingt mit dem Auto-Play ab
+  liq.autoTap.on = false;
+}
+function liqAutoplay(dt) {
+  const T = liq.autoT, calm = PARAMS.calm.current, slow = 1 - 0.4 * calm, time = autoplay.time * slow;
+  // Schaukeln: zwei überlagerte langsame Schwingungen; blendet mit dem Auto-Play ein und aus
+  liq.autoTilt = autoplay.level * LIQUID.AUTO_TILT * (0.7 * Math.sin(time * 0.33 + T.phase) + 0.3 * Math.sin(time * 0.83 + 2 * T.phase));
+  if (!autoplay.active) { liq.auto = null; return; }         // (Auto-Play blendet gerade aus)
+  // Hand: Schleifenbahn im unteren Teil des Bildes – dort, wo die Flüssigkeit liegt
+  const [bx, by] = brushPos(autoplay.brushes[0], time * 0.75);
+  liq.auto = [bx, 0.04 + 0.5 * by];
+  T.pull -= dt;
+  if (T.pull <= 0) {
+    liq.autoPush = -liq.autoPush;
+    T.pull = liq.autoPush > 0 ? rand(14, 24) : rand(5, 9);
+  }
+  // Hahn: sitzt oben (dort, wo "oben" gerade ist) und wandert langsam hin und her
+  const down = liqDown(), A = liq.aspect, side = 0.3 * Math.sin(time * 0.13 + T.phase);
+  const tx = clampNum(0.5 - 0.44 * down[0] - side * down[1], 0.04, 0.96), ty = clampNum(0.5 - 0.44 * down[1] + side * down[0] * Math.min(1, A), 0.04, 0.96);
+  if (liq.autoTap.on) {
+    // (er läuft in Schüben: ein paar Sekunden auf, ein paar Sekunden zu – so füllt sich das Becken gemächlich)
+    T.flow -= dt;
+    if (T.flow <= 0) {
+      T.running = !T.running;
+      T.flow = T.running ? rand(5, 9) : rand(5, 10);
+      liq.autoTap.phase = 0;
+    }
+    const n = T.running ? liqJet(liq.autoTap, tx, ty, 0, 0, dt) : liq.count >= liq.side * liq.side ? -1 : 0;
+    if (n > 0) audioLiqFill(tx);
+    if (n < 0) { liq.autoTap.on = false; T.wait = LIQUID.AUTO_PAUSE; }    // voll: eine Weile stehen lassen …
+  } else if (liq.drain <= 0) {
+    T.wait -= dt;
+    if (T.wait <= 0) {
+      if (liq.count >= liq.side * liq.side) { liq.drain = LIQUID.DRAIN; audioLiqDrain(); T.wait = LIQUID.DRAIN + 1; }   // … dann leeren …
+      else { liq.autoTap.on = true; if (Math.random() < 0.5) liq.fresh = true; }   // … und von vorn: mal mit einem Schwall, mal aus dem leeren Becken
+    }
+  }
+  // ab und zu fällt ein Tropfen von oben ("Flackern reduzieren": seltener und kleiner)
+  T.drop -= dt;
+  if (T.drop <= 0) {
+    T.drop = rand(4, 9) / slow;
+    const x = rand(0.15, 0.85), up = rand(0.25, 0.4);
+    if (liqDrop(clampNum(0.5 - up * down[0] + (x - 0.5) * -down[1], 0.05, 0.95), clampNum(0.5 - up * down[1] + (x - 0.5) * down[0], 0.05, 0.95), rand(0.8, 2.2) * (1 - 0.4 * calm)) > 0) audioBurst();
+  }
+}
+
 // ----- Presets -----
 // Ein Preset ist nichts weiter als eine Reglerstellung: Es setzt die Zielwerte von Viskosität, Zusammenhalt,
 // Steifigkeit und Dichte; die Flüssigkeit verwandelt sich dann von selbst weich (alle Regler laufen ihrem Ziel
@@ -7264,16 +7531,16 @@ $('liqTilt').addEventListener('click', e => { liqTilt(1); e.currentTarget.blur()
 MODES.push({
   id: 'liquid', name: 'Flüssigkeit (Partikel)', label: 'Flüssigkeit',
   hint: 'Maus = schieben · Klick = Tropfen + Spritzer · halten = Strahl · <b>R</b> = ziehen · <b>T</b> = Hahn · <b>G</b> = kippen · <b>Leertaste</b> = leeren · <b>Tab</b> = Modus',
-  autoplayHint: 'Auto-Play · Bewege die Maus, um selbst zu spielen',
+  autoplayHint: 'Auto-Play · Bewege die Maus, um selbst mit der Flüssigkeit zu spielen',
   looks: liquidLooks,                                        // eigener Look-Stand: die Looks lesen das Dichte-Feld der Partikel
   enter() { showLooks(); },                                  // Panel auf den Look dieses Modus einstellen
   leave() { endObstacleStroke(); liq.held = false; liq.pointer = null; },
   update: updateLiquid,
   draw: drawLiquid,
   bloomShare: () => lookBloomShare(liquidLooks),
-  autoplayStart() { liq.pointer = null; liq.held = false; },
-  autoplayStop() {},
-  autoplay() {},
+  autoplayStart: liqAutoplayStart,
+  autoplayStop: liqAutoplayStop,
+  autoplay: liqAutoplay,
   pointerMove: liqPointerMove,
   pointerDown: liqPointerDown,
   pointerUp: liqPointerUp,
