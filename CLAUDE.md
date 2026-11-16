@@ -56,7 +56,7 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 ## Aktueller Stand
 - Alles in **einer Datei**: `index.html` (HTML, CSS, JavaScript, GLSL-Shader). Öffnen per Doppelklick im Browser.
 - **In Arbeit: fünfter Modus „3D-Fraktal-Flug“** (Abschnitt ganz unten; dort steht, welcher Schritt fertig ist und
-  welcher als nächster kommt – Schritte 1–3 von 6 sind fertig). Man fliegt selbst durch 3D-Fraktale (Mandelbulb,
+  welcher als nächster kommt – Schritte 1–4 von 6 sind fertig). Man fliegt selbst durch 3D-Fraktale (Mandelbulb,
   Mandelbox, Menger-Schwamm, Sierpinski-Pyramide, 3D-Julia, Faltungs-Baukasten), gerechnet per Raymarching.
 - **Vier Modi in einer App:** Fluid, Mandelbrot, Partikel und Flüssigkeit (Partikel). Umschalten mit `Tab`
   (Umschalt + `Tab` = zurück) oder im Panel-Abschnitt „Modus“, mit weicher Überblendung (0,8 s). Panel, Paletten,
@@ -118,8 +118,10 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - Bedienung in jedem Modus: `Tab` = Modus wechseln, `H` = Panel, `F` = FPS, `Q` = eine Qualitätsstufe höher (schaltet
   Auto ab), `A` = Auto-Play (im 3D-Flug `P`, weil `A` dort fliegt), `M` = stumm.
 - Bedienung 3D-Fraktal-Flug: Klick = Maus fangen (bewegen = umsehen, `Esc` = frei) oder mit gedrückter Maustaste
-  ziehen, `W` `A` `S` `D` = fliegen, Leertaste / `C` = hoch / runter, Umschalt = schneller, Pfeiltasten = umsehen,
-  `R` = zurück zum Start, `1`–`6` = Fraktal wählen, `P` = Auto-Play.
+  ziehen, `W` `A` `S` `D` = fliegen, Leertaste / `C` = hoch / runter, Umschalt = schneller, `B` = bremsen,
+  Mausrad = Flug-Tempo, `Y` / `X` = rollen, `G` = Horizont gerade, Pfeiltasten = umsehen, `R` = zurück zum Start,
+  `1`–`6` = Fraktal wählen, `N` = Zufalls-Form (Baukasten), `K` = Kamera merken, `7`–`0` = gemerkte Kamera
+  anspringen, `P` = Auto-Play.
 - Bedienung Fluid: Maus bewegen = malen, Klick = Farbklecks, Leertaste = leeren, `1`–`9`/`0` = Look wählen,
   `←`/`→` = Look weiterschalten, `W` = Hindernis-Stift an/aus, `E` = Radierer an/aus, `X` = alle Hindernisse löschen,
   rechte Maustaste ziehen = Hindernis zeichnen (mit Umschalt-Taste = radieren).
@@ -1186,21 +1188,22 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   `left_click_drag` mit Werkzeug „Hindernis“ zeichnet. Bildschirmfotos entstehen sehr schnell nach der Eingabe –
   ein Tropfen hängt darauf scheinbar noch in der Luft.
 
-## 3D-Fraktal-Flug (in Arbeit: Schritt 3 von 6 fertig – wartet auf „weiter“ des Nutzers)
+## 3D-Fraktal-Flug (in Arbeit: Schritt 4 von 6 fertig)
 - **Ausbauplan:** 1 Kern (Raymarching, Distanzschätzer Mandelbulb, Licht, Farben, einfache Flugsteuerung) ✅ ·
   2 Leistung und Genauigkeit (Auflösung regelt sich beim Fliegen, im Stillstand verfeinern, Kamera kann nicht in die
   Oberfläche, Grenze der 32-Bit-Zahlen, Extremfälle) ✅ · 3 weitere Fraktale (Mandelbox, Menger-Schwamm,
   Sierpinski-Pyramide, 3D-Julia) und Faltungs-Baukasten ✅ · 4 Bedienung (Mausrad = Tempo, Rollen, Bremsen, Regler je
-  Fraktal, Zufalls-Knopf, Kamera speichern) ⬜ · 5 Presets, Textcode, Screenshot/Hintergrundbild ⬜ · 6 Ton,
+  Fraktal, Zufalls-Knopf, Kamera merken) ✅ · 5 Presets, Textcode, Screenshot/Hintergrundbild (für ALLE Modi) ⬜ · 6 Ton,
   Kameraflug als Bildschirmschoner, Flacker-Reduktion, Panel ⬜.
-- **Nächster Schritt: 4 – aber erst, wenn der Nutzer „weiter“ schreibt** (so abgesprochen). Schritt 4: Flug-Feinschliff
-  (Tempo per Mausrad, Rollen, Abbremsen, sanftes Anhalten), Regler je Fraktal (Potenz, Iterationen, Drehung,
-  Skalierung, Glow, Nebel, Schatten, Palette – die Werte `flyFog`, `flyGlow`, `flyShadow`, `flyColor` gibt es schon in
-  `PARAMS` und im Shader, es fehlen nur die Regler im Panel), Zufalls-Knopf für den Baukasten, Kamera speichern/anspringen.
+- **Nächster Schritt: 5** – Szenarien (Fraktal, Regler, Kamera, Palette) speichern, laden und als Textcode teilen,
+  kuratierte Start-Szenarien, hochauflösendes Bild / Hintergrundbild. Wunsch des Nutzers: Speichern und Bild-Export
+  sollen in **allen** Modi funktionieren (Fluid, Mandelbrot, Partikel, Flüssigkeit, 3D-Flug) – also als gemeinsamer Teil
+  bauen, nicht im Flug-Abschnitt. Für den Flug gibt es dafür schon: `flyGo({ kind, pos, quat, apply })` (Sprung mit
+  Umstellen im Dunkeln), `uOffset` im Shader (Kacheln), `loadStore`/`saveStore` (Speichern im Browser).
 - Code: Abschnitt `// ---------- 3D-Fraktal-Flug ----------` in `index.html` (direkt vor `// ----- Moduswechsel -----`),
   Konstanten in `FLY`, Aufwand je Qualitätsstufe in `FLY_LEVELS`, Fraktale in `FLY_KINDS`, Zustand in `fly`,
-  Modus-Objekt `id: 'flight'`. Gearbeitet wird auf dem Git-Zweig `3d-fraktal-flug` (nicht `master`).
-  Commits: `82b4833` (Schritt 1), `2c47ead` (Schritt 2), Schritt 3 direkt danach.
+  Modus-Objekt `id: 'flight'`. Commits: `82b4833` (Schritt 1), `2c47ead` (Schritt 2), `ca15f07` (Schritt 3),
+  Schritt 4 direkt danach.
 
 ### Technik (Schritt 1: Kern)
 - **Raymarching:** Für jeden Bildpunkt läuft ein Strahl von der Kamera los. An jeder Stelle sagt der
@@ -1241,7 +1244,8 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - **Flug:** Kamera = Ort + Quaternion (frei drehbar). Maus-Blick: Klick fängt die Maus (Pointer Lock), sonst Ziehen;
   Pfeiltasten drehen auch. `W A S D`, Leertaste/`C` hoch/runter, Umschalt = 3× Tempo. Tempo in „Abständen zur
   Oberfläche pro Sekunde“ (`FLY.SPEED` 0,9) mit Trägheit (`ACCEL` 5/s, Ausrollen `GLIDE` 2,2/s).
-- **Sprung** (`flyJump`, Taste `R` = Start): Bild blendet 0,5 s ab und auf, in der Mitte wird die Kamera versetzt.
+- **Sprung** (`flyGo(o)`, Taste `R` = Start): Bild blendet 0,5 s ab und auf, in der Mitte wird die Kamera versetzt
+  (Einzelheiten unter „Bedienung (Schritt 4)“).
 - **Auto-Play (vorläufig):** ruhiger Rundflug (`flyAutoplay` gibt ein Ziel vor, geflogen wird über denselben Weg wie
   von Hand). Taste **`P`** statt `A` (Modus-Eigenschaft `autoplayKey`; `A` fliegt nach links).
 - **Shader wird erst beim ersten Besuch übersetzt**, im Hintergrund (`KHR_parallel_shader_compile`), ≈ 0,5–1 s;
@@ -1264,7 +1268,7 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   (`FLY.FADE` 0,2 s). Durchgänge 2 … `aa` verschieben die Strahlen um Bruchteile eines Bildpunkts (`flyJitter`,
   Halton-Folge) und werden mit Anteil 1/k eingemischt (`blendColor` + `CONSTANT_ALPHA`) → Mittelwert =
   Kantenglättung. Danach kostet das Bild nichts mehr.
-- **Stufen** (`FLY_LEVELS`: move / still / aa / steps / shadow / ao): Niedrig 0,5 / 0,75 / 2 / 90 / 12 / 2 ·
+- **Stufen** (`FLY_LEVELS`: move / still / aa / steps / shadow / ao): Niedrig 0,5 / 0,75 / 2 / 100 / 10 / 2 ·
   Mittel 0,7 / 1 / 3 / 120 / 16 / 3 · Hoch 0,85 / 1 / 4 / 150 / 20 / 4 · Ultra 1 / 1 / 8 / 190 / 24 / 5 ·
   Extrem 1 / 1 / 12 / 250 / 32 / 5 · Maximum 1 / 1 / 16 / 320 / 40 / 5. Obergrenzen `MOVE_PIXELS` 4,2 Mio.,
   `STILL_PIXELS` 9 Mio. (Speicher auf 4K-Schirmen).
@@ -1313,7 +1317,7 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Koralle (Spiegeln, 2×, Drehen 20/0/30), Tempel (Kasten + Kugel-Faltung 50 %, 2,2×), Felsnadel (Spiegeln, 1,8×,
   Verschieben 1/1,2/0,6, Drehen 20/35/10). Wer einen Regler anfasst, hat eine „Eigene Mischung“ (`fly.kit = −1`).
 - **Wechsel des Fraktals** (`setFlyKind`): Der Shader wird beim ersten Mal im Hintergrund übersetzt (0,3–1,1 s); so
-  lange bleibt das alte Fraktal zu sehen, dann Blende (`flyJump` mit `kind`) an die Start-Kamera des neuen.
+  lange bleibt das alte Fraktal zu sehen, dann Blende (`flyGo` mit `kind`) an die Start-Kamera des neuen.
   **Geteilte Regler** (`FLY_SHARED`: Drehen X/Y/Z, Wiederholungen): Jedes Fraktal merkt sich seine Werte
   (`flyEnterKind`, `kind.saved`) – ein verdrehter Baukasten verdreht nicht den Menger-Schwamm.
 - **Panel:** Abschnitt „3D-Fraktal“ (Fraktal-Knöpfe, Flug-Tempo, Zurück zum Start, Info) und Abschnitt „Form“
@@ -1326,6 +1330,45 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - **Eigene Schätzung der Bildschirmfrequenz** (`flyRefresh`, `fly.hz`): sechstkürzester Bildabstand der letzten 60,
   kann nur steigen. Grund: `autoQ.refresh` (höchste geglättete Bildrate) stieg in den Tests durch zwei direkt
   aufeinanderfolgende Bilder nach Rucklern auf 157 Hz → das Zeit-Budget war 4 statt 10 ms, das Bild unnötig unscharf.
+
+### Bedienung (Schritt 4)
+- **Tasten und Maus:** Mausrad = Flug-Tempo (10–400 %, derselbe Wert wie der Regler; `flyWheel`) · `B` halten =
+  bremsen (`FLY.BRAKE` 9/s: steht nach ≈ 0,6 s weich) · `Y` / `X` = rollen (Drehung um die Blickachse, läuft weich an
+  und aus; im Code `KeyZ`/`KeyX` = Lage der Tasten, auf deutschen Tastaturen steht dort Y) · `G` = Horizont wieder
+  gerade (`flyLevel`) · `N` = Zufalls-Form (nur Baukasten) · `K` = Kamera merken · `7` `8` `9` `0` = Kamera-Platz 1–4
+  anspringen. Unverändert: Klick/Ziehen = umsehen, `W A S D`, Leertaste/`C`, Umschalt = 3× Tempo, `R` = Start, `1`–`6`.
+- **Sprung `flyGo({ pos, look ODER quat, kind, apply })`** (ersetzt `flyJump`/`fly.nextKind`): wartet in `fly.go`, bis
+  der Shader des Ziel-Fraktals übersetzt ist, dann Blende (`fly.jump`). In der Mitte der Blende (Bild dunkel):
+  Fraktal wechseln (`flyEnterKind`), `apply()` aufrufen (Regler ohne Überblenden umstellen), Kamera setzen, Abstand
+  sofort messen. Alles, was die Szene schlagartig ändert, soll diesen Weg nehmen (Zufalls-Form, Kamera-Plätze,
+  später Szenarien).
+- **Trägheit** (Regler `flyInertia`, 0–100 %, Standard 40 %): Ausroll-Rate = `GLIDE` 6/s · `GLIDE_LONG` 0,08^Regler.
+  Gemessen (aus vollem Tempo bis zum Stillstand): 0 % 0,9 s · 40 % 2,5 s · 100 % 11 s · mit Bremse 0,6 s.
+- **Neue Regler:** Abschnitt „Flug“ (Flug-Tempo, Trägheit, Maus-Empfindlichkeit `flyLook` 25–300 %, Blickwinkel
+  `flyFov` 35–110°, Standard 70° – ersetzt die frühere Konstante `FLY.FOV`; `flyTanHalf()`), Abschnitt „Licht & Farbe“
+  (Glühen `flyGlow` 0–1,5, Anzeige 0–300 %; Nebel `flyFog` 0–300 %; Schatten `flyShadow`; Farbdichte `flyColor`
+  0,2–4×; Farb-Verschiebung `flyHue` = `uColorShift`, Standard 8 %). Alle stehen in `flyImageKey` (sonst bliebe das
+  alte Standbild stehen). Der Blickwinkel verschiebt die Untergrenze des Abstands (35°: 0,0010; 110°: 0,00023).
+- **Zufalls-Form** (`flyKitRandom`, Knopf im Abschnitt „Form“): würfelt bis zu 16 Kandidaten in bewährten Bereichen
+  (Faltung Spiegeln/Tetraeder/Menger/Kasten mit Gewichten 30/15/30/25 %, Skalierung je Faltung, Verschiebung
+  1 / 0,55–1,3 / 0,45–1,3, Drehung je Achse mit 55 % Wahrscheinlichkeit 8–40° (Tetraeder höchstens 12°, Menger 30°),
+  Kugel-Faltung beim Kasten zu 85 %, beim Menger-Schwamm nie, 11–17 Wiederholungen; Spiegeln bekommt immer
+  mindestens eine Drehung). Jeder Kandidat wird mit einem Probe-Bild geprüft (`flyKitProbe`: 32×32 Bildpunkte von
+  der Start-Kamera, gelesen wird der G-Buffer): `cover` (Anteil getroffener Bildpunkte, gut 0,14–0,68), `edges`
+  (Sprünge in der Entfernung, < 0,36 – sonst Staub), `bumps` (Anteil unebener Stellen, > 0,3 – sonst glatter
+  Klotz), `light` (mittlere Helligkeit, > 0,2 – sonst dunkles Gestrüpp). Der erste brauchbare gewinnt, sonst der
+  beste. Kosten: 1–13 ms pro Klick. Umgestellt wird per `flyGo` mit `apply` (Blende, Start-Kamera), `fly.kit = −2`.
+- **Kamera-Plätze** (`fly.cams`, 4 Stück, `flySaveCam(i)`, `flyGoCam(i)`): merken Fraktal, Ort und Drehung
+  (Quaternion), **nicht** die Form-Regler (das machen die Szenarien in Schritt 5). Gespeichert im Browser unter
+  `satisim.flyCams` (`loadStore`/`saveStore` – stürzen nicht ab, wenn der Browser das Speichern verbietet).
+  Knöpfe im Abschnitt „Kamera merken“: belegter Platz = anspringen, leerer Platz oder Umschalt + Klick = merken.
+- **Panel:** fünf Abschnitte – „3D-Fraktal“ (Fraktal-Knöpfe, Hinweis, Info-Zeile), „Form“ (Baukasten-Startwerte,
+  Zufalls-Knopf, Regler des gewählten Fraktals, Wiederholungen), „Flug“, „Kamera merken“, „Licht & Farbe“.
+- **Geprüft** (`run-f4.js`, `run-fq.js`): Mausrad-Grenzen, Rollen und Ausrichten (Kamera steht danach exakt wie
+  vorher), Bremse/Trägheit, Kamera-Platz merken → anderes Fraktal → anspringen (Ort und Drehung exakt, auch nach
+  Neuladen), 12 Zufalls-Formen ohne ungültige Werte, alle neuen Regler an beiden Anschlägen ohne ungültige Werte;
+  echte Eingaben in der Vorschau (Mausrad, `K`, `G`, `7`). In Echtzeit (1523×1205, alle 6 Stufen, Mandelbulb und
+  Baukasten, nah an der Oberfläche): 60 FPS, GPU 2,9–10,1 ms, längstes Bild 17–33 ms, keine GL-Fehler.
 
 ### Messwerte (1920×1080, 60-Hz-Vorschau, NVIDIA RTX 3050 Laptop; Flug = seitwärts fliegen, Stillstand = danach anhalten)
 | Stufe | Flug: Übersicht | im Tal (Abstand 0,1) | nah (0,02) | sehr nah (0,0005) | FPS im Flug | Standbild | scharf nach | fertig geglättet nach |
@@ -1401,6 +1444,9 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Dann Bilder direkt rechnen (`__p.one`, `__f.move`, `__f.still`).
 
 ### Ausprobiert und verworfen
+- **Zufalls-Form ohne Prüfung der Unebenheit** (nur Füllgrad und Kanten): etwa jede dritte Form war ein glatter
+  Quader (Spiegeln ohne Drehung), ein gestreifter Block (Kasten ohne Kugel-Faltung) oder dunkles Gestrüpp
+  (Menger mit Kugel-Faltung) → Regeln dafür und die Messwerte `bumps`/`light`.
 - **Baukasten-Startwerte mit starker Drehung bei Tetraeder-Faltung** (0/12/24°, Seeigel 30/10/45°): zerfallen zu
   winzigem Staub → kleinere Drehungen bzw. Spiegel- und Menger-Faltung.
 - **3D-Julia als Julia-Fassung der Mandelbulb** (z^n + c): nicht gebaut; die klassische Quaternionen-Julia ist glatt
@@ -1424,8 +1470,12 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - `.claude/f-tools.js` laden → `__f.ready()` (wartet auf den Shader), `__f.view(ort, blickpunkt)`,
   `__f.fly(['KeyW'], bilder)`, `__f.fix(maßstab)`, `__f.move()` (ein Flug-Bild), `__f.still()` (Standbild zu Ende),
   `__f.stats('g' | 'acc')` (ungültige Werte), `__f.cost(n)`, `__f.gpu(n)`.
-  `__f.kind('menger')` (Fraktal sofort wechseln und auf den Shader warten).
+  `__f.kind('menger')` (Fraktal sofort wechseln und auf den Shader warten),
+  `__f.sheet([async () => …, …], spalten)` (Kontaktbogen: mehrere Ansichten als Kacheln in EINEM Bildschirmfoto –
+  spart viele Einzelbilder; `__f.sheet()` entfernt ihn wieder).
   `run-f2.js` (Stufen: Flug und Stillstand in Echtzeit; Extremfälle; Ersatz-Regelung → `window.__res`,
   `window.__opt = { parts, levels }`), `run-f3.js` (jede Form: Kosten, Regler-Anschläge, Echtzeit-Bildrate;
-  `parts: ['cost', 'extremes', 'fps']`), `run-f1b.js` (Moduswechsel und Tasten in Echtzeit → `window.__res2`).
+  `parts: ['cost', 'extremes', 'fps']`), `run-f1b.js` (Moduswechsel und Tasten in Echtzeit → `window.__res2`),
+  `run-f4.js` (Bedienung aus Schritt 4), `run-fq.js` (Kurztest in Echtzeit auf allen Stufen: FPS, GPU-Zeit,
+  Standbild, ungültige Werte; `window.__opt = { kinds, levels }` – nach jeder Änderung laufen lassen).
   Alte Fassung zum Vergleich: `.claude/pre-fly.html`.

@@ -139,7 +139,8 @@
   /* 3D-Fraktal-Flug: schmaler Ring als Cursor; ist die Maus gefangen, sitzt er als kleiner Zielpunkt in der Bildmitte */
   body.mode-flight #cursor { border-width: 1.5px; box-shadow: 0 0 8px var(--brush, #fff); }
   body.mode-flight.fly-locked #cursor { opacity: .55; }
-  #flyHome { width: 100%; margin-top: 4px; }
+  .btn.wide { width: 100%; margin-top: 8px; }     /* Knopf über die ganze Breite des Panels */
+  #flyCams .btn.empty span { opacity: .5; }      /* leerer Kamera-Platz */
   #flyKinds .btn { padding: 8px 8px; font-size: 11.5px; }
   .fly-block.off { display: none; }              /* Teile des Panels, die nur zu einem der Fraktale gehören */
   /* Bloom-Regler treten zurück, wenn der Glow ausgeschaltet ist */
@@ -686,18 +687,14 @@
   <div class="sec" data-mode="flight">
     <h3>3D-Fraktal</h3>
     <div id="flyKinds" class="grid2"></div>
-    <div class="sub">Klick ins Bild fängt die Maus: Bewegen = umsehen, <b>Esc</b> gibt sie frei (oder mit gedrückter Maustaste ziehen). <b>W A S D</b> = fliegen, <b>Leertaste</b> / <b>C</b> = hoch / runter, <b>Umschalt</b> = schneller. Je näher an der Oberfläche, desto langsamer wird der Flug von selbst.</div>
-    <div class="row" style="margin-top:12px">
-      <label for="flySpeed">Flug-Tempo <output id="flySpeedOut"></output></label>
-      <input id="flySpeed" type="range" min="0.2" max="3" step="0.05">
-    </div>
-    <button class="btn" id="flyHome"><span>Zurück zum Start</span><kbd>R</kbd></button>
+    <div class="sub">Klick ins Bild fängt die Maus: Bewegen = umsehen, <b>Esc</b> gibt sie frei (oder mit gedrückter Maustaste ziehen). <b>W A S D</b> = fliegen, <b>Leertaste</b> / <b>C</b> = hoch / runter. Je näher an der Oberfläche, desto langsamer wird der Flug von selbst.</div>
     <div class="sub" id="flyInfo"></div>
   </div>
   <div class="sec" data-mode="flight">
     <h3>Form</h3>
     <div class="fly-block" data-kind="kit">
       <div id="flyKit" class="grid2"></div>
+      <button class="btn wide" id="flyKitRandom"><span>Zufalls-Form würfeln</span><kbd>N</kbd></button>
       <div class="sub">Startwerte für den Baukasten – ein Klick verwandelt die Form weich. Danach an den Reglern weiterspielen: <b id="flyKitName"></b></div>
     </div>
     <div class="row fold" data-kind="bulb">
@@ -766,6 +763,60 @@
     </div>
     <div class="hint-reset">Doppelklick auf einen Regler = Standardwert</div>
   </div>
+  <div class="sec" data-mode="flight">
+    <h3>Flug</h3>
+    <div class="row">
+      <label for="flySpeed">Flug-Tempo (Mausrad) <output id="flySpeedOut"></output></label>
+      <input id="flySpeed" type="range" min="0.1" max="4" step="0.01">
+    </div>
+    <div class="row">
+      <label for="flyInertia">Trägheit (Ausrollen) <output id="flyInertiaOut"></output></label>
+      <input id="flyInertia" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="flyLook">Maus-Empfindlichkeit <output id="flyLookOut"></output></label>
+      <input id="flyLook" type="range" min="0.25" max="3" step="0.05">
+    </div>
+    <div class="row">
+      <label for="flyFov">Blickwinkel <output id="flyFovOut"></output></label>
+      <input id="flyFov" type="range" min="35" max="110" step="1">
+    </div>
+    <div class="grid2">
+      <button class="btn" id="flyHome"><span>Zum Start</span><kbd>R</kbd></button>
+      <button class="btn" id="flyLevel"><span>Horizont</span><kbd>G</kbd></button>
+    </div>
+    <div class="sub"><b>Umschalt</b> = schneller, <b>B</b> = bremsen, <b>Y</b> / <b>X</b> = rollen (um die Blickachse drehen), <b>G</b> = Horizont wieder gerade stellen.</div>
+  </div>
+  <div class="sec" data-mode="flight">
+    <h3>Kamera merken</h3>
+    <div id="flyCams" class="grid2"></div>
+    <button class="btn wide" id="flyCamSave"><span>Kamera hier merken</span><kbd>K</kbd></button>
+    <div class="sub">Merkt Ort und Blickrichtung. Klick auf einen belegten Platz springt dorthin, Klick auf einen leeren merkt die Kamera dort (Umschalt + Klick überschreibt). Die Plätze bleiben auch nach dem Schließen der Seite erhalten.</div>
+  </div>
+  <div class="sec" data-mode="flight">
+    <h3>Licht &amp; Farbe</h3>
+    <div class="row">
+      <label for="flyGlow">Glühen <output id="flyGlowOut"></output></label>
+      <input id="flyGlow" type="range" min="0" max="1.5" step="0.01">
+    </div>
+    <div class="row">
+      <label for="flyFog">Nebel <output id="flyFogOut"></output></label>
+      <input id="flyFog" type="range" min="0" max="3" step="0.01">
+    </div>
+    <div class="row">
+      <label for="flyShadow">Schatten <output id="flyShadowOut"></output></label>
+      <input id="flyShadow" type="range" min="0" max="1" step="0.01">
+    </div>
+    <div class="row">
+      <label for="flyColor">Farbdichte <output id="flyColorOut"></output></label>
+      <input id="flyColor" type="range" min="0.2" max="4" step="0.01">
+    </div>
+    <div class="row">
+      <label for="flyHue">Farb-Verschiebung <output id="flyHueOut"></output></label>
+      <input id="flyHue" type="range" min="0" max="1" step="0.005">
+    </div>
+    <div class="sub">Die Farben selbst kommen aus der Farbpalette unten – ein Wechsel dort färbt das Fraktal sofort um.</div>
+  </div>
   <div class="sec" id="paletteSection">
     <h3>Farbpalette</h3>
     <div id="palettes"></div>
@@ -817,7 +868,7 @@
     <div class="sub">Malt von selbst, wenn du eine Weile nichts tust. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec keys">
-    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span data-mode="fluid mandel particles liquid"><kbd>A</kbd>Auto-Play</span><span data-mode="flight"><kbd>P</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid liquid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid liquid"><kbd>E</kbd>Radierer</span><span data-mode="fluid liquid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid liquid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid liquid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>R</kbd>Schieben ↔ Ziehen</span><span data-mode="liquid"><kbd>Klick</kbd>Tropfen + Spritzer</span><span data-mode="liquid"><kbd>T</kbd>Hahn</span><span data-mode="liquid"><kbd>G</kbd>Kippen</span><span data-mode="liquid"><kbd>P</kbd>Preset</span><span data-mode="liquid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="liquid"><kbd>N</kbd>Neu füllen</span><span data-mode="flight"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>Fliegen</span><span data-mode="flight"><kbd>Leertaste</kbd><kbd>C</kbd>Hoch / runter</span><span data-mode="flight"><kbd>Umschalt</kbd>Schneller</span><span data-mode="flight"><kbd>Klick</kbd>Maus fangen</span><span data-mode="flight"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd>Umsehen</span><span data-mode="flight"><kbd>R</kbd>Zum Start</span><span data-mode="flight"><kbd>1</kbd>–<kbd>6</kbd>Fraktal</span>
+    <span><kbd>Tab</kbd>Modus</span><span><kbd>H</kbd>Panel</span><span><kbd>F</kbd>FPS</span><span><kbd>Q</kbd>Qualität</span><span data-mode="fluid mandel particles liquid"><kbd>A</kbd>Auto-Play</span><span data-mode="flight"><kbd>P</kbd>Auto-Play</span><span><kbd>M</kbd>Stumm</span><span data-mode="fluid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="fluid liquid"><kbd>W</kbd>Hindernis</span><span data-mode="fluid liquid"><kbd>E</kbd>Radierer</span><span data-mode="fluid liquid"><kbd>X</kbd>Hindernisse weg</span><span data-mode="fluid liquid"><kbd>1</kbd>–<kbd>0</kbd>Look</span><span data-mode="fluid liquid"><kbd>←</kbd><kbd>→</kbd>Look wechseln</span><span data-mode="mandel"><kbd>J</kbd>Julia-Set</span><span data-mode="mandel"><kbd>Leertaste</kbd>Übersicht</span><span data-mode="mandel"><kbd>1</kbd>–<kbd>9</kbd>Stelle</span><span data-mode="mandel"><kbd>←</kbd><kbd>→</kbd>Stelle wechseln</span><span data-mode="mandel"><kbd>↑</kbd><kbd>↓</kbd>Zoom</span><span data-mode="particles"><kbd>R</kbd>Anziehen ↔ Abstoßen</span><span data-mode="particles"><kbd>Klick</kbd>Explosion</span><span data-mode="particles"><kbd>S</kbd>Schwarm</span><span data-mode="particles"><kbd>C</kbd>Farbe</span><span data-mode="particles"><kbd>Leertaste</kbd>Neu verteilen</span><span data-mode="particles"><kbd>1</kbd>–<kbd>5</kbd>Kraft setzen</span><span data-mode="particles"><kbd>Entf</kbd>Kraft löschen</span><span data-mode="particles"><kbd>X</kbd>Kräfte weg</span><span data-mode="liquid"><kbd>R</kbd>Schieben ↔ Ziehen</span><span data-mode="liquid"><kbd>Klick</kbd>Tropfen + Spritzer</span><span data-mode="liquid"><kbd>T</kbd>Hahn</span><span data-mode="liquid"><kbd>G</kbd>Kippen</span><span data-mode="liquid"><kbd>P</kbd>Preset</span><span data-mode="liquid"><kbd>Leertaste</kbd>Leeren</span><span data-mode="liquid"><kbd>N</kbd>Neu füllen</span><span data-mode="flight"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>Fliegen</span><span data-mode="flight"><kbd>Leertaste</kbd><kbd>C</kbd>Hoch / runter</span><span data-mode="flight"><kbd>Umschalt</kbd>Schneller</span><span data-mode="flight"><kbd>B</kbd>Bremsen</span><span data-mode="flight"><kbd>Mausrad</kbd>Tempo</span><span data-mode="flight"><kbd>Y</kbd><kbd>X</kbd>Rollen</span><span data-mode="flight"><kbd>G</kbd>Horizont</span><span data-mode="flight"><kbd>Klick</kbd>Maus fangen</span><span data-mode="flight"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd>Umsehen</span><span data-mode="flight"><kbd>R</kbd>Zum Start</span><span data-mode="flight"><kbd>1</kbd>–<kbd>6</kbd>Fraktal</span><span data-mode="flight"><kbd>N</kbd>Zufalls-Form</span><span data-mode="flight"><kbd>K</kbd>Kamera merken</span><span data-mode="flight"><kbd>7</kbd>–<kbd>0</kbd>Kamera anspringen</span>
   </div>
 </div>
 
@@ -974,11 +1025,15 @@ const PARAMS = {
   flyKitZ:       { target: 1,    current: 1,    def: 1    },
   flyKitSphere:  { target: 0,    current: 0,    def: 0    },  // 3D-Flug, Baukasten: Kugel-Faltung (0 = aus)
   flyIter:       { target: 20,   current: 20,   def: 20   },  // 3D-Flug: Wiederholungen = höchstens so viele Durchgänge der Fraktal-Formel
-  flySpeed:      { target: 1,    current: 1,    def: 1    },  // 3D-Flug: Flug-Tempo (Faktor)
+  flySpeed:      { target: 1,    current: 1,    def: 1    },  // 3D-Flug: Flug-Tempo (Faktor; auch per Mausrad)
+  flyInertia:    { target: 0.4,  current: 0.4,  def: 0.4  },  // 3D-Flug: Trägheit = wie lange die Kamera ausrollt (0 = steht fast sofort)
+  flyLook:       { target: 1,    current: 1,    def: 1    },  // 3D-Flug: Maus-Empfindlichkeit beim Umsehen (Faktor)
+  flyFov:        { target: 70,   current: 70,   def: 70   },  // 3D-Flug: senkrechter Blickwinkel in Grad
   flyFog:        { target: 1,    current: 1,    def: 1    },  // 3D-Flug: Nebel (1 = normal, größer = dichter)
   flyGlow:       { target: 0.5,  current: 0.5,  def: 0.5  },  // 3D-Flug: Glühen um die Umrisse und in den Ritzen (0 = aus)
   flyShadow:     { target: 1,    current: 1,    def: 1    },  // 3D-Flug: Stärke der Schatten (0 = keine)
   flyColor:      { target: 1,    current: 1,    def: 1    },  // 3D-Flug: Farbdichte = wie oft die Palette über das Fraktal läuft
+  flyHue:        { target: 0.08, current: 0.08, def: 0.08 },  // 3D-Flug: Farb-Verschiebung = wo auf der Palette die Farben beginnen (0..1)
   forceStrength: { target: 1,   current: 1,   def: 1   },  // Partikel-Kräfte: Stärke der ausgewählten (bzw. nächsten) Kraft
   forceRange:    { target: 0.2, current: 0.2, def: 0.2 },  // Partikel-Kräfte: Reichweite (Anteil der Bildhöhe)
   forceDir:      { target: 0,   current: 0,   def: 0   },  // Partikel-Kräfte: Windrichtung in Grad (0 = rechts, 90 = oben)
@@ -7704,14 +7759,21 @@ MODES.push({
 // Grafikkarte aufzuhalten (wie bei den Kennzahlen der Partikel-Modi). Flugtempo, Nebel und Stirnlampe hängen an diesem
 // Abstand – deshalb fühlt sich der Flug in jeder Tiefe gleich an, und man kann nicht in die Oberfläche hineinfliegen.
 const FLY = {
-  FOV: 70,                  // senkrechter Blickwinkel in Grad
-  LOOK: 0.0026,             // Maus-Blick: Drehung (Bogenmaß) pro Pixel Mausweg
+  LOOK: 0.0026,             // Maus-Blick: Drehung (Bogenmaß) pro Pixel Mausweg (mal Regler "Maus-Empfindlichkeit")
   LOOK_EASE: 22,            // wie schnell die Kamera der Maus folgt (pro Sekunde; größer = direkter, kleiner = träger)
   KEY_TURN: 1.3,            // Pfeiltasten: Drehtempo in Bogenmaß pro Sekunde
   SPEED: 0.9,               // Flugtempo bei 100 %: so viele "Abstände zur Oberfläche" pro Sekunde
   TURBO: 3,                 // Umschalt-Taste: Faktor aufs Tempo
   ACCEL: 5,                 // wie schnell das Tempo dem Tastendruck folgt (pro Sekunde)
-  GLIDE: 2.2,               // wie schnell die Kamera ausrollt, wenn keine Taste gedrückt ist (Trägheit)
+  GLIDE: 6,                 // Ausrollen ohne Taste (pro Sekunde) bei Regler "Trägheit" 0 %; bei 100 % nur noch
+  GLIDE_LONG: 0.08,         //   GLIDE · GLIDE_LONG (= 0,5 pro Sekunde, die Kamera gleitet dann sehr lange weiter)
+  BRAKE: 9,                 // Bremse (Taste B): so schnell kommt die Kamera zum Stehen (pro Sekunde)
+  ROLL: 1.5,                // Rollen (Tasten Y / X): Drehtempo um die Blickachse in Bogenmaß pro Sekunde
+  ROLL_EASE: 7,             // wie schnell das Rollen anläuft und wieder ausläuft (pro Sekunde)
+  LEVEL: 5,                 // Horizont ausrichten (Taste G): wie schnell sich die Kamera gerade stellt (pro Sekunde)
+  WHEEL: 0.001,             // Mausrad: eine Raste (100 Einheiten) ändert das Flug-Tempo um ca. 10 %
+  SPEED_MIN: 0.1, SPEED_MAX: 4,   // Grenzen des Reglers "Flug-Tempo"
+  CAMS: 4,                  // so viele Kamera-Plätze zum Merken gibt es
   REACH_MAX: 1.2,           // weit weg vom Fraktal zählt fürs Tempo höchstens dieser Abstand (sonst würde man rasen)
   WORLD: 7,                 // weiter als so weit vom Mittelpunkt kann man nicht wegfliegen
   HIT: 0.75,                // Treffer, sobald der Abstand kleiner ist als so viele Bildpunkte (kleiner = feiner, teurer)
@@ -8378,8 +8440,12 @@ function flyProgram(i) {
 // ----- Zustand -----
 const fly = {
   kind: 0,                    // gewähltes Fraktal (Index in FLY_KINDS)
-  nextKind: -1,               // Fraktal, zu dem gewechselt werden soll, sobald sein Shader übersetzt ist (−1 = keins)
-  kit: -1,                    // zuletzt gewählter Startwert des Baukastens (Index in FLY_KIT, −1 = eigene Mischung)
+  go: null,                   // Ziel, zu dem gesprungen werden soll, sobald der Shader seines Fraktals übersetzt ist (siehe flyGo)
+  kit: -1,                    // zuletzt gewählter Startwert des Baukastens (Index in FLY_KIT, −1 = eigene Mischung, −2 = gewürfelt)
+  roll: 0,                    // aktuelles Roll-Tempo (Drehung um die Blickachse, Bogenmaß pro Sekunde)
+  leveling: false,            // richtet sich die Kamera gerade am Horizont aus? (Taste G)
+  cams: [],                   // gemerkte Kamera-Plätze: { kind: 'bulb', pos, quat } oder null
+  tiny: null,                 // kleines Probe-Bild (für den Zufalls-Knopf des Baukastens)
   pos: [0, 0, 3],             // Ort der Kamera
   quat: [0, 0, 0, 1],         // Drehung der Kamera
   vel: [0, 0, 0],             // Tempo, gemessen in "Abständen zur Oberfläche pro Sekunde" (wird beim Bewegen mit reach malgenommen)
@@ -8415,7 +8481,9 @@ const fly = {
   infoTimer: 0,
 };
 const FLY_SUN = vNorm(FLY.SUN);
-const FLY_MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyC', 'ShiftLeft', 'ShiftRight', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+// Tasten, die gehalten werden (e.code = Lage der Taste auf der Tastatur: 'KeyZ' ist auf deutschen Tastaturen die
+// Taste Y – links unten neben X und C)
+const FLY_MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyC', 'ShiftLeft', 'ShiftRight', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyZ', 'KeyX', 'KeyB']);
 
 // Kamera an einen Ort setzen und auf einen Punkt schauen lassen (ohne Übergang)
 function flySetPose(pos, look) {
@@ -8465,6 +8533,8 @@ function ensureFlyBuffers() {
 }
 
 // ----- Kamera und Regler-Werte an den Shader übergeben -----
+// Blickwinkel (Regler, senkrecht, in Grad) → halbe Bildhöhe in 1 Einheit Entfernung
+const flyTanHalf = () => Math.tan(PARAMS.flyFov.current * Math.PI / 360);
 // feinste sinnvolle Genauigkeit an der Kamera: Die Grafikkarte rechnet mit ca. 7 Stellen. Je weiter die Kamera vom
 // Mittelpunkt entfernt ist, desto gröber sind die kleinsten Schritte, die sie noch unterscheiden kann.
 const flyEpsMin = () => FLY.FLOAT_EPS * FLY.EPS_FLOOR * Math.max(1, Math.abs(fly.pos[0]), Math.abs(fly.pos[1]), Math.abs(fly.pos[2]));
@@ -8472,7 +8542,7 @@ const flyEpsMin = () => FLY.FLOAT_EPS * FLY.EPS_FLOOR * Math.max(1, Math.abs(fly
 // die feinste Stufe, die die Grafikkarte noch sauber rechnen kann (flyEpsMin). Noch näher käme kein Detail mehr dazu,
 // das Bild würde nur unschärfer und bekäme Streifen. Bei Werten um 1 sind das ca. 0,0004 – etwa 3000-fache
 // Vergrößerung gegenüber dem Startbild.
-const flyFloor = () => flyEpsMin() / (FLY.HIT * 2 * Math.tan(FLY.FOV * Math.PI / 360) / 1080);
+const flyFloor = () => flyEpsMin() / (FLY.HIT * 2 * flyTanHalf() / 1080);
 // Abstand zur Oberfläche, der JETZT mindestens frei ist: die letzte Messung minus der Strecke, die die Kamera seither
 // geflogen ist (sie kann der Oberfläche höchstens um diese Strecke näher gekommen sein)
 const flyClear = () => Math.max(0, fly.dist - vLen(vSub(fly.pos, fly.probePos)));
@@ -8480,7 +8550,7 @@ const flyClear = () => Math.max(0, fly.dist - vLen(vSub(fly.pos, fly.probePos)))
 // still = true: Standbild (alle Schritte pro Strahl), sonst Bewegung (weniger Schritte, siehe FLY.MOVE_STEPS)
 function flyUniforms(u, w, h, task, still) {
   const f = fly, kind = FLY_KINDS[f.kind], L = FLY_LEVELS[qualityLevel];
-  const tanHalf = Math.tan(FLY.FOV * Math.PI / 360);
+  const tanHalf = flyTanHalf();
   const pixel = 2 * tanHalf / h;                             // Größe eines Bildpunkts in 1 Einheit Entfernung
   const fogDist = FLY.FOG * f.scale / Math.max(PARAMS.flyFog.current, 0.01);
   gl.uniform1i(u.uTask, task);
@@ -8509,7 +8579,7 @@ function flyUniforms(u, w, h, task, still) {
   gl.uniform1f(u.uGlow, PARAMS.flyGlow.current);
   gl.uniform1f(u.uShadow, PARAMS.flyShadow.current);
   gl.uniform1f(u.uColorScale, PARAMS.flyColor.current);
-  gl.uniform1f(u.uColorShift, 0.08);
+  gl.uniform1f(u.uColorShift, PARAMS.flyHue.current);
   gl.uniform1f(u.uRelax, kind.relax || FLY.RELAX);
   // Stirnlampe: nah an der Oberfläche (in Höhlen) kräftig, in der Übersicht nur ein schwaches Aufhell-Licht
   gl.uniform1f(u.uHead, 0.2 + 0.3 * (1 - smooth01(clampNum((f.scale - 0.05) / 0.75, 0, 1))));
@@ -8669,6 +8739,7 @@ function flyImageKey() {
   const f = fly, P = PARAMS, r = v => Math.round(v * 2000);
   return [f.kind, f.pos.join(), f.quat.join(), f.scale.toPrecision(5), FLY_KINDS[f.kind].params.map(k => r(P[k].current)).join(),
     Math.round(P.flyIter.current), r(P.flyFog.current), r(P.flyGlow.current), r(P.flyShadow.current), r(P.flyColor.current),
+    r(P.flyHue.current), r(P.flyFov.current),
     qualityLevel, f.g.w, f.acc.w, f.acc.h].join('|');
 }
 // Verschiebung der Strahlen für den k-ten Durchgang der Kantenglättung (−0,5 … 0,5 Bildpunkte). Die "Halton-Folge"
@@ -8730,9 +8801,11 @@ document.addEventListener('pointerlockchange', () => {
 });
 function flyPointerMove(e) {
   const f = fly;
+  // (Drehung pro Pixel Mausweg: mal Regler "Maus-Empfindlichkeit"; bei engem Blickwinkel entsprechend feiner)
+  const look = FLY.LOOK * PARAMS.flyLook.current * Math.min(1, flyTanHalf() / 0.7);
   if (f.locked) {
-    f.turn[0] += e.movementX * FLY.LOOK;
-    f.turn[1] += e.movementY * FLY.LOOK;
+    f.turn[0] += e.movementX * look;
+    f.turn[1] += e.movementY * look;
   } else {
     showCursor(e.clientX, e.clientY);
     if (!f.drag) return;
@@ -8741,8 +8814,8 @@ function flyPointerMove(e) {
     f.drag.travel += Math.hypot(dx, dy);
     // Maus: Bewegung nach rechts = nach rechts schauen. Finger: das Bild wird "angefasst" und mitgezogen (umgekehrt).
     const dir = f.drag.touch ? -1 : 1;
-    f.turn[0] += dx * FLY.LOOK * dir;
-    f.turn[1] += dy * FLY.LOOK * dir;
+    f.turn[0] += dx * look * dir;
+    f.turn[1] += dy * look * dir;
   }
   lastPaint = performance.now();
   hideHint();
@@ -8775,18 +8848,25 @@ window.addEventListener('blur', () => fly.keys.clear());
 
 // Sprung an einen anderen Ort: Das Bild blendet kurz ab, die Kamera wird versetzt, das Bild blendet wieder auf.
 // (Ein Flug auf gerader Linie dorthin könnte mitten durch das Fraktal führen.)
-// kind (optional): in der Mitte der Blende auch zu diesem Fraktal wechseln
-function flyJump(pos, look, kind = fly.kind) {
-  fly.jump = { pos, look, kind, t: 0, done: false };
+// o = { pos, look ODER quat, kind, apply }:
+//   pos            neuer Ort der Kamera
+//   look / quat    Punkt, auf den sie schaut – oder gleich ihre Drehung (für gemerkte Kameras)
+//   kind           (optional) in der Mitte der Blende auch zu diesem Fraktal wechseln. Sein Shader wird beim ersten Mal
+//                  erst übersetzt (bis ca. 1 s) – so lange bleibt das alte Bild zu sehen (fly.go wartet).
+//   apply          (optional) Funktion, die in der Mitte der Blende aufgerufen wird, wenn das Bild dunkel ist
+//                  (z. B. Regler ohne Überblenden umstellen: Zufalls-Form, Szenario laden)
+function flyGo(o) {
+  fly.go = Object.assign({}, o, { kind: o.kind === undefined ? fly.kind : o.kind });
+  flyProgram(fly.go.kind);                                   // stößt das Übersetzen an
+  updateFlyUi();
 }
-// Fraktal wählen. Sein Shader wird beim ersten Mal erst übersetzt (dauert bis ca. 1 s) – solange bleibt das alte
-// Fraktal zu sehen, dann blendet das Bild kurz ab und im neuen wieder auf (Start-Kamera des neuen Fraktals).
+// Fraktal wählen: Sprung an die Start-Kamera des neuen Fraktals
 function setFlyKind(i) {
   i = (i + FLY_KINDS.length) % FLY_KINDS.length;
-  if (i === fly.kind && fly.nextKind < 0) return;
-  fly.nextKind = i;
-  flyProgram(i);                                             // stößt das Übersetzen an
-  updateFlyUi();
+  if (i === fly.kind && !fly.go) return;
+  const home = FLY_KINDS[i].home;
+  flyGo({ kind: i, pos: home.pos, look: home.look });
+  audioClear();
   toast('Fraktal: ' + FLY_KINDS[i].name);
 }
 // Drehung und Wiederholungen teilen sich mehrere Fraktale (dieselben Regler im Panel). Damit z. B. ein verdrehter
@@ -8801,29 +8881,159 @@ function flyEnterKind(from, to) {
   else FLY_SHARED.forEach((k, i) => { P[k].target = to.saved ? to.saved[i] : P[k].def; });
   for (const k of [...FLY_SHARED, ...to.params]) P[k].current = P[k].target;
 }
-// Startwert des Baukastens wählen: setzt nur die Zielwerte der Regler – die Form verwandelt sich weich
+
+// ----- Baukasten: Startwerte und Zufall -----
+// Ein Satz Baukasten-Werte k = { fold, scale, shift, rot, sphere, iter } als Liste "Regler → Wert"
+const flyKitValues = k => ({
+  flyKitFold: k.fold, flyKitScale: k.scale, flyKitX: k.shift[0], flyKitY: k.shift[1], flyKitZ: k.shift[2],
+  flyRotX: k.rot[0], flyRotY: k.rot[1], flyRotZ: k.rot[2], flyKitSphere: k.sphere, flyIter: k.iter });
+// Werte einstellen. instant = false: nur die Zielwerte – die Form verwandelt sich weich (die Art der Faltung lässt
+// sich nicht überblenden, sie springt immer sofort um)
+function flyKitSet(k, instant) {
+  for (const [key, v] of Object.entries(flyKitValues(k))) {
+    PARAMS[key].target = v;
+    if (instant || key === 'flyKitFold') PARAMS[key].current = v;
+  }
+}
+// Startwert des Baukastens wählen
 function setFlyKit(i, silent) {
-  const k = FLY_KIT[i], P = PARAMS;
   fly.kit = i;
-  P.flyKitFold.target = P.flyKitFold.current = k.fold;       // (die Art der Faltung lässt sich nicht überblenden)
-  P.flyKitScale.target = k.scale;
-  [P.flyKitX.target, P.flyKitY.target, P.flyKitZ.target] = k.shift;
-  [P.flyRotX.target, P.flyRotY.target, P.flyRotZ.target] = k.rot;
-  P.flyKitSphere.target = k.sphere;
-  P.flyIter.target = k.iter;
+  flyKitSet(FLY_KIT[i], false);
   updateFlyUi();
-  if (!silent) toast('Baukasten: ' + k.name);
+  if (!silent) toast('Baukasten: ' + FLY_KIT[i].name);
+}
+// Probe-Bild für den Zufalls-Knopf: Die Form wird winzig klein (32 × 32 Bildpunkte) von der Start-Kamera aus gerechnet.
+// Daraus vier Zahlen: cover = Anteil der Bildpunkte, die die Form treffen (0 = nichts zu sehen, 1 = Bild ganz voll),
+// edges = Anteil der Nachbar-Paare mit einem Sprung in der Entfernung (viel = zerfällt zu Staub),
+// bumps = Anteil der getroffenen Stellen, an denen die Oberfläche uneben ist (0 = glatter Klotz oder runder Klumpen),
+// light = mittlere Helligkeit der getroffenen Stellen (sehr dunkel = fast unsichtbares Gestrüpp).
+function flyKitProbe() {
+  const e = flyProgram(fly.kind);
+  if (!e) return null;
+  const N = 32, T = fly.tiny || (fly.tiny = flyTarget(N, N)), home = FLY_KINDS[fly.kind].home;
+  // (Kamera kurz an den Start setzen – nur für diese Rechnung; dist = 0 heißt: Strahlen beginnen direkt an der Kamera)
+  const keep = { pos: fly.pos, quat: fly.quat, scale: fly.scale, dist: fly.dist, probePos: fly.probePos };
+  Object.assign(fly, { pos: home.pos.slice(), quat: qLook(vSub(home.look, home.pos)), scale: 1, dist: 0, probePos: home.pos });
+  flyRender(e, T, N, N, { still: true });
+  Object.assign(fly, keep);
+  const c = new Float32Array(N * N * 4), d = new Float32Array(N * N * 4);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, T.fbo);
+  gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, c);           // erste Textur: Anteile der Palettenfarben (Summe ≈ Helligkeit)
+  gl.readBuffer(gl.COLOR_ATTACHMENT1);                       // zweite Textur: z = Entfernung des Treffers (sehr groß = vorbei)
+  gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, d);
+  gl.readBuffer(gl.COLOR_ATTACHMENT0);
+  const depth = (x, y) => d[(y * N + x) * 4 + 2], hit = z => z < 20;
+  let cover = 0, edges = 0, bumps = 0, inner = 0, light = 0;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const i = (y * N + x) * 4, z = depth(x, y);
+    if (hit(z)) { cover++; light += c[i] + c[i + 1] + c[i + 2] + c[i + 3] + d[i]; }
+    if (x + 1 < N) { const z2 = depth(x + 1, y); if (hit(z) !== hit(z2) || (hit(z) && Math.abs(z - z2) > 0.12)) edges++; }
+    // uneben: Die Entfernung weicht vom Mittel der beiden Nachbarn ab (auf einer ebenen Fläche ist das null)
+    if (x > 0 && x + 1 < N && hit(z) && hit(depth(x - 1, y)) && hit(depth(x + 1, y))) {
+      inner++;
+      if (Math.abs(depth(x - 1, y) + depth(x + 1, y) - 2 * z) > 0.03) bumps++;
+    }
+  }
+  return { cover: cover / (N * N), edges: edges / (N * (N - 1)), bumps: bumps / Math.max(inner, 1), light: light / Math.max(cover, 1) };
+}
+// Zufalls-Form würfeln. Nicht jede Kombination ergibt etwas Sehenswertes: Viele zerfallen zu Staub oder füllen als
+// Klotz das ganze Bild. Deshalb werden bis zu 16 Kandidaten gewürfelt (in Bereichen, die sich bewährt haben), jeder
+// wird mit einem winzigen Probe-Bild geprüft, und der erste brauchbare gewinnt (sonst der beste).
+function flyKitRandom() {
+  const pick = (...w) => { let r = Math.random() * w.reduce((a, b) => a + b); return w.findIndex(v => (r -= v) < 0); };
+  const P = PARAMS, old = {};
+  for (const key of Object.keys(flyKitValues(FLY_KIT[0]))) old[key] = [P[key].target, P[key].current];
+  let best = null, bestScore = -1e9;
+  for (let n = 0; n < 16; n++) {
+    const fold = 1 + pick(0.3, 0.15, 0.3, 0.25);            // 1 Spiegeln, 2 Tetraeder, 3 Menger, 4 Kasten
+    const turn = fold === 2 ? 12 : fold === 3 ? 30 : 40;    // größte Drehung (Tetraeder zerfällt bei mehr zu Staub)
+    const angle = () => Math.round(rand(8, turn)) * (Math.random() < 0.5 ? -1 : 1);
+    const k = {
+      fold,
+      scale: [0, rand(1.6, 2.3), rand(1.85, 2.2), rand(2.4, 3.3), rand(1.9, 2.7)][fold],
+      shift: [1, rand(0.55, 1.3), rand(0.45, 1.3)],
+      rot: [0, 1, 2].map(() => (Math.random() < 0.55 ? angle() : 0)),
+      // (Kugel-Faltung: beim Kasten fast immer – ohne sie ist er nur ein gestreifter Block; beim Menger-Schwamm nie –
+      // er wird damit zu dunklem Gestrüpp)
+      sphere: Math.random() < [0, 0.2, 0.15, 0, 0.85][fold] ? +rand(0.35, 0.7).toFixed(2) : 0,
+      iter: Math.round(rand(11, 17)),
+    };
+    // (Spiegeln ohne Drehung ergibt nur einen glatten Quader → mindestens eine Achse drehen)
+    if (fold === 1 && !k.rot.some(Boolean)) k.rot[pick(1, 1, 1)] = angle();
+    flyKitSet(k, true);
+    const m = flyKitProbe();
+    if (!m) { best = best || k; break; }                      // (Shader noch nicht fertig: nimm den ersten)
+    // am schönsten: etwa 40 % des Bildes gefüllt, überall gegliedert, aber weder Staub noch dunkles Gestrüpp
+    const score = -Math.abs(m.cover - 0.4) - 1.5 * Math.max(m.edges - 0.25, 0) + Math.min(m.bumps, 0.6) + Math.min(m.light, 0.3);
+    if (score > bestScore) { bestScore = score; best = k; }
+    if (m.cover > 0.14 && m.cover < 0.68 && m.edges < 0.36 && m.bumps > 0.3 && m.light > 0.2) { best = k; break; }
+  }
+  for (const key in old) [P[key].target, P[key].current] = old[key];    // (Probe-Werte zurück: umgestellt wird erst im Dunkeln)
+  const kit = FLY_KINDS.findIndex(k => k.id === 'kit'), home = FLY_KINDS[kit].home;
+  flyGo({ kind: kit, pos: home.pos, look: home.look, apply() { flyKitSet(best, true); fly.kit = -2; updateFlyUi(); } });
+  audioClick(0.5, 0.6);
+  toast('Baukasten: neue Zufalls-Form');
+}
+
+// ----- Kamera-Plätze: Ort und Blickrichtung merken und später wieder anspringen -----
+// Gespeichert im Browser (localStorage) – die Plätze sind nach dem nächsten Öffnen der Seite noch da.
+// (loadStore/saveStore: kleine Hilfen, die auch dann nicht abstürzen, wenn der Browser das Speichern verbietet)
+function loadStore(key, fallback) {
+  try { const v = JSON.parse(localStorage.getItem(key)); return v === null || v === undefined ? fallback : v; } catch (err) { return fallback; }
+}
+function saveStore(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (err) { return false; }
+}
+fly.cams = loadStore('satisim.flyCams', []).slice(0, FLY.CAMS).map(c =>
+  (c && FLY_KINDS.some(k => k.id === c.kind) && Array.isArray(c.pos) && Array.isArray(c.quat) && [...c.pos, ...c.quat].every(Number.isFinite) ? c : null));
+while (fly.cams.length < FLY.CAMS) fly.cams.push(null);
+// Kamera merken: auf Platz i, oder (ohne Angabe) auf dem ersten freien Platz – sind alle belegt, reihum
+function flySaveCam(i) {
+  if (i === undefined) {
+    i = fly.cams.indexOf(null);
+    if (i < 0) i = fly.camNext = ((fly.camNext === undefined ? -1 : fly.camNext) + 1) % FLY.CAMS;
+  }
+  fly.cams[i] = { kind: FLY_KINDS[fly.kind].id, pos: fly.pos.slice(), quat: fly.quat.slice() };
+  const ok = saveStore('satisim.flyCams', fly.cams);
+  updateFlyUi();
+  audioTock(false);
+  toast(`Kamera gemerkt auf Platz ${i + 1}` + (ok ? '' : ' (nur bis zum Schließen der Seite)'));
+}
+// Gemerkte Kamera anspringen (wechselt bei Bedarf auch das Fraktal; dessen Form bleibt, wie sie zuletzt eingestellt war)
+function flyGoCam(i) {
+  const c = fly.cams[i];
+  if (!c) { toast(`Platz ${i + 1} ist leer – K merkt die Kamera`); return; }
+  flyGo({ kind: FLY_KINDS.findIndex(k => k.id === c.kind), pos: c.pos, quat: c.quat });
+  audioClear();
+  toast('Kamera ' + (i + 1));
 }
 function flyHome() {
   const home = FLY_KINDS[fly.kind].home;
-  flyJump(home.pos, home.look);
+  flyGo({ pos: home.pos, look: home.look });
   audioClear();
   toast('Zurück zum Start');
 }
+// Mausrad: Flug-Tempo (derselbe Wert wie der Regler im Panel)
+function flyWheel(e) {
+  const p = PARAMS.flySpeed;
+  p.target = clampNum(p.target * Math.exp(-e.deltaY * FLY.WHEEL), FLY.SPEED_MIN, FLY.SPEED_MAX);
+  toast('Flug-Tempo ' + Math.round(p.target * 100) + ' %');
+}
+// Horizont ausrichten: Die Kamera dreht sich um ihre Blickachse, bis "oben" wieder oben ist (nach wildem Rollen)
+function flyLevel() {
+  fly.leveling = true;
+  toast('Horizont ausgerichtet');
+}
 function flyKey(e) {
   if (e.code === 'KeyR') flyHome();
-  const digit = /^Digit([1-9])$/.exec(e.code);               // 1–6: Fraktal wählen
-  if (digit && Number(digit[1]) <= FLY_KINDS.length) setFlyKind(Number(digit[1]) - 1);
+  if (e.code === 'KeyG') flyLevel();
+  if (e.code === 'KeyK') flySaveCam();
+  if (e.code === 'KeyN' && FLY_KINDS[fly.go ? fly.go.kind : fly.kind].id === 'kit') flyKitRandom();
+  const digit = /^Digit([0-9])$/.exec(e.code);
+  if (!digit) return;
+  const n = Number(digit[1]);
+  if (n >= 1 && n <= FLY_KINDS.length) setFlyKind(n - 1);    // 1–6: Fraktal wählen
+  else if (n === 0 || n > 10 - FLY.CAMS) flyGoCam((n + 9) % 10 - (10 - FLY.CAMS));   // 7, 8, 9, 0: Kamera-Platz 1–4
 }
 
 // ----- einmal pro Bild: Eingaben, Flug -----
@@ -8831,13 +9041,13 @@ function updateFlight(dt, now) {
   const f = fly, K = f.keys, held = c => (K.has(c) ? 1 : 0);
   flyProbe(false);
 
-  // Wechsel des Fraktals: sobald der Shader des neuen fertig ist, beginnt der Sprung an dessen Start-Kamera
-  if (f.nextKind >= 0 && !f.jump) {
-    const k = FLY_KINDS[f.nextKind];
-    if (k.prog && k.prog.failed) f.nextKind = -1;
-    else if (flyProgram(f.nextKind)) { flyJump(k.home.pos, k.home.look, f.nextKind); f.nextKind = -1; audioClear(); }
+  // Wartet ein Sprung (flyGo)? Sobald der Shader des Ziel-Fraktals fertig ist, beginnt die Blende
+  if (f.go && !f.jump) {
+    const k = FLY_KINDS[f.go.kind];
+    if (k.prog && k.prog.failed) { f.go = null; updateFlyUi(); }
+    else if (flyProgram(f.go.kind)) { f.jump = Object.assign({ t: 0, done: false }, f.go); f.go = null; }
   }
-  // Sprung: in der Mitte der Blende wird die Kamera versetzt
+  // Sprung: in der Mitte der Blende (Bild ist dunkel) wird alles umgestellt und die Kamera versetzt
   if (f.jump) {
     f.jump.t += dt / FLY.BLINK;
     if (!f.jump.done && f.jump.t >= 0.5) {
@@ -8846,9 +9056,12 @@ function updateFlight(dt, now) {
         flyEnterKind(FLY_KINDS[f.kind], FLY_KINDS[f.jump.kind]);
         f.kind = f.jump.kind;
         f.probed = false;
-        updateFlyUi();
       }
-      flySetPose(f.jump.pos, f.jump.look);
+      if (f.jump.apply) f.jump.apply();
+      updateFlyUi();
+      if (f.jump.quat) { f.pos = f.jump.pos.slice(); f.quat = qNorm(f.jump.quat); f.vel = [0, 0, 0]; f.turn = [0, 0]; }
+      else flySetPose(f.jump.pos, f.jump.look);
+      f.roll = 0; f.leveling = false;
       flyProbe(true);
       f.scale = f.reach = clampNum(f.dist, flyFloor(), FLY.REACH_MAX);
     }
@@ -8866,31 +9079,49 @@ function updateFlight(dt, now) {
     f.turn[0] -= yaw; f.turn[1] -= pitch;
     f.quat = qNorm(qMul(qMul(f.quat, qAxis([0, 1, 0], -yaw)), qAxis([1, 0, 0], -pitch)));
   }
+  // Rollen (Tasten Y / X): Drehung um die Blickachse, läuft weich an und aus. Die Blickachse der Kamera ist ihre
+  // eigene z-Achse (sie schaut nach −z); eine Drehung mit negativem Winkel darum kippt die Kamera nach rechts.
+  const rollWant = (held('KeyX') - held('KeyZ')) * FLY.ROLL;
+  f.roll += (rollWant - f.roll) * (1 - Math.exp(-FLY.ROLL_EASE * dt));
+  if (rollWant) f.leveling = false;
+  else if (Math.abs(f.roll) < 0.002) f.roll = 0;             // Rest unsichtbar klein → Bild darf stillstehen
+  if (f.roll) f.quat = qNorm(qMul(f.quat, qAxis([0, 0, 1], -f.roll * dt)));
+  // Horizont ausrichten (Taste G): weich zu der Drehung, die in dieselbe Richtung schaut, aber "oben" oben hat
+  if (f.leveling) {
+    const upright = qLook(qRot(f.quat, [0, 0, -1]));
+    const same = Math.abs(f.quat[0] * upright[0] + f.quat[1] * upright[1] + f.quat[2] * upright[2] + f.quat[3] * upright[3]);
+    if (same > 0.9999995) { f.quat = upright; f.leveling = false; }
+    else f.quat = qMix(f.quat, upright, 1 - Math.exp(-FLY.LEVEL * dt));
+  }
 
   // Wunsch-Richtung aus den Tasten (rechts, hoch, vorwärts) bzw. vom Auto-Play
   const right = qRot(f.quat, [1, 0, 0]), up = qRot(f.quat, [0, 1, 0]), fwd = qRot(f.quat, [0, 0, -1]);
   const wx = held('KeyD') - held('KeyA'), wy = held('Space') - held('KeyC'), wz = held('KeyW') - held('KeyS');
-  const wl = Math.hypot(wx, wy, wz), flying = wl > 0;
+  const braking = held('KeyB') > 0;                           // Bremse: geht vor (Tempo-Wunsch null, schnelles Abbremsen)
+  const wl = Math.hypot(wx, wy, wz), flying = wl > 0 && !braking;
   let want = [0, 0, 0];
+  if (braking || held('KeyZ') || held('KeyX')) { autoplay.lastInput = now; lastPaint = now; }
   if (flying) {
     const speed = FLY.SPEED * PARAMS.flySpeed.current * (held('ShiftLeft') || held('ShiftRight') ? FLY.TURBO : 1) / wl;
     want = vAdd(vAdd(vMul(right, wx * speed), vMul(up, wy * speed)), vMul(fwd, wz * speed));
     // (gedrückt gehaltene Tasten melden sich nicht ständig neu – ohne das würde nach 30 s der Bildschirmschoner starten)
     autoplay.lastInput = now;
     lastPaint = now;
-  } else if (f.auto) {
+  } else if (f.auto && !braking) {
     // Auto-Play: zum Ziel auf der Rundflug-Bahn steuern und dabei zum Blickpunkt drehen
     want = vMul(vSub(f.auto.to, f.pos), 0.6 / Math.max(f.reach, 1e-6));
     const l = vLen(want), max = FLY.SPEED * 1.5;
     if (l > max) want = vMul(want, max / l);
     f.quat = qMix(f.quat, qLook(vSub(f.auto.look, f.pos)), 1 - Math.exp(-0.9 * dt));
   }
-  // Trägheit: Das Tempo läuft dem Wunsch weich hinterher; ohne Taste rollt die Kamera langsam aus
-  const ka = 1 - Math.exp(-(flying || f.auto ? FLY.ACCEL : FLY.GLIDE) * dt);
+  // Trägheit: Das Tempo läuft dem Wunsch weich hinterher; ohne Taste rollt die Kamera aus – wie lange, bestimmt der
+  // Regler "Trägheit" (0 % = steht fast sofort, 100 % = gleitet sehr lange). Die Bremse hält sie schnell, aber weich an.
+  const glide = FLY.GLIDE * Math.pow(FLY.GLIDE_LONG, PARAMS.flyInertia.current);
+  const ka = 1 - Math.exp(-(braking ? FLY.BRAKE : flying || f.auto ? FLY.ACCEL : glide) * dt);
   for (let i = 0; i < 3; i++) f.vel[i] += (want[i] - f.vel[i]) * ka;
   // (ausgerollt: ein Rest-Tempo, das man nicht mehr sieht, wird zu null – erst dann steht das Bild wirklich still
   // und kann verfeinert werden)
-  if (!flying && !f.auto && vLen(f.vel) < 0.004) f.vel = [0, 0, 0];
+  if (!flying && (!f.auto || braking) && vLen(f.vel) < 0.004) f.vel = [0, 0, 0];
 
   // Bewegen. Das Tempo ist "Abstände zur Oberfläche pro Sekunde": Nah an der Oberfläche wird die Kamera von selbst
   // langsam, weit weg schnell – man kann sich beliebig feinen Details nähern, ohne hindurchzurasen.
@@ -8946,7 +9177,7 @@ function updateFlight(dt, now) {
     const image = !f.acc ? '' : f.moving
       ? `${f.part[0]}×${f.part[1]}` + (f.dyn < 0.99 ? ` (${Math.round(f.dyn * 100)} %)` : '')
       : `${f.acc.w}×${f.acc.h} · Kantenglättung ${Math.min(f.ref.n, aa)}/${aa}`;
-    $('flyInfo').innerHTML = f.waiting || f.nextKind >= 0 ? 'Das Fraktal wird vorbereitet …'
+    $('flyInfo').innerHTML = f.waiting || f.go ? 'Das Fraktal wird vorbereitet …'
       : `Abstand zur Oberfläche ${num(Math.max(clear, 0))} · Tempo ${num(f.speedNow)} pro Sekunde<br>Fraktal-Bild ${image}`;
   }
 }
@@ -9003,8 +9234,8 @@ function drawFlight(target, dt) {
 }
 
 // ----- Panel -----
-// Knöpfe für die Fraktale und für die Startwerte des Baukastens entstehen aus den Listen
-const flyKindBox = $('flyKinds'), flyKitBox = $('flyKit');
+// Knöpfe für die Fraktale, die Startwerte des Baukastens und die Kamera-Plätze entstehen aus den Listen
+const flyKindBox = $('flyKinds'), flyKitBox = $('flyKit'), flyCamBox = $('flyCams');
 FLY_KINDS.forEach((k, i) => {
   const btn = document.createElement('button');
   btn.className = 'btn';
@@ -9019,17 +9250,30 @@ FLY_KIT.forEach((k, i) => {
   btn.addEventListener('click', () => { setFlyKit(i); btn.blur(); });
   flyKitBox.appendChild(btn);
 });
+// Kamera-Plätze: Klick auf einen belegten Platz springt hin, Klick auf einen leeren (oder Umschalt + Klick) merkt die Kamera dort
+for (let i = 0; i < FLY.CAMS; i++) {
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.innerHTML = `<span></span><kbd>${(i + 7) % 10}</kbd>`;
+  btn.addEventListener('click', e => { (e.shiftKey || !fly.cams[i] ? flySaveCam : flyGoCam)(i); btn.blur(); });
+  flyCamBox.appendChild(btn);
+}
 // Panel auf das gewählte Fraktal einstellen: Knöpfe markieren, nur seine Regler-Zeilen zeigen (data-kind="…")
 function updateFlyUi() {
-  const shown = fly.nextKind >= 0 ? fly.nextKind : fly.kind, id = FLY_KINDS[shown].id;
+  const shown = fly.go ? fly.go.kind : fly.kind, id = FLY_KINDS[shown].id;
   [...flyKindBox.children].forEach((b, i) => b.classList.toggle('active', i === shown));
   [...flyKitBox.children].forEach((b, i) => b.classList.toggle('active', i === fly.kit));
   for (const el of document.querySelectorAll('[data-kind]')) el.classList.toggle('off', !el.dataset.kind.split(' ').includes(id));
-  $('flyKitName').textContent = fly.kit < 0 ? 'Eigene Mischung' : FLY_KIT[fly.kit].name;
+  $('flyKitName').textContent = fly.kit === -2 ? 'Zufalls-Form' : fly.kit < 0 ? 'Eigene Mischung' : FLY_KIT[fly.kit].name;
+  [...flyCamBox.children].forEach((b, i) => {
+    const c = fly.cams[i], k = c && FLY_KINDS.find(kind => kind.id === c.kind);
+    b.firstChild.textContent = (i + 1) + ' · ' + (k ? k.label || k.name : 'leer');
+    b.classList.toggle('empty', !k);
+  });
 }
-const flyDeg = v => Math.round(v) + '°', flyNum = v => v.toFixed(2).replace('.', ',');
+const flyDeg = v => Math.round(v) + '°', flyNum = v => v.toFixed(2).replace('.', ','), flyPct = v => Math.round(v * 100) + ' %';
 // (wer einen Baukasten-Regler von Hand verstellt, hat eine eigene Mischung)
-const flyOwnMix = { onInput() { if (fly.kit >= 0) { fly.kit = -1; updateFlyUi(); } } };
+const flyOwnMix = { onInput() { if (fly.kit !== -1) { fly.kit = -1; updateFlyUi(); } } };
 bindSlider('flyPower', PARAMS.flyPower, flyNum);
 bindSlider('flyBoxScale', PARAMS.flyBoxScale, v => flyNum(Math.abs(v) >= 1.25 ? v : v < 0 ? -1.25 : 1.25));
 for (const k of ['A', 'B', 'C', 'D']) bindSlider('flyJulia' + k, PARAMS['flyJulia' + k], flyNum);
@@ -9039,15 +9283,28 @@ for (const k of ['X', 'Y', 'Z']) {
   bindSlider('flyKit' + k, PARAMS['flyKit' + k], flyNum, flyOwnMix);
   bindSlider('flyRot' + k, PARAMS['flyRot' + k], flyDeg, flyOwnMix);
 }
-bindSlider('flyKitSphere', PARAMS.flyKitSphere, v => v === 0 ? 'aus' : Math.round(v * 100) + ' %', flyOwnMix);
+bindSlider('flyKitSphere', PARAMS.flyKitSphere, v => v === 0 ? 'aus' : flyPct(v), flyOwnMix);
 bindSlider('flyIter', PARAMS.flyIter, v => String(Math.round(v)), flyOwnMix);
-bindSlider('flySpeed', PARAMS.flySpeed, v => Math.round(v * 100) + ' %');
+// Flug
+bindSlider('flySpeed', PARAMS.flySpeed, flyPct);
+bindSlider('flyInertia', PARAMS.flyInertia, v => v === 0 ? 'aus' : flyPct(v));
+bindSlider('flyLook', PARAMS.flyLook, flyPct);
+bindSlider('flyFov', PARAMS.flyFov, flyDeg);
+// Licht und Farbe (Glühen: der Wert 0,5 wird als 100 % angezeigt)
+bindSlider('flyGlow', PARAMS.flyGlow, v => v === 0 ? 'aus' : flyPct(v * 2));
+bindSlider('flyFog', PARAMS.flyFog, v => v === 0 ? 'aus' : flyPct(v));
+bindSlider('flyShadow', PARAMS.flyShadow, v => v === 0 ? 'aus' : flyPct(v));
+bindSlider('flyColor', PARAMS.flyColor, v => flyNum(v) + '×');
+bindSlider('flyHue', PARAMS.flyHue, flyPct);
 $('flyHome').addEventListener('click', e => { flyHome(); e.currentTarget.blur(); });
+$('flyLevel').addEventListener('click', e => { flyLevel(); e.currentTarget.blur(); });
+$('flyKitRandom').addEventListener('click', e => { flyKitRandom(); e.currentTarget.blur(); });
+$('flyCamSave').addEventListener('click', e => { flySaveCam(); e.currentTarget.blur(); });
 updateFlyUi();
 
 MODES.push({
   id: 'flight', name: '3D-Fraktal-Flug', label: '3D-Flug',
-  hint: 'Klick = Maus fangen und umsehen · <b>W A S D</b> = fliegen · <b>Tab</b> = Modus wechseln',
+  hint: 'Klick = Maus fangen und umsehen · <b>W A S D</b> = fliegen · Mausrad = Tempo · <b>Tab</b> = Modus wechseln',
   autoplayHint: 'Rundflug · Bewege die Maus, um selbst zu fliegen',
   autoplayKey: 'KeyP',                                       // A wird zum Fliegen gebraucht → Auto-Play startet hier mit P
   enter() {
@@ -9071,6 +9328,7 @@ MODES.push({
   pointerDown: flyPointerDown,
   pointerUp: flyPointerUp,
   pointerLeave() {},
+  wheel: flyWheel,
   key: flyKey,
   qualityInfo(q) {
     ensureFlyBuffers();
