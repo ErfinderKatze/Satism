@@ -15,7 +15,8 @@ Ein **Chill-Modus ohne Ziel** ist wichtiger als ein klassisches Spiel mit Punkte
 ## Technische Leitlinien
 - Web-Technik: HTML, JavaScript, WebGL2 – **kein Framework**, keine Build-Tools. Später Desktop-App (Tauri oder Electron).
 - Alles Rechenintensive auf die GPU (Shader).
-- Mehrere Modi in einer App: **Fluid**, **Mandelbrot** und **Partikel** (Abschnitte „Modi“ und „Partikel-Modus“ unten).
+- Mehrere Modi in einer App: **Fluid**, **Mandelbrot**, **Partikel** und **Flüssigkeit (Partikel)** (Abschnitte „Modi“,
+  „Partikel-Modus“ und „Flüssigkeits-Modus (Partikel)“ unten).
 - Jede Eingabe muss innerhalb eines Frames sichtbar werden. Bewegungen und Parameteränderungen immer weich
   interpolieren (Easing, Trägheit).
 - FPS-Zähler und einstellbare Qualitätsstufe (Auflösung, Partikelzahl) für schwächere Geräte.
@@ -38,7 +39,7 @@ Partikel-Klang, Auto-Play mit unsichtbaren Kräften.
 
 **Modusübergreifend:** ✅ Paletten-Presets (Neon, Sunset, Ozean, Lava …) mit sanftem Überblenden. ⬜ Presets/Szenarien
 speichern und teilen. ✅ Idle-Modus/Screensaver (Auto-Play). ⬜ Screenshot-, Wallpaper- und Video-Export. ⬜ Optional kleine
-Sammelziele („entdecke 10 Muster“). ✅ Moduswechsel Fluid/Mandelbrot/Partikel, ⬜ Desktop-App (Tauri oder Electron).
+Sammelziele („entdecke 10 Muster“). ✅ Moduswechsel Fluid/Mandelbrot/Partikel/Flüssigkeit, ⬜ Desktop-App (Tauri oder Electron).
 
 **Satisfying-Faktoren:** ✅ Audio-Feedback per Web Audio API (selbst synthetisiert, Pentatonik, Lautstärke/Tonhöhe abhängig
 von Geschwindigkeit, ✅ im Mandelbrot-Modus von der Zoomtiefe, ✅ im Partikel-Modus von Tempo und Dichte der Partikel). ✅ Lofi-Musik (generativ: Akkorde,
@@ -50,10 +51,16 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 
 ## Aktueller Stand
 - Alles in **einer Datei**: `index.html` (HTML, CSS, JavaScript, GLSL-Shader). Öffnen per Doppelklick im Browser.
-- **Drei Modi in einer App:** Fluid, Mandelbrot und Partikel. Umschalten mit `Tab` (Umschalt + `Tab` = zurück) oder im
-  Panel-Abschnitt „Modus“, mit weicher Überblendung (0,8 s). Panel, Paletten, Bloom, Flacker-Reduktion, Qualität, FPS,
-  Ton und Auto-Play gibt es nur einmal – sie gelten für beide Modi (Abschnitt „Modi“ unten). Ein Modus, der nicht zu
-  sehen ist, kostet nichts und behält seinen Zustand.
+- **Vier Modi in einer App:** Fluid, Mandelbrot, Partikel und Flüssigkeit (Partikel). Umschalten mit `Tab`
+  (Umschalt + `Tab` = zurück) oder im Panel-Abschnitt „Modus“, mit weicher Überblendung (0,8 s). Panel, Paletten,
+  Bloom, Flacker-Reduktion, Qualität, FPS, Ton und Auto-Play gibt es nur einmal – sie gelten für alle Modi (Abschnitt
+  „Modi“ unten). Ein Modus, der nicht zu sehen ist, kostet nichts und behält seinen Zustand.
+- **Flüssigkeits-Modus (Partikel)** (Abschnitt unten, **Schritte 1–3 von 6 fertig**): bis 44.000 einzelne Partikel im
+  Bild, die sich wie Wasser verhalten (fallen, schwappen, spritzen, Tropfen halten zusammen). Nachbarsuche über ein
+  feines Raster auf der GPU, Physik nach „Position Based Fluids“, Regler für Schwerkraft/Fallrichtung, Viskosität,
+  Zusammenhalt, Steifigkeit, Dichte. Dargestellt über die vorhandenen Looks (Start: „Wasser“) plus Look „Partikel“.
+  **Noch offen:** Schritt 4 Interaktion (Maus, Spritzer, Hahn, Leeren, Hindernisse), Schritt 5 Presets (Wasser, Öl,
+  Honig, Gel, Quecksilber), Schritt 6 Ton, Auto-Play, Flacker-Reduktion bei Spritzern, Panel-Feinschliff.
 - **Mandelbrot-Modus** (Abschnitt unten): Zoom per Scrollen/Klick, Ziehen mit Trägheit, Julia-Sets live per Maus
   (Taste `J`), wandernde Farben in der aktiven Palette, 7 „schöne Stellen“ mit Flug dorthin, Zoom-Fahrt als Auto-Play,
   Töne passend zur Zoomtiefe, scharf bis 10³⁰-fachem Zoom.
@@ -66,7 +73,7 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - Farbe wird als „Dichte + Position auf der Palette“ gespeichert (R = Dichte, G/B = Dichte·cos/sin des Palettenwinkels);
   erst beim Anzeigen wird eingefärbt – durch den aktiven **Look** (siehe unten). Dadurch blendet ein Palettenwechsel
   das ganze Bild sanft um.
-- Looks (Farbdarstellungen), 12 Stück: **Palette** (1), **Regenbogen** (2), **Geschwindigkeit** (3), **Wirbel** (4),
+- Looks (Farbdarstellungen), 12 Stück (dazu **Partikel**, nur im Flüssigkeits-Modus): **Palette** (1), **Regenbogen** (2), **Geschwindigkeit** (3), **Wirbel** (4),
   **Feuer / Glut** (5), **Metallic** (6), **Glas / Kristall** (7), **Wasser** (8), **Seifenblase / Ölfilm** (9),
   **Tinte & Aquarell** (0), **Marmorpapier (Ebru)**, **Galaxie / Nebel / Aurora** – wählbar im Panel-Abschnitt „Look“,
   mit den Zifferntasten `1`–`9` und `0` (die ersten zehn) oder durch Weiterschalten mit `←`/`→` (auch `,`/`.` und `[`/`]`),
@@ -113,7 +120,9 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   `R` = Anziehen ↔ Abstoßen, Leertaste = neu verteilen, `1`–`5` = Kraft an der Maus setzen (Schwarzes Loch, Magnet +,
   Magnet −, Wind, Orbit), gesetzte Kraft ziehen = verschieben, Rechtsklick oder `Entf` = löschen, `X` = alle löschen,
   Mausrad über einer Kraft = Reichweite, `S` = Schwarm an/aus, `C` = Farbe wechseln (Wolken → Tempo → Alter).
-- Noch nicht umgesetzt: Presets speichern/teilen, Export, Desktop-App.
+- Bedienung Flüssigkeit (Partikel), Stand Schritt 3: Leertaste = neu einfüllen, `1`–`9`/`0` = Look wählen, `←`/`→` =
+  Look weiterschalten. (Maus-Interaktion kommt in Schritt 4.)
+- Noch nicht umgesetzt: Presets speichern/teilen, Export, Desktop-App; Flüssigkeits-Modus Schritte 4–6.
 - Testen: Die Seite läuft per Doppelklick. Zum automatischen Prüfen (FPS, GPU-Zeit per `EXT_disjoint_timer_query_webgl2`,
   alle Stufen × alle Looks) wurde sie über einen kleinen lokalen Server geladen (`python -m http.server`). Innerhalb
   eines Seitenaufrufs ist die Simulation bei gleichem Ablauf bitgenau wiederholbar (Prüfsumme der Farb-Textur) – gut für
@@ -152,8 +161,21 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 
 ## Look-System (Farbdarstellungen)
 - Looks verändern **nur die Darstellung, nie die Simulation**. Jeder Look ist ein Eintrag in der Liste `LOOKS`
-  (`index.html`): `{ name, usesPalette?, params?, smoothCurl?, surface?, surfaceBlur?, foam?, bloom?, glsl }`. `glsl` enthält genau eine Funktion
+  (`index.html`): `{ name, usesPalette?, params?, smoothCurl?, surface?, surfaceBlur?, foam?, bloom?, only?, sprites?, glsl }`. `glsl` enthält genau eine Funktion
   `vec3 look(LookInput L)` (darf eigene Hilfsfunktionen davor definieren).
+- **Looks für mehrere Modi (Fluid und Flüssigkeit):** Jeder Modus, der die Looks benutzt, hat einen eigenen
+  „Look-Stand“ (`makeLooks(index, source)` → `fluidLooks`, `liquidLooks`; im Modus-Objekt als `looks`): gewählter Look,
+  laufende Überblendung, eigener Schaum-Puffer und die Datenquelle `source` (`id`, `dye`, `velocity`, `curl`,
+  `simScale`, optional `sprites` + `updateSprites()`). Die bisherigen Variablen `lookIndex`, `prevLook`, `lookFade`,
+  `foamBuf` … gelten immer für den Stand, der gerade „eingelegt“ ist (`useLooks(L)`; der vorige wird dabei
+  zurückgeschrieben). `drawLook`, `updateSurface`, `updateFoam`, `updateCurlSmooth` lesen nur noch über
+  `looks.source`. `drawLooks(L, target, dt, time)` zeichnet das Bild eines Stands, `lookBloomShare(L)` seinen
+  Bloom-Anteil, `setLook`/`cycleLook`/`lookKeys` gelten für den Stand des aktiven Modus, `showLooks()` stellt das Panel
+  beim Moduswechsel darauf ein. Jeder Modus merkt sich so seinen eigenen Look. Geprüft: Fluid-Bilder von 10 Looks
+  bitgenau wie vor dem Umbau (Metallic/Glas/Ölfilm dafür mit `envAngle = filmPhase = 0`, sie hängen sonst von der Zeit ab).
+- `only: 'liquid'` → den Look gibt es nur in diesem Modus (Knopf dort sichtbar, Weiterschalten überspringt ihn sonst).
+  `sprites: true` → der Look liest `uSprites` (Bild der einzelnen Partikel), das die Quelle mit `updateSprites()`
+  zeichnet, solange der Look zu sehen ist. Beides nutzt bisher nur der Look **Partikel**.
 - `LookInput`: `L.uv` (Bildposition 0..1), `L.density` (Farbmenge), `L.t` (Palettenposition 0..1), `L.dye` (Rohdaten).
   Gemeinsame Hilfen im `lookHeader`: `palette(t)`, `hsv2rgb(hsv)`, `brightness(density)`, `dyeColor(L)` (eingemalte
   Farbe wie im Look „Palette“), `uTime` (eigene Uhr `lookTime`, läuft bei „Flackern reduzieren“ langsamer),
@@ -434,8 +456,12 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   `id`, `name`, `hint`, `autoplayHint`, `enter()`, `leave()`, `update(dt, now)` (Eingaben verarbeiten, rechnen),
   `draw(target, dt, time)` (Bild zeichnen; `target` = Szenen-Textur oder `null` = Bildschirm), `bloomShare()` (0..1),
   `autoplayStart()`, `autoplayStop()`, `autoplay(dt)`, `pointerMove/Down/Up(e)`, `pointerLeave()`, `key(e, bracket)`,
-  `qualityInfo(q)`; optional `wheel(e)` und `idle()` (true = es wird gerade nichts Teures gerechnet → die
-  Auto-Qualität schaltet dann nicht hoch).
+  `qualityInfo(q)`; optional `wheel(e)`, `idle()` (true = es wird gerade nichts Teures gerechnet → die
+  Auto-Qualität schaltet dann nicht hoch), `label` (kurzer Name für den Modus-Knopf) und `looks` (Look-Stand, falls
+  der Modus die Looks benutzt – siehe „Look-System“).
+- Panel-Teile dürfen zu mehreren Modi gehören: `data-mode="fluid liquid"` (der Abschnitt „Look“ und seine
+  Tastenhinweise). Die Regel dafür entsteht aus allen vorkommenden `data-mode`-Werten (`display: none !important`,
+  sonst gewinnt bei den Look-Knöpfen die Regel `#looks button`).
 - **Geteilt, ohne Code-Kopien:** Hauptschleife `frame()`, `render()` (Helligkeits-Bremse, Bloom), `easeParams`
   (alle Regler in `PARAMS`), Paletten (GLSL-Baustein `paletteGLSL` mit `palette(t)`, von Looks und Mandelbrot
   eingebunden), Qualität/Auto-Qualität, FPS, Ton (`audio…`-Funktionen), Auto-Play-Rahmen (`updateAutoplay` → ruft
@@ -745,3 +771,149 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Prüfsumme streut zwischen drei Werten; verglichen wird, ob alte und neue Fassung dieselben Werte liefern.
 - Bedienung zusätzlich mit echten Maus-/Tasten-Eingaben im Browser geprüft (Tab, R, Leertaste, 1–5, Ziehen, Mausrad,
   Rechtsklick, Klick, `S`, `C`, Knöpfe „Tempo“/„Alter“ im Panel). Verkleinerte Bildschirmfotos zeigen Partikel nur als Nebel → `__crop` benutzen.
+## Flüssigkeits-Modus (Partikel) – Schritte 1–3 von 6 fertig
+- **Ausbauplan:** 1 Technik wählen und beweisen ✅ · 2 Physik-Grundsystem ✅ · 3 Darstellung über das Look-System ✅ ·
+  4 Interaktion (Maus schiebt/zieht, Klick = Spritzer/Tropfen, Hahn, Leeren, Eimer kippen, Hindernisse) ⬜ ·
+  5 Presets (Wasser, Öl, Honig, Gel, Quecksilber) ⬜ · 6 Ton, Auto-Play, Flacker-Reduktion, Panel-Feinschliff ⬜.
+  Commits: `70b49c0` (1), `d2dd832` (2), `1eca9d5` (3).
+- Code: Abschnitt `// ---------- Flüssigkeits-Modus (Partikel) ----------` in `index.html` (vor
+  `// ----- Moduswechsel -----`), Konstanten in `LIQUID`, Zustand in `liq`, Modus-Objekt `id: 'liquid'`. Die Shader
+  werden erst beim ersten Wechsel in den Modus übersetzt (`liqCompile`, ≈ 0,3 s).
+
+### Technik
+- **Nachbarsuche:** WebGL2 hat keine Compute-Shader. Lösung: ein feines Raster (`liq.grid`, RGBA32F), Feldgröße =
+  Reichweite / 3 (kleiner als ein Partikel). Jedes Partikel wird als 1 Punkt in sein Feld gezeichnet und schreibt seine
+  Daten hinein (`liqGrid`: Ort + Tempo bzw. Ort + Druck + Dichte) → höchstens ein Partikel pro Feld. Nachbarn = die
+  7 × 7 Felder drumherum (49 Abfragen, keine Nachbar-Listen). Landen zwei Partikel im selben Feld, ist eines für die
+  anderen unsichtbar (es selbst sieht alle). Gegenmittel: die Zeichen-Reihenfolge wechselt je Teilschritt (`uFlip`), und
+  wer sein Feld teilt, rückt vom anderen ab (`RESCUE`). Gemessen: im normalen Betrieb 0–0,5 % unsichtbar.
+  Geprüft gegen eine „jeder gegen jeden“-Rechnung im JavaScript: Dichte stimmt exakt (Abweichung 0).
+- **Physik: Position Based Fluids (PBF)**, je Teilschritt 2 Raster-Füllungen + 2 Durchgänge über alle Partikel:
+  1. `liqLambda`: Vorhersage (Schwerkraft, Tempo, Bremsung), Dichte messen (Gewicht `(1−q²)³`), daraus „Druck“
+     `λ = −Überdichte · Steifigkeit · ρ0² / Σ|Gradient|²` (nur Überdichte zählt – locker gepackt ist erlaubt), nebenbei
+     Tempo-Ausgleich mit den Nachbarn (Viskosität, XSPH). Ergebnis in `liq.pred` (xy = Tempo-Ausgleich, z = Druck,
+     w = Dichte/Soll-Dichte).
+  2. `liqPush`: wegschieben `Δp = −(h/ρ0) Σ (λi + λj − Nahbereichs-Zuschlag) · Gradient`, Zusammenhalt, neuer Ort,
+     Tempo = (neuer − alter Ort) / Zeit + Tempo-Ausgleich, Abprallen am Rand.
+- **Wände:** Nahe am Bildrand zählen die Spiegelbilder der Nachbarn (und das eigene) mit → Dichte stimmt auch am Rand,
+  die Wand drückt weich zurück. Schnelle Partikel prallen mit 20 % ab (`BOUNCE`), langsame bleiben liegen.
+- **Feste Teilschritte:** Schrittdauer `liq.H = Partikelabstand / STEP_RATE` (4,5) – hängt nur von der Partikelgröße
+  ab, nicht von der Bildrate. Ein Bild rechnet so viele ganze Schritte, wie in seine Zeit passen (`liq.acc` hebt den
+  Rest auf; gezeichnet wird um diesen Rest vorausgerechnet, `uAhead`). Höchstens 64 Schritte pro Bild.
+  **Warum so viele Schritte:** Druck breitet sich pro Schritt nur etwa einen Partikelabstand weit aus
+  („Schallgeschwindigkeit“ ≈ 0,9 · Abstand · Schritte/s). Mit 4,5/Abstand trägt sich ein volles Becken selbst: unten nur
+  5 % dichter als oben – auf jeder Stufe gleich (gemessen 1,051–1,052). Mehr Partikel = kleinere Partikel = mehr
+  Schritte: Kosten wachsen mit Partikelzahl^1,5.
+- **Normierung:** Alle Partikel zusammen füllen immer `FILL_MAX` (50 %) des Bildes (`d = √(0,5 · Seitenverhältnis /
+  Anzahl / Dichte-Regler)`), gerechnet wird in Bildhöhen und Sekunden. Viskosität, Zusammenhalt und Schrittdauer werden
+  auf die Partikelgröße umgerechnet. Geprüft (Dammbruch auf Niedrig/Hoch/Maximum): Schwerpunkt und mittleres Tempo
+  nach 1 s, 2,5 s, 5 s, 10 s praktisch gleich (z. B. Schwerpunkt 0,468/0,468/0,468, Tempo 0,74/0,73/0,72).
+- **Vorrat:** Die Zustands-Textur bietet Platz für `lside²` Partikel; im Bild sind die ersten `liq.count` (beim
+  Einfüllen 60 %). Gerechnet werden nur die Zeilen mit Partikeln (`liqPass`). Der Rest ist für den Hahn in Schritt 4.
+- **Regler** (Panel-Abschnitt „Flüssigkeit (Partikel)“): **Schwerkraft** 0–200 % (100 % = 4 Bildhöhen/s²),
+  **Fallrichtung** (wie im Fluid-Modus), **Viskosität** (Tempo-Ausgleich bis 0,004 Bildhöhen²/s + Bremsung bis 5/s –
+  die Bremsung entspricht Reibung an einer dünnen Glasscheibe und macht „Honig“ erst möglich), **Zusammenhalt**
+  (Oberflächenspannung), **Steifigkeit** (Anteil des Dichte-Fehlers pro Schritt: 0,2 … 0,45), **Dichte** 70–140 %
+  (ändert die Partikelgröße: dichter = die Flüssigkeit nimmt weniger Platz ein).
+- **Zusammenhalt = „Haut“:** Nur Partikel an der Oberfläche (Dichte unter dem Soll) ziehen einander an, beidseitig
+  gleich stark (Produkt der beiden Oberflächen-Anteile). Stärke ∝ 1/Reichweite², damit gleich große Tropfen auf jeder
+  Stufe gleich gut halten. Geprüft: ein Rechteck aus Flüssigkeit zieht sich in Schwerelosigkeit in 2 s zu einem Kreis
+  genau der richtigen Größe zusammen (Rundheit 0,93–0,99 auf Niedrig/Hoch/Maximum); ohne Zusammenhalt verfliegt es.
+- **Stufenwechsel** übernimmt die Flüssigkeit (`liqResize`: mehr Partikel = Kopien mit kleinem Versatz, weniger =
+  Auswahl). Fenstergröße: Orte sind als 0..1 gespeichert, die Flüssigkeit wird mitgestreckt; Partikelgröße,
+  Schrittdauer und Raster passen sich an.
+
+### Darstellung (Schritt 3)
+- `liqUpdateFields()` macht aus den Partikeln die Bilder, die die Looks lesen: Jedes Partikel wird als weicher Fleck
+  (Radius 2 Partikelabstände, `(1−r²)²`) additiv gezeichnet → **Dichte-Feld** im Format der Farb-Textur (Rot = Menge,
+  Grün/Blau = Menge · cos/sin der Palettenposition), am Bildrand ausgeglichen (`liqField`: dort fehlt sonst die Hälfte
+  der Nachbarn). Dazu die **mittlere Strömung** (halbe Auflösung, in den Einheiten des Fluid-Modus: Bezugs-Rasterfelder
+  pro Sekunde) und deren Drehung (derselbe `curl`-Shader). Damit laufen alle 12 Looks, Oberflächen-Baustein, Schaum und
+  Bloom unverändert. Auflösung = Bildschirm × `pscale` der Stufe.
+- **Farbmenge:** im Inneren `BODY` (0,7). **Druck wird sichtbar:** pro 1 % Verdichtung 6 % mehr Menge (`PRESSURE`) –
+  die Flüssigkeit wird nach unten „tiefer“ (Wasser dunkler, Regenbogen/Marmor in Schichten, Aufprall leuchtet auf).
+  Ohne das wäre sie für die Looks eine völlig gleichmäßige Fläche.
+- **Palettenposition je Partikel:** aus seiner Nummer (`TINT_SPAN` 0,6 der Palette, beim Einfüllen von unten nach oben)
+  plus wandernde Verschiebung – die Farbschichten vermischen sich beim Schwappen.
+- **Look „Partikel“** (`only: 'liquid'`, `sprites: true`): `liqDrawSprites` zeichnet jedes Partikel als kleine Kugel;
+  Look-Regler **Farbe nach** (Tempo/Dichte) und **Partikelgröße**.
+- Jeder Modus merkt sich seinen Look (Flüssigkeit startet mit „Wasser“).
+
+### Messwerte (1920×1080, Dammbruch in Bewegung; GPU-Zeit für 1/60 s; „Bild“ = ganzes Bild mit Look „Wasser“ und Bloom)
+| Stufe | Platz | im Bild | Schritte/s | Such-Raster | Rechnen | Felder | Bild |
+|---|---|---|---|---|---|---|---|
+| Niedrig | 6.400 | 3.840 | 382 | 210×118 | 0,5 ms | 0,2 ms | 1,3–1,8 ms |
+| Mittel | 16.384 | 9.830 | 611 | 336×189 | 1,3 ms | 0,3 ms | 2,4 ms |
+| Hoch | 25.600 | 15.360 | 764 | 420×236 | 2,5 ms | 0,6 ms | 4,1 ms |
+| Ultra | 43.264 | 25.958 | 993 | 547×307 | 4,5 ms | 0,6 ms | 6,5 ms |
+| Extrem | 65.536 | 39.322 | 1.222 | 673×378 | 8,1 ms | 0,7 ms | 10,2 ms |
+| Maximum | 73.984 | 44.390 | 1.298 | 715×402 | 10,6 ms | 0,85 ms | 12,4 ms |
+- Darstellung allein: Oberflächen-Baustein 0,04–0,14 ms, Schaum 0,03–0,22 ms, Look „Wasser“ ≈ 0,26 ms, Partikel-Bild
+  0,02–0,11 ms. Die Physik ist der teure Teil.
+- **Wie viele Partikel bei 60 FPS:** etwa 45.000–50.000 im Bild (Prototyp: 50.176 → 11,6 ms; 65.536 → 18,6 ms = zu viel;
+  102.400 → 43,5 ms). 13 Looks × 6 Stufen: alle 60 FPS, GL-Fehler 0 (mit 49.766 Partikeln fielen Marmorpapier/Galaxie
+  auf 51–54 FPS → Stufe Maximum deshalb 272² statt 288²). FPS nur in der 60-Hz-Vorschau gemessen.
+- Extremfälle (alle ohne ungültige Werte, nichts verlässt das Bild): alle Partikel in einer Ecke (25-fache Dichte) und
+  alle exakt auf einem Punkt → entfaltet sich in ≈ 2 s zu einem normalen Becken; 5 s Zeitschritt auf einmal (64
+  Schritte, 14 ms); Fenster hoch/sehr breit/sehr schmal/klein; Stufenwechsel mitten im Schwappen; 40 s Dauerlauf mit
+  springenden Reglern; alle Regler-Anschläge einzeln und in den schlimmsten Kombinationen.
+- Ruhe: Becken nach dem Einschwingen mittleres Tempo 0,003–0,007 Bildhöhen/s (nicht sichtbar).
+- Fluid unverändert: Prüfsummen wie vorher, Bilder von 10 Looks bitgenau gleich; 33 Moduswechsel ohne GL-Fehler.
+
+### Grenzen
+- **Partikelzahl:** Die Kosten wachsen mit Partikelzahl^1,5 (mehr Partikel brauchen kürzere Schritte). Mehr als
+  ≈ 50.000 im Bild gehen bei 60 FPS nicht; bei 144 Hz dürfte die Auto-Qualität auf „Extrem“ oder „Ultra“ gehen.
+- **Leicht zusammendrückbar:** unten im Becken 5 % dichter (bei Schwerkraft 200 % oder Steifigkeit 0 % bis 23–34 %).
+  Harte Aufschläge federn kurz nach. Ein Verfahren mit echtem Druck-Löser auf einem groben Raster (wie FLIP) könnte das
+  beheben und mehr Partikel erlauben – größerer Umbau, bisher nicht gemacht.
+- **Sehr schmale Fenster** kosten mehr (kleinere Partikel → bis 1.900 Schritte/s gemessen bei 2:7).
+- **Viskosität:** echter Honig ist nicht erreichbar (der Tempo-Ausgleich reicht nur einen Nachbarn weit pro Schritt);
+  die zusätzliche Bremsung lässt die Flüssigkeit aber zäh kriechen.
+- **Ohne Zusammenhalt** (0 %) verfliegt die Flüssigkeit in Schwerelosigkeit wie Gas.
+- **Farben mischen sich nicht zurück:** Jedes Partikel behält seine Palettenposition; nach langem Rühren wird aus den
+  Schichten ein feines Gesprenkel.
+- Looks, die die Farbmenge als Höhe lesen, zeigen im Inneren nur den Druck-Verlauf – die Strömung im Inneren ist dort
+  kaum zu sehen (anders als im Fluid-Modus mit seinen Schlieren).
+- Noch keine Interaktion (Schritt 4), kein eigener Ton, kein Auto-Play-Inhalt (Schritt 6) – im Auto-Play läuft der
+  Modus einfach weiter.
+
+### Stabilität – worauf achten
+- **`MAX_FIX` nicht entfernen:** Bei 400–1.300 Schritten pro Sekunde macht jeder kleine Schubs ein großes Tempo
+  (Tempo = Weg / Schrittdauer). Ohne die Grenze fürs Korrektur-Tempo (0,05 Bildhöhen/s je Schritt, zusätzlich zum
+  eigenen Tempo) heizt sich die Flüssigkeit beim Aufprall auf und „kocht“ dauerhaft wie Gas.
+- **Steifigkeit höchstens ≈ 0,45:** Die Korrekturen benachbarter Partikel überlagern sich (Jacobi-Verfahren); ab
+  ≈ 0,6 zittert alles, in stark zusammengedrückter Flüssigkeit (> 15 %) schon ab 0,45–0,5.
+- **Zu wenige Schritte = das Becken sackt zusammen und zittert am Boden** (bei 8 statt 13 Schritten pro Bild: unten
+  20 % dichter und dort Zittern). Deshalb `STEP_RATE` nicht senken, ohne nachzumessen.
+- **Zusammenfallen verhindern:** Im Raster ist nur ein Partikel pro Feld sichtbar – stark zusammengepresste
+  Flüssigkeit „merkt“ ihre Dichte nicht mehr und fällt weiter zusammen. Dagegen: `RESCUE` (Abrücken im selben Feld),
+  wechselnde Zeichen-Reihenfolge, Zusammenhalt nur an der Oberfläche. Ab Dichte 1,5 (`CRUSH`) wird nur noch
+  weggerückt, ohne Tempo zu gewinnen – ein Klumpen entfaltet sich, statt zu explodieren.
+- **Paar-Kräfte immer beidseitig gleich** (sonst bleibt der Impuls nicht erhalten → die Oberfläche wird unruhig).
+- Mindestabstand zum Rand je Partikel leicht verschieden (`JITTER`), sonst lägen in einer Ecke alle exakt aufeinander
+  und sähen einander als „ich selbst“ (Abstand < 10⁻⁶ gilt als ich selbst).
+- `near`, `far`, `half` nicht als Namen in Shadern benutzen.
+
+### Ausprobiert und verworfen
+- **Wenige Schritte mit vielen Durchgängen / weiche Nachgiebigkeit:** Becken unten 20–40 % dichter oder Zittern → viele
+  kurze Schritte mit je einem Durchgang.
+- **Druck von Schritt zu Schritt aufheben („Warmstart“):** rechnerisch instabil ab einem Anteil von 0,5 → nicht gebaut.
+- **Zusammenhalt als Anziehung zwischen allen Nachbarn:** im Inneren entsteht ein starres Gitter – die Flüssigkeit wird
+  zäh wie Gel, umso mehr, je kleiner die Partikel (Dammbruch auf „Maximum“ nach 2,5 s fast stehend). **Nur für
+  Oberflächen-Partikel, aber einseitig:** Oberfläche wird unruhig und bucklig → beidseitig gleiche „Haut“.
+- **Schlieren (schwankende Farbmenge je Partikel):** werden beim Schwappen zu feinen Fäden und dann zu Körnung →
+  Metallic/Wasser/Glas voller kleiner Runzeln und Glanzpunkte → stattdessen den Druck sichtbar machen.
+- **Farbmenge 1,2 im Inneren:** Feuer weiß überstrahlt, Metallic eine weiße Fläche, sobald eine Lichtfläche der
+  Umgebung vorbeidreht → 0,7.
+
+### Testen
+- Hilfen in `.claude/` (nicht im Repo): `l-tools.js` (lädt `__t`/`__p` mit; `__l.stats()` = ungültige Werte, Tempo,
+  Schwerpunkt, Dichte-Verteilung; `__l.hidden()` = Anteil unsichtbarer Partikel; `__l.verify()` = Dichte gegen
+  JavaScript-Vergleichsrechnung; `__l.run(n)`, `__l.set({…})`, `__l.reset()`, `__block(x, y, breite, packung, anzahl)`,
+  `__pool()`, `__bins()` = Tempo/Dichte in 8 Höhen-Schichten, `__scan({…})`, `__trace([…])`), `run-l3.js` (13 Looks ×
+  6 Stufen, Kosten, Moduswechsel; Ergebnis in `window.__res`), `ab2.js` (Fluid-Bilder alt/neu), alte Fassungen
+  `pre-liq.html`, `pre-l3.html`.
+- Der Abschnitt des Modus liegt zum Bearbeiten als `.claude/liquid.js` vor (Panel: `liquid-panel.html`);
+  `python .claude/splice.py` setzt beides in `index.html` ein. **Immer dort ändern, nicht direkt in `index.html`** –
+  sonst überschreibt der nächste Lauf die Änderung.
+- Dammbruch = `liq.fresh = true` (neu einfüllen). In Bewegung messen, nicht im Ruhezustand.
