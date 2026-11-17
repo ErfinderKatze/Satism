@@ -2,7 +2,7 @@
 
 ## Ziel des Projekts
 Ein interaktives Simulations-Spiel (später Desktop-App), in dem man mit Werten, Szenarien, Farben und
-Geschwindigkeiten spielen kann. Drei Modi: **Fluid**, **Partikel**, **Mandelbrot** – am Ende in einer App per Moduswechsel.
+Geschwindigkeiten spielen kann. Fünf Modi in einer App per Moduswechsel: **Fluid**, **Mandelbrot**, **Partikel**, **Flüssigkeit (Partikel)**, **3D-Fraktal-Flug**.
 Es soll sich „satisfying“ anfühlen: hohe Auflösung, flüssig (60+ FPS), kräftige Farben, knackige Sounds, Lofi-Musik.
 Ein **Chill-Modus ohne Ziel** ist wichtiger als ein klassisches Spiel mit Punkten.
 
@@ -15,8 +15,9 @@ Ein **Chill-Modus ohne Ziel** ist wichtiger als ein klassisches Spiel mit Punkte
 ## Technische Leitlinien
 - Web-Technik: HTML, JavaScript, WebGL2 – **kein Framework**, keine Build-Tools. Später Desktop-App (Tauri oder Electron).
 - Alles Rechenintensive auf die GPU (Shader).
-- Mehrere Modi in einer App: **Fluid**, **Mandelbrot**, **Partikel** und **Flüssigkeit (Partikel)** (Abschnitte „Modi“,
-  „Partikel-Modus“ und „Flüssigkeits-Modus (Partikel)“ unten). Alle vier sind fertig ausgebaut.
+- Mehrere Modi in einer App: **Fluid**, **Mandelbrot**, **Partikel**, **Flüssigkeit (Partikel)** und
+  **3D-Fraktal-Flug** (Abschnitte „Modi“, „Partikel-Modus“, „Flüssigkeits-Modus (Partikel)“ und „3D-Fraktal-Flug“ unten).
+  Alle fünf sind fertig ausgebaut.
 - Jede Eingabe muss innerhalb eines Frames sichtbar werden. Bewegungen und Parameteränderungen immer weich
   interpolieren (Easing, Trägheit).
 - FPS-Zähler und einstellbare Qualitätsstufe (Auflösung, Partikelzahl) für schwächere Geräte.
@@ -37,6 +38,10 @@ Partikel-Klang, Auto-Play mit unsichtbaren Kräften.
 ✅ Eimer kippen, ✅ Hindernisse, ✅ Presets (Wasser, Öl, Honig, Gel, Quecksilber), ✅ eigener Klang, ✅ Auto-Play.
 ⬜ zwei Flüssigkeiten gleichzeitig, ✅ Szenarien speichern (Regler, Look, Hahn – ohne Hindernisse).
 
+**3D-Fraktal-Flug:** ✅ selbst durch Mandelbulb, Mandelbox, Menger-Schwamm, Sierpinski-Pyramide, 3D-Julia fliegen,
+✅ Faltungs-Baukasten für eigene Körper (mit Zufalls-Knopf), ✅ Kamera merken, ✅ Kameraflug als Bildschirmschoner,
+✅ eigener Klang. ⬜ Zwei-Finger-/Gamepad-Bedienung, ⬜ wandernde Farben, ⬜ Sonnenstand als Regler.
+
 **Mandelbrot:** ✅ Zoom per Scrollen/Ziehen mit Trägheit, ✅ Julia-Sets live mit Mausposition, ✅ animierte Farbpaletten,
 ✅ automatische Zoom-Fahrt zu schönen Stellen, ✅ tiefer Zoom bis 10³⁰-fach (Bezugsbahn statt Float32-Grenze).
 ⬜ Zwei-Finger-Zoom auf Touch-Geräten, ⬜ weitere Farbgebungen, ⬜ tiefe Mini-Mandelbrote als Ziel der Zoom-Fahrt.
@@ -44,7 +49,7 @@ Partikel-Klang, Auto-Play mit unsichtbaren Kräften.
 **Modusübergreifend:** ✅ Paletten-Presets (Neon, Sunset, Ozean, Lava …) mit sanftem Überblenden. ✅ Presets/Szenarien
 speichern und als Textcode teilen. ✅ Idle-Modus/Screensaver (Auto-Play). ✅ Screenshot- und Hintergrundbild-Export
 (bis 4K), ⬜ Video-Export. ⬜ Optional kleine
-Sammelziele („entdecke 10 Muster“). ✅ Moduswechsel Fluid/Mandelbrot/Partikel/Flüssigkeit, ⬜ Desktop-App (Tauri oder Electron).
+Sammelziele („entdecke 10 Muster“). ✅ Moduswechsel Fluid/Mandelbrot/Partikel/Flüssigkeit/3D-Flug, ⬜ Desktop-App (Tauri oder Electron).
 
 **Satisfying-Faktoren:** ✅ Audio-Feedback per Web Audio API (selbst synthetisiert, Pentatonik, Lautstärke/Tonhöhe abhängig
 von Geschwindigkeit, ✅ im Mandelbrot-Modus von der Zoomtiefe, ✅ im Partikel-Modus von Tempo und Dichte der Partikel). ✅ Lofi-Musik (generativ: Akkorde,
@@ -56,10 +61,12 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 
 ## Aktueller Stand
 - Alles in **einer Datei**: `index.html` (HTML, CSS, JavaScript, GLSL-Shader). Öffnen per Doppelklick im Browser.
-- **In Arbeit: fünfter Modus „3D-Fraktal-Flug“** (Abschnitt ganz unten; dort steht, welcher Schritt fertig ist und
-  welcher als nächster kommt – Schritte 1–5 von 6 sind fertig). Man fliegt selbst durch 3D-Fraktale (Mandelbulb,
-  Mandelbox, Menger-Schwamm, Sierpinski-Pyramide, 3D-Julia, Faltungs-Baukasten), gerechnet per Raymarching.
-- **Vier Modi in einer App:** Fluid, Mandelbrot, Partikel und Flüssigkeit (Partikel). Umschalten mit `Tab`
+- **3D-Fraktal-Flug** (Abschnitt ganz unten, **alle 6 Schritte fertig**): Man fliegt selbst durch 3D-Fraktale
+  (Mandelbulb, Mandelbox, Menger-Schwamm, Sierpinski-Pyramide, 3D-Julia, Faltungs-Baukasten mit Zufalls-Knopf),
+  gerechnet per Raymarching. Beim Fliegen regelt sich die Auflösung nach der Rechenzeit (60 FPS), im Stillstand wird
+  das Bild scharf nachgerechnet und geglättet. Regler für Form, Flug, Licht und Farbe, vier Kamera-Plätze, eigener
+  Klang, Kameraflug als Auto-Play (gleitet dicht über die Oberfläche, wechselt alle 20 s die Stelle).
+- **Fünf Modi in einer App:** Fluid, Mandelbrot, Partikel, Flüssigkeit (Partikel) und 3D-Fraktal-Flug. Umschalten mit `Tab`
   (Umschalt + `Tab` = zurück) oder im Panel-Abschnitt „Modus“, mit weicher Überblendung (0,8 s). Panel, Paletten,
   Bloom, Flacker-Reduktion, Qualität, FPS, Ton und Auto-Play gibt es nur einmal – sie gelten für alle Modi (Abschnitt
   „Modi“ unten). Ein Modus, der nicht zu sehen ist, kostet nichts und behält seinen Zustand.
@@ -1297,22 +1304,19 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - `.claude/s-tools.js`: `__s5.sheet(szenarien, spalten, bilder)` lädt Szenarien nacheinander und zeigt sie als
   Kontaktbogen in EINEM Bildschirmfoto (läuft > 45 s → im Hintergrund starten, dann warten).
 
-## 3D-Fraktal-Flug (in Arbeit: Schritt 5 von 6 fertig)
+## 3D-Fraktal-Flug (alle 6 Schritte fertig)
 - **Ausbauplan:** 1 Kern (Raymarching, Distanzschätzer Mandelbulb, Licht, Farben, einfache Flugsteuerung) ✅ ·
   2 Leistung und Genauigkeit (Auflösung regelt sich beim Fliegen, im Stillstand verfeinern, Kamera kann nicht in die
   Oberfläche, Grenze der 32-Bit-Zahlen, Extremfälle) ✅ · 3 weitere Fraktale (Mandelbox, Menger-Schwamm,
   Sierpinski-Pyramide, 3D-Julia) und Faltungs-Baukasten ✅ · 4 Bedienung (Mausrad = Tempo, Rollen, Bremsen, Regler je
   Fraktal, Zufalls-Knopf, Kamera merken) ✅ · 5 Szenarien, Textcode, Bild-Export – als gemeinsamer Teil für ALLE Modi
-  (eigener Abschnitt „Szenarien und Bild-Export“ direkt vor diesem) ✅ · 6 Ton, Kameraflug als Bildschirmschoner,
-  Flacker-Reduktion, Panel ⬜.
-- **Nächster Schritt: 6** – eigener Klang (Pentatonik; Töne passend zu Tempo und Nähe zur Oberfläche), Kameraflug
-  als Auto-Play/Bildschirmschoner (sanfte Fahrt zu schönen Stellen – `flyFindSpot` gibt es schon, siehe unten;
-  `flyAutoplay` ist bisher nur ein Rundflug), „Flackern reduzieren“ muss greifen (Blenden bei Sprüngen, Tempo des
-  Kameraflugs), Panel-Feinschliff.
+  (eigener Abschnitt „Szenarien und Bild-Export“ direkt vor diesem) ✅ · 6 eigener Klang, Kameraflug als Auto-Play /
+  Bildschirmschoner, Flacker-Reduktion, Panel ✅.
+- **Stand:** fertig. Was ein Mensch noch beurteilen muss und was offen ist, steht unter „Grenzen und Offenes“.
 - Code: Abschnitt `// ---------- 3D-Fraktal-Flug ----------` in `index.html` (direkt vor `// ----- Moduswechsel -----`),
   Konstanten in `FLY`, Aufwand je Qualitätsstufe in `FLY_LEVELS`, Fraktale in `FLY_KINDS`, Zustand in `fly`,
   Modus-Objekt `id: 'flight'`. Commits: `82b4833` (Schritt 1), `2c47ead` (Schritt 2), `ca15f07` (Schritt 3),
-  `a24097a` (Schritt 4), Schritt 5 direkt danach.
+  `a24097a` (Schritt 4), `1f32dfd` (Schritt 5), Schritt 6 direkt danach.
 
 ### Technik (Schritt 1: Kern)
 - **Raymarching:** Für jeden Bildpunkt läuft ein Strahl von der Kamera los. An jeder Stelle sagt der
@@ -1328,7 +1332,7 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   danach mit **fester** Durchgangszahl gerechnet (`gIter = gUsed`, `gEps = 0`) – sonst rauschen die Normalen.
 - **Gemeinsame Struktur für alle Fraktale:** Shader = `flyHead` + `kind.glsl` (nur `de()`) + `flyMain` (Strahlen, Licht,
   Schatten, Nebel, Farben). `de()` liest `gIter`/`gEps` und schreibt `gUsed`/`gTrap`. Neues Fraktal = Eintrag in
-  `FLY_KINDS` (`id`, `name`, `home`, `orbit`, `bound()`, `uniforms(u)`, `glsl`; optional `fudge`, `relax`).
+  `FLY_KINDS` (`id`, `name`, `home`, `params`, `bound()`, `uniforms(u)`, `glsl`; optional `fudge`, `relax`, `lod`).
 - **Licht:** Normale aus vier Messpunkten (Tetraeder, `gradient`), Sonne mit weichem Schatten (`shadow`: zweiter
   Strahl, Halbschatten aus `10 · d / t`), Himmelslicht und etwas Gegenlicht mal Verschattung in Ritzen (`occlusion`:
   bis 5 Messpunkte über der Oberfläche), Stirnlampe an der Kamera (`uHead`: 0,5 nah an der Oberfläche, 0,2 in der
@@ -1355,8 +1359,8 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Oberfläche pro Sekunde“ (`FLY.SPEED` 0,9) mit Trägheit (`ACCEL` 5/s, Ausrollen `GLIDE` 2,2/s).
 - **Sprung** (`flyGo(o)`, Taste `R` = Start): Bild blendet 0,5 s ab und auf, in der Mitte wird die Kamera versetzt
   (Einzelheiten unter „Bedienung (Schritt 4)“).
-- **Auto-Play (vorläufig):** ruhiger Rundflug (`flyAutoplay` gibt ein Ziel vor, geflogen wird über denselben Weg wie
-  von Hand). Taste **`P`** statt `A` (Modus-Eigenschaft `autoplayKey`; `A` fliegt nach links).
+- **Auto-Play:** Kameraflug (siehe „Klang, Kameraflug, Flacker-Reduktion (Schritt 6)“). Taste **`P`** statt `A`
+  (Modus-Eigenschaft `autoplayKey`; `A` fliegt nach links).
 - **Shader wird erst beim ersten Besuch übersetzt**, im Hintergrund (`KHR_parallel_shader_compile`), ≈ 0,5–1 s;
   solange bleibt das Bild schwarz und die Info-Zeile meldet es.
 
@@ -1462,11 +1466,11 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   (Faltung Spiegeln/Tetraeder/Menger/Kasten mit Gewichten 30/15/30/25 %, Skalierung je Faltung, Verschiebung
   1 / 0,55–1,3 / 0,45–1,3, Drehung je Achse mit 55 % Wahrscheinlichkeit 8–40° (Tetraeder höchstens 12°, Menger 30°),
   Kugel-Faltung beim Kasten zu 85 %, beim Menger-Schwamm nie, 11–17 Wiederholungen; Spiegeln bekommt immer
-  mindestens eine Drehung). Jeder Kandidat wird mit einem Probe-Bild geprüft (`flyKitProbe`: 32×32 Bildpunkte von
+  mindestens eine Drehung). Von jedem der 16 Kandidaten wird ein Probe-Bild gerechnet (`flyViewRender`/`flyViewRead`: 32×32 Bildpunkte von
   der Start-Kamera, gelesen wird der G-Buffer): `cover` (Anteil getroffener Bildpunkte, gut 0,14–0,68), `edges`
   (Sprünge in der Entfernung, < 0,36 – sonst Staub), `bumps` (Anteil unebener Stellen, > 0,3 – sonst glatter
   Klotz), `light` (mittlere Helligkeit, > 0,2 – sonst dunkles Gestrüpp). Der erste brauchbare gewinnt, sonst der
-  beste. Kosten: 1–13 ms pro Klick. Umgestellt wird per `flyGo` mit `apply` (Blende, Start-Kamera), `fly.kit = −2`.
+  beste. Kosten in Echtzeit: 35–70 ms pro Klick (zwei Rückfragen an die Grafikkarte, siehe Fallstricke). Umgestellt wird per `flyGo` mit `apply` (Blende, Start-Kamera), `fly.kit = −2`.
 - **Kamera-Plätze** (`fly.cams`, 4 Stück, `flySaveCam(i)`, `flyGoCam(i)`): merken Fraktal, Ort und Drehung
   (Quaternion), **nicht** die Form-Regler (das machen die Szenarien in Schritt 5). Gespeichert im Browser unter
   `satisim.flyCams` (`loadStore`/`saveStore` – stürzen nicht ab, wenn der Browser das Speichern verbietet).
@@ -1488,16 +1492,81 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   überall `FLY_LEVELS[qualityLevel]`: beim Export gilt die höchste Stufe. Das Standbild darf dann bis `SHOT.PIXELS`
   groß werden, die Streifen sind dreimal so groß, es wird nicht übergeblendet; `flyImageKey` enthält, ob gerade
   exportiert wird.
-- **Probe-Bild `flyViewProbe(pos, quat, scale)`** (32×32, liest den G-Buffer): `cover`, `edges`, `bumps`, `light`
-  (Erklärung bei „Zufalls-Form“). `flyKitProbe()` = dasselbe von der Start-Kamera aus.
-- **Stellen-Suche `flyFindSpot(level, tries)`** → `{ pos, quat, dist, look }` oder `null`: sucht eine Kamera im
-  Abstand `level` dicht über der Oberfläche, die flach über sie hinwegschaut. Je Versuch: zufälliger Punkt auf der
-  Hüllkugel, Richtung auf einen zufälligen Punkt im Inneren; das Herantasten rechnet **der Shader** (`uTask = 2`,
-  Funktion `seek()`: ein einzelner Strahl, der anhält, sobald der Abstand auf `uLevel` gefallen ist; Ergebnis =
-  Richtung von der Oberfläche weg + zurückgelegte Strecke, gelesen aus dem 1×1-Ziel des Messfühlers). Kamera:
-  Blick entlang der Oberfläche in Flugrichtung, 0,2–0,5 rad zur Oberfläche geneigt, „oben“ = von der Oberfläche weg.
-  Von `tries` Versuchen gewinnt das beste Probe-Bild (Bild zu ca. 80 % gefüllt, uneben, vor allem hell genug).
-  Kosten: 6–17 ms für 6 Versuche (Mandelbulb 11 ms, Mandelbox/Menger/Julia/Baukasten 16–17 ms, Sierpinski 6,5 ms).
+- **Probe-Bilder** (`flyViewRender(i, pos, quat, scale)` rechnet Kachel i, `flyViewRead(n)` wertet n Kacheln aus):
+  bis zu 16 Ansichten zu je 32×32 Bildpunkten liegen nebeneinander in `fly.tiny` und werden **gemeinsam** gelesen.
+  Je Kachel `cover`, `edges`, `bumps`, `light` (Erklärung bei „Zufalls-Form“). `flyViewProbe(…)`/`flyKitProbe()` = ein
+  einzelnes Probe-Bild (für Tests). Kacheln entstehen über `flyRender(…, { at: [x, y] })` (verschobener Viewport,
+  `uOffset` gleicht aus).
+- **Stellen-Suche `flyFindSpot(level, tries ≤ 8)`** → `{ pos, quat, dist, light }` oder `null`: sucht eine Kamera im
+  Abstand `level` dicht über der Oberfläche, die flach über sie hinwegschaut. 8 Strahlen starten an zufälligen Punkten
+  einer Kugel um das Fraktal (Radius `bound · 1,1 + level · 1,5`) und zielen auf zufällige Punkte im Inneren. Das
+  Herantasten rechnet **der Shader** für alle zugleich (`uTask = 2`, Funktion `seek()`, Zielbild 8×2 Bildpunkte
+  `fly.seekBuf`: Zeile 0 = Richtung von der Oberfläche weg + Strecke, Zeile 1 = wie hell die Stelle in der Sonne
+  liegt, mit Schatten) – **eine** Rückfrage genügt. Gewählt wird die am besten beschienene Stelle (plus etwas Zufall).
+  Kamera: Blick entlang der Oberfläche, zur Oberfläche geneigt um `0,85 · flyDip + 0,2…0,4` rad (`flyDip(pos, clear)`
+  = so weit liegt der Horizont unter der Waagrechten, wenn das Fraktal eine Kugel wäre – aus großer Höhe muss die
+  Kamera stärker nach unten schauen, sonst zeigt das Bild fast nur Himmel), „oben“ = von der Oberfläche weg.
+  Kosten in Echtzeit: ≈ 17 ms (ein Bildschirm-Bild).
+
+### Klang, Kameraflug, Flacker-Reduktion (Schritt 6)
+- **Klang** (`updateFlySound(dt, clear)`, einmal pro Bild aus `updateFlight`; Zustand `fly.snd`):
+  - *Fahrtwind:* das gemeinsame Pinsel-Rauschen (`audio.brushLevel = 0,7 · √v`, v = Tempo / 2,2).
+  - *Flug-Töne:* ein gezupfter Ton pro `FLY.NOTE_TRAVEL` (0,5) geflogener „Abstände zur Oberfläche“ – bei normalem
+    Tempo knapp 2 pro Sekunde, Lautstärke `0,04 + 0,12 · v`. Tonhöhe = Nähe zur Oberfläche: Stufe
+    `15 − 0,9 · Tiefe` + vier wechselnde Stufen (kleine Melodie); Tiefe = wie oft sich der Abstand gegenüber der
+    Übersicht halbiert hat (0 … ≈ 11). Übersicht hoch, tief im Fraktal tief (wie die Zoomtiefe im Mandelbrot-Modus).
+    Stereo: Flug nach rechts klingt rechts.
+  - *Tiefen-Ton:* leiser tiefer Ton (eine Oktave unter der Tonleiter, Lautstärke 0,055), wenn der Abstand eine
+    Stufe (Faktor 1,41) näher oder ferner wird – höchstens alle 0,8 s.
+  - *Grenze erreicht:* `audioFlyLimit` (weicher Ton, 65 Hz). Sprünge: `audioClear`; Kamera merken: `audioTock`;
+    Zufalls-Form: `audioClick`; Ankunft an einer Stelle im Kameraflug: `audioBurst`.
+  - Das Tempo hebt `audio.energy` (die Musik öffnet sich beim Fliegen). „Flackern reduzieren“: Töne 40 % leiser.
+  - Gemessen (Analyser am Ausgang, Musik aus): Ruhe 0,001; Anflug aus der Übersicht Spitze 0,06 / RMS 0,015;
+    Seitwärtsflug nah an der Oberfläche 0,03–0,055; Vollgas 0,15–0,18 / RMS 0,04; Kameraflug 0,03 / RMS 0,004;
+    Grenz-Ton 0,07; Klänge aus 0,000. In einem Lauf trat einmal eine einzelne Spitze von 0,38 auf (Ursache nicht
+    gefunden; beim Nachmessen mit Protokoll aller Töne nicht wieder). **Nicht geprüft: wie es klingt.**
+- **Kameraflug** (`flyTourStart`, `flyAutoplay(dt)`, Zustand `fly.tour`; Auto-Play/Bildschirmschoner, Taste `P`,
+  Knopf „Kameraflug starten“): fliegt im **gewählten** Fraktal – Form, Regler, Palette-Wahl des Nutzers bleiben
+  (die Palette wechselt wie in allen Modi alle 25 s), funktioniert deshalb auch mit eigenen Baukasten-Formen.
+  - *Beginn:* 4 s fast still (treibt nur mit Tempo 0,04 vorwärts, `tour.hold`), dann die erste Blende.
+  - *Gleiten:* `flyAutoplay` gibt `fly.auto = { dir, speed, quat }` vor, geflogen wird über `updateFlight` (derselbe
+    Weg wie von Hand → kann nicht in die Oberfläche). Tempo `FLY.TOUR_SPEED` 0,2 Abstände/s. „Oben“ (`tour.up`) = die
+    stark geglättete Richtung von der Oberfläche weg. Flugrichtung = Blickrichtung ohne ihren Anteil zur Oberfläche
+    hin, plus leichtes Schlängeln; **Höhe halten:** zu hoch → zur Oberfläche hin (Gewicht 0,35), zu tief → weg (1,2).
+    Blick: in Flugrichtung, um `0,85 · flyDip + 0,3` rad zur Oberfläche geneigt; die Kamera führt mit
+    `FLY.TOUR_TURN` 0,45/s nach.
+  - *Wechsel:* nach 18–26 s `flyGo({ blink: 1,8 s, spot: () => flyFindSpot(level), after })`: Die Stelle wird erst
+    gesucht, wenn das Bild dunkel ist. Abstände reihum `FLY.TOUR_LEVELS` 0,035 / 0,09 / 0,16 / 0,055 (× 0,75–1,3).
+    Findet die Suche nichts, bleibt die Kamera, wo sie ist.
+  - Jede Eingabe beendet ihn (`autoplayStop`: `fly.auto = fly.tour = null`), die Kamera rollt normal aus.
+  - Geprüft im Zeitraffer (`run-f6.js`, 90 s je Form, alle 6 Formen): 4 Stellen-Wechsel, keine ungültigen Werte, nie
+    im Inneren, Abstand im Mittel das 1,04–1,17-Fache des Soll-Abstands (kleinster 0,88-fach), nie näher als das
+    68-Fache der Untergrenze, steht nie still. In Echtzeit (Mandelbulb, Ultra, 75 s): 59,9 FPS, schnellste Drehung
+    5°/s; die einzigen langen Bilder sind die Stellen-Wechsel (50–67 ms, genau im dunkelsten Moment der Blende).
+- **Flacker-Reduktion:** Blenden bei Sprüngen dauern doppelt so lange (`1 + calm`), der Kameraflug ist 40 %
+  langsamer und wechselt seltener, Töne leiser; dazu die gemeinsame Helligkeits-Bremse. Gemessen (Sprung „Zurück zum
+  Start“ aus einer Nahaufnahme): größter Sprung der mittleren Helligkeit pro Bild 0,116 → 0,029, größter Anteil der
+  Bildpunkte mit Sprung > 10 %: 67 % → 4,6 % (ein einzelnes Bild), mittlere Änderung pro Bild 0,0153 → 0,0080.
+- **Panel:** „3D-Fraktal“ (Fraktal-Knöpfe, Hinweis, Info-Zeile, Knopf „Kameraflug starten“), „Form“, „Flug“,
+  „Kamera merken“, „Licht & Farbe“; dazu die gemeinsamen Abschnitte (Szenarien, Bild speichern, Palette, Bloom …).
+- **Leistung nach Schritt 6** (`run-fq.js`, 1920×1080, nah an der Oberfläche, alle 6 Stufen, Mandelbulb und
+  Menger-Schwamm): 60 FPS, GPU 1,6–8,5 ms, längstes Bild 17–20 ms, keine ungültigen Werte, keine GL-Fehler;
+  Fluid-Prüfsummen wie vorher (dieselben drei Werte); Konsole ohne Fehler und Warnungen.
+
+### Grenzen und Offenes
+- **Ein Mensch muss noch beurteilen:** wie der Flug sich anfühlt (Trägheit, Tempo, Rollen), wie es klingt, ob der
+  Kameraflug zu schnell/zu langsam wechselt. Alle Werte sind nach Messwerten und Bildschirmfotos eingestellt.
+- **Maus fangen** (Pointer Lock) ließ sich im Test-Browser nicht prüfen; Ziehen mit gedrückter Maustaste ist geprüft.
+- **144 Hz:** gemessen wurde nur in der 60-Hz-Vorschau. Die Auflösung beim Fliegen regelt sich nach der Rechenzeit –
+  bei 144 Hz wird das Flug-Bild entsprechend kleiner gerechnet (unschärfer), das Standbild bleibt scharf.
+- Der Kameraflug bleibt im gewählten Fraktal und nutzt nicht die 10 Start-Szenarien. Bei Formen aus lauter Staub
+  („Kristall“) findet die Stellen-Suche wenig Halt – die Kamera gleitet dann durch den Staub.
+- Die Stellen-Suche wählt nur nach Sonnenlicht, nicht nach Bildaufbau; bei großem Abstand (0,16) ist oft die halbe
+  Bildfläche Himmel.
+- Zufalls-Form: der Klick hält das Bild kurz an (35–70 ms), bevor die Blende beginnt.
+- Tiefer hineinzoomen als ≈ 3000-fach geht nicht (siehe „Ausprobiert und verworfen“).
+- Offen: Zwei-Finger-Bedienung, Gamepad, Farben wandern lassen (bräuchte neue Strahlen-Rechnung pro Bild),
+  Sonnenstand als Regler, Kameraflug über mehrere Fraktale/Szenarien.
 
 ### Messwerte (1920×1080, 60-Hz-Vorschau, NVIDIA RTX 3050 Laptop; Flug = seitwärts fliegen, Stillstand = danach anhalten)
 | Stufe | Flug: Übersicht | im Tal (Abstand 0,1) | nah (0,02) | sehr nah (0,0005) | FPS im Flug | Standbild | scharf nach | fertig geglättet nach |
@@ -1543,6 +1612,15 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
 - 54 Moduswechsel (mit jedem der sechs Fraktale) fehlerfrei; Fluid-Prüfsummen wie vorher (dieselben Hauptwerte).
 
 ### Fallstricke
+- **Direktes Zurücklesen (`readPixels`) kostet im laufenden Betrieb ein ganzes Bildschirm-Bild (≈ 17 ms) pro
+  Aufruf** – in Tests innerhalb EINES JavaScript-Aufrufs sieht man das nicht (dort ≈ 1 ms). Erst alles rechnen, dann
+  einmal lesen (Probe-Bilder als Kacheln, Stellen-Suche als 8×2-Bild). Was ruckfrei sein muss, liest gar nicht direkt
+  (Messfühler: Zwischenspeicher + `fenceSync`).
+- **Im Sprung-Objekt heißt das Merkfeld „Kamera ist versetzt“ `done`** – eine Option gleichen Namens in `flyGo`
+  verhindert den Sprung (so passiert; der Rückruf heißt deshalb `after`).
+- Test-Falle: Läuft der Kameraflug und ein Test rechnet Bilder mit `__p.one`/`__f.still()`, fliegt die Kamera mit dem
+  zuletzt gesetzten `fly.auto` ungesteuert weiter (leere Bilder im Kontaktbogen) → vorher `fly.auto = null;
+  fly.vel = [0, 0, 0]`.
 - `near`, `far`, `half` nicht als Namen im Shader. `atan(x, z + 1e-20)` und `max(r, 1e-20)`: ohne das gibt es auf der
   Pol-Achse ungültige Werte. Die Ausgabe wird mit `max(min(…))` begrenzt – ein einziger ungültiger Bildpunkt würde
   sich im Bloom über das Bild ausbreiten.
@@ -1573,6 +1651,13 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   Dann Bilder direkt rechnen (`__p.one`, `__f.move`, `__f.still`).
 
 ### Ausprobiert und verworfen
+- **Stellen-Suche mit Probe-Bild je Versuch** (schönstes Bild gewinnt): 18 Rückfragen an die Grafikkarte = 0,3 s
+  Stillstand bei jedem Stellen-Wechsel → Auswahl nach Sonnenlicht direkt im Such-Shader (eine Rückfrage).
+- **Feste Blickneigung im Kameraflug (17–30°):** aus größerer Höhe zeigte das Bild zu drei Vierteln leeren Himmel →
+  Neigung nach Flughöhe (`flyDip`). **Abstand 0,22 als „weite“ Etappe:** trotzdem viel Himmel → 0,16.
+- **Tiefen-Ton alle 0,3 s mit langem Ausklang:** beim schnellen Anflug überlagerten sich viele tiefe Töne (Spitze
+  0,77 am Ausgang) → höchstens alle 0,8 s, kürzer, leiser.
+- **Kameraflug als Rundflug um das Fraktal** (Schritt 1–5, `orbit` je Fraktal): zeigte immer nur die Übersicht.
 - **Stellen-Suche mit dem Messfühler in einer JavaScript-Schleife** (bis 70 Einzelmessungen pro Versuch, jede mit
   direktem Zurücklesen): 0,6 s pro Suche – das Bild blieb sichtbar stehen → Herantasten im Shader (11 ms).
 - **Zufalls-Form ohne Prüfung der Unebenheit** (nur Füllgrad und Kanten): etwa jede dritte Form war ein glatter
@@ -1607,6 +1692,8 @@ Seifenblase / Ölfilm, Tinte & Aquarell, Marmorpapier (Ebru), Galaxie / Nebel / 
   `run-f2.js` (Stufen: Flug und Stillstand in Echtzeit; Extremfälle; Ersatz-Regelung → `window.__res`,
   `window.__opt = { parts, levels }`), `run-f3.js` (jede Form: Kosten, Regler-Anschläge, Echtzeit-Bildrate;
   `parts: ['cost', 'extremes', 'fps']`), `run-f1b.js` (Moduswechsel und Tasten in Echtzeit → `window.__res2`),
-  `run-f4.js` (Bedienung aus Schritt 4), `run-s5.js` (Szenarien und Bild-Export, alle Modi), `run-fq.js` (Kurztest in Echtzeit auf allen Stufen: FPS, GPU-Zeit,
+  `run-f4.js` (Bedienung aus Schritt 4), `run-s5.js` (Szenarien und Bild-Export, alle Modi), `run-f6.js` (Kameraflug
+  im Zeitraffer auf allen Formen, Flacker-Messung; `window.__opt = { kinds, seconds, parts: ['tour', 'flicker'] }`;
+  dauert ≈ 2 min → starten, dann mit `wait` warten), `run-fq.js` (Kurztest in Echtzeit auf allen Stufen: FPS, GPU-Zeit,
   Standbild, ungültige Werte; `window.__opt = { kinds, levels }` – nach jeder Änderung laufen lassen).
   Alte Fassung zum Vergleich: `.claude/pre-fly.html`.

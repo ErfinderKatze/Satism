@@ -702,6 +702,8 @@
     <div id="flyKinds" class="grid2"></div>
     <div class="sub">Klick ins Bild fängt die Maus: Bewegen = umsehen, <b>Esc</b> gibt sie frei (oder mit gedrückter Maustaste ziehen). <b>W A S D</b> = fliegen, <b>Leertaste</b> / <b>C</b> = hoch / runter. Je näher an der Oberfläche, desto langsamer wird der Flug von selbst.</div>
     <div class="sub" id="flyInfo"></div>
+    <button class="btn wide" id="flyTour"><span>Kameraflug starten</span><kbd>P</kbd></button>
+    <div class="sub">Der Kameraflug gleitet von selbst dicht über die Oberfläche und wechselt alle 20 Sekunden zu einer neuen Stelle – auch als Bildschirmschoner nach 30 Sekunden ohne Eingabe. Jede Eingabe übernimmt sofort wieder.</div>
   </div>
   <div class="sec" data-mode="flight">
     <h3>Form</h3>
@@ -7848,6 +7850,15 @@ const FLY = {
   STILL_PIXELS: 9e6,        // Obergrenze für das Standbild
   FOG: 40,                  // Nebel: Sichtweite in "Abständen zur Oberfläche" (bei Regler 100 %)
   BLINK: 0.5,               // Sprung an einen anderen Ort: Dauer der Blende (Bild wird kurz dunkel) in Sekunden
+                            // ("Flackern reduzieren" verdoppelt sie)
+  // Kameraflug (Auto-Play):
+  TOUR_BLINK: 1.8,          // Blende beim Wechsel zur nächsten Stelle (viel ruhiger als beim Sprung von Hand)
+  TOUR_SPEED: 0.2,          // Gleit-Tempo in "Abständen zur Oberfläche pro Sekunde" (von Hand: 0,9)
+  TOUR_TIME: [18, 26],      // so lange bleibt der Flug an einer Stelle (Sekunden, zufällig dazwischen)
+  TOUR_LEVELS: [0.035, 0.09, 0.16, 0.055],   // Abstände zur Oberfläche, die nacheinander angeflogen werden (mal nah, mal weit)
+  TOUR_TURN: 0.45,          // wie schnell die Kamera ihre Blickrichtung nachführt (pro Sekunde; klein = ruhig)
+  // Klang:
+  NOTE_TRAVEL: 0.5,         // ein gezupfter Ton pro so viel geflogener Strecke (in "Abständen zur Oberfläche")
   SUN: [0.55, 0.62, 0.56],  // Richtung zur Sonne (wird beim Start auf Länge 1 gebracht)
 };
 
@@ -7923,7 +7934,7 @@ function qMix(a, b, t) {
 //   uniforms(u)    setzt die eigenen Regler-Werte des Fraktals
 //   params         Namen der Regler (in PARAMS), die die Form verändern – sie gehen in flyImageKey ein, und das Panel
 //                  zeigt nur die Regler-Zeilen, die das gewählte Fraktal benutzt (data-kind="…" im Panel)
-//   home, orbit    Start-Kamera (Ort und der Punkt, auf den sie schaut) und Radius der Rundflug-Bahn im Auto-Play
+//   home           Start-Kamera (Ort und der Punkt, auf den sie schaut)
 //   fudge, relax   (optional) Sicherheitsfaktor auf die Sprungweite bzw. Faktor für die Probe-Sprünge (siehe FLY.RELAX)
 //   lod            (optional) Faktor auf den Detailgrad FLY.LOD: kleiner = Details hören früher auf (gröber, schneller)
 // Alle Fraktale sind so umgerechnet, dass sie in eine Kugel mit Radius 1,3 bis 2,2 passen (Umrechnungsfaktor im
@@ -8028,7 +8039,6 @@ const FLY_KINDS = [
     id: 'bulb', name: 'Mandelbulb',
     params: ['flyPower'],
     home: { pos: [0.95, 0.75, 2.35], look: [0, 0, 0] },
-    orbit: 2.6,
     bound: () => Math.pow(2, 1 / (PARAMS.flyPower.current - 1)) * 1.03,
     uniforms(u) {
       // Steht der Regler (fast) genau auf 8, rechnet der Shader den schnellen Weg ohne Winkelfunktionen (siehe unten)
@@ -8120,7 +8130,6 @@ const FLY_KINDS = [
     id: 'box', name: 'Mandelbox',
     params: ['flyBoxScale'],
     home: { pos: [2.1, 1.5, 3.3], look: [0, 0, 0] },
-    orbit: 4.3,
     fudge: 0.9,
     lod: 2,          // (hört die Formel hier zu früh auf, unterschätzt sie den Abstand und die Strahlen brauchen MEHR Schritte)
     bound: () => 1.25 * Math.sqrt(3),
@@ -8157,7 +8166,6 @@ const FLY_KINDS = [
     id: 'menger', name: 'Menger-Schwamm',
     params: ['flyRotX', 'flyRotY', 'flyRotZ'],
     home: { pos: [1.75, 1.3, 2.5], look: [0, 0, 0] },
-    orbit: 3.2,
     lod: 0.5,        // Details bis 1 Bildpunkt (kleinere Löcher flimmern nur und kosten viele Schritte: 25 ms → 16 ms)
     bound: () => 1.3,
     uniforms(u) { flyKifsUniforms(u, 3, 3, [1, 1, 1], 0); },
@@ -8169,7 +8177,6 @@ const FLY_KINDS = [
     id: 'sierp', name: 'Sierpinski-Pyramide',
     params: ['flyRotX', 'flyRotY', 'flyRotZ'],
     home: { pos: [1.25, 0.75, 2.1], look: [0, -0.1, 0] },
-    orbit: 3.1,
     lod: 0.5,
     bound: () => 1.3,
     uniforms(u) { flyKifsUniforms(u, 2, 2, [1, 1, 1], 0); },
@@ -8184,7 +8191,6 @@ const FLY_KINDS = [
     id: 'julia', name: '3D-Julia',
     params: ['flyJuliaA', 'flyJuliaB', 'flyJuliaC', 'flyJuliaD'],
     home: { pos: [0.5, 0.8, 2.7], look: [0, 0, 0] },
-    orbit: 2.9,
     // (alle Punkte außerhalb des Radius (1 + √(1 + 4·|c|)) / 2 wachsen sicher über alle Grenzen)
     bound() { const P = PARAMS, c = Math.hypot(P.flyJuliaA.current, P.flyJuliaB.current, P.flyJuliaC.current, P.flyJuliaD.current); return (1 + Math.sqrt(1 + 4 * c)) / 2; },
     uniforms(u) { const P = PARAMS; gl.uniform4f(u.uJC, P.flyJuliaA.current, P.flyJuliaB.current, P.flyJuliaC.current, P.flyJuliaD.current); },
@@ -8212,7 +8218,6 @@ const FLY_KINDS = [
     id: 'kit', name: 'Faltungs-Baukasten', label: 'Baukasten',
     params: ['flyKitFold', 'flyKitScale', 'flyKitX', 'flyKitY', 'flyKitZ', 'flyKitSphere', 'flyRotX', 'flyRotY', 'flyRotZ'],
     home: { pos: [1.55, 1.15, 2.2], look: [0, 0, 0] },
-    orbit: 3.2,
     lod: 0.5,
     bound: () => 1.3,
     uniforms(u) {
@@ -8243,8 +8248,9 @@ const flyHead = `#version 300 es
   layout(location = 0) out vec4 outA;   // Anteile der Palettenfarben 0–3
   layout(location = 1) out vec4 outB;   // x = Anteil der Palettenfarbe 4, y = Anteil Weiß, z = Entfernung, w = 1
   uniform int uTask;            // 0 = Bild rechnen, 1 = Messfühler (Abstand und Richtung zur Oberfläche an der Kamera),
-                                // 2 = Stellen-Suche (von der Kamera geradeaus bis dicht vor die Oberfläche, siehe seek)
+                                // 2 = Stellen-Suche (bis zu 8 Strahlen bis dicht vor die Oberfläche, siehe seek)
   uniform float uLevel;         // Stellen-Suche: bei diesem Abstand zur Oberfläche anhalten
+  uniform vec3 uSeekFrom[8], uSeekDir[8];   // Stellen-Suche: Startpunkt und Richtung der Strahlen
   uniform vec3 uCam;            // Ort der Kamera
   uniform vec3 uFwd, uRight, uUp;   // Blickrichtung und Bildachsen (uRight/uUp: halbe Bildbreite/-höhe in 1 Einheit Entfernung)
   uniform vec2 uRes;            // Größe des ganzen gerechneten Bildes in Bildpunkten
@@ -8343,23 +8349,32 @@ const flyMain = `
     outB = vec4(0.0);
   }
 
-  // Stellen-Suche: ein einzelner "Strahl" von der Kamera in Blickrichtung, der anhält, sobald der Abstand zur
-  // Oberfläche auf uLevel gefallen ist. Ergebnis: die Richtung von der Oberfläche weg dort (xyz, Länge 1) und die
-  // zurückgelegte Strecke (w; −1 = nichts Brauchbares gefunden: vorbeigeflogen oder im Inneren gelandet).
+  // Stellen-Suche: Jede Spalte des (winzigen) Zielbilds ist ein eigener "Strahl" (Start uSeekFrom, Richtung
+  // uSeekDir), der anhält, sobald der Abstand zur Oberfläche auf uLevel gefallen ist.
+  //   Zeile 0: die Richtung von der Oberfläche weg dort (xyz, Länge 1) und die zurückgelegte Strecke
+  //            (w; −1 = nichts Brauchbares gefunden: vorbeigeflogen oder im Inneren gelandet)
+  //   Zeile 1: x = wie hell die Stelle in der Sonne liegt (0 = im Schatten … 1 = voll beschienen)
   void seek () {
+    int k = int(gl_FragCoord.x);
+    vec3 ro = uSeekFrom[k], rd = uSeekDir[k];
     gIter = uIter; gEps = 0.0;
     float t = 0.0, d = 0.0;
     bool ok = false;
     for (int i = 0; i < 96; i++) {
-      d = de(uCam + uFwd * t);
+      d = de(ro + rd * t);
       if (d < uLevel * 1.15) { ok = d > 0.0; break; }
       t += d - uLevel;
       if (t > uFar) break;
     }
-    vec3 g = gradient(uCam + uFwd * t, max(abs(d) * 0.1, uEpsMin * 4.0));
+    vec3 p = ro + rd * t;
+    vec3 g = gradient(p, max(abs(d) * 0.1, uEpsMin * 4.0));
     ok = ok && dot(g, g) > 0.0;
-    outA = vec4(ok ? normalize(g) : vec3(0.0, 1.0, 0.0), ok ? t : -1.0);
+    vec3 n = ok ? normalize(g) : vec3(0.0, 1.0, 0.0);
     outB = vec4(0.0);
+    if (gl_FragCoord.y < 1.0) { outA = vec4(n, ok ? t : -1.0); return; }
+    float px = uLevel * 0.02, sun = max(dot(n, uSun), 0.0);
+    if (ok && sun > 0.0) sun *= shadow(p + n * px * 2.0, px);
+    outA = vec4(sun, 0.0, 0.0, 0.0);
   }
 
   void main () {
@@ -8539,8 +8554,9 @@ const fly = {
   reach: 1,                   // Abstand, mit dem das Tempo gerade malgenommen wird (läuft weich nach)
   scale: 1,                   // geglätteter Abstand für Nebel und Stirnlampe
   speedNow: 0,                // aktuelles Tempo in Einheiten pro Sekunde (für die Anzeige)
-  auto: null,                 // Auto-Play: wohin die Kamera will ({ to, look })
-  autoAngle: 0,
+  auto: null,                 // Auto-Play: was die Kamera gerade tun soll ({ dir, speed, quat } – siehe flyAutoplay)
+  tour: null,                 // Kameraflug: { t, len, n, level, up, phase } (null = läuft nicht)
+  snd: { travel: 0, step: null, last: 0, n: 0 },   // Klang: Strecke seit dem letzten Ton, letzte Tiefen-Stufe …
   jump: null,                 // läuft gerade ein Sprung an einen anderen Ort? ({ pos, quat, t })
   g: null,                    // G-Buffer für die Bewegung (zwei Texturen, siehe oben); benutzt wird der Teil part
   acc: null,                  // G-Buffer für das Standbild (volle Auflösung, mehrere Durchgänge gemittelt)
@@ -8801,7 +8817,9 @@ function flyRender(e, tgt, w, h, o = {}) {
   flyUniforms(e.uniforms, w, h, 0, !!o.still);
   if (o.jitter) gl.uniform2f(e.uniforms.uJitter, o.jitter[0], o.jitter[1]);
   gl.bindFramebuffer(gl.FRAMEBUFFER, tgt.fbo);
-  gl.viewport(0, 0, w, h);
+  // (o.at = [x, y]: das Bild als Kachel an diese Stelle des Ziels rechnen – uOffset gleicht die Verschiebung aus)
+  if (o.at) { gl.uniform2f(e.uniforms.uOffset, -o.at[0], -o.at[1]); gl.viewport(o.at[0], o.at[1], w, h); }
+  else gl.viewport(0, 0, w, h);
   if (o.rows) { gl.enable(gl.SCISSOR_TEST); gl.scissor(0, o.rows[0], w, o.rows[1] - o.rows[0]); }
   if (o.weight) {
     gl.enable(gl.BLEND);
@@ -8936,6 +8954,12 @@ window.addEventListener('blur', () => fly.keys.clear());
 //                  erst übersetzt (bis ca. 1 s) – so lange bleibt das alte Bild zu sehen (fly.go wartet).
 //   apply          (optional) Funktion, die in der Mitte der Blende aufgerufen wird, wenn das Bild dunkel ist
 //                  (z. B. Regler ohne Überblenden umstellen: Zufalls-Form, Szenario laden)
+//   spot           (optional, statt pos) Funktion, die das Ziel { pos, quat } erst in der Mitte der Blende liefert –
+//                  für den Kameraflug: Die Stellen-Suche kostet ein paar Millisekunden, im Dunkeln fällt das nicht auf.
+//                  Liefert sie nichts, bleibt die Kamera, wo sie ist.
+//   blink          (optional) Dauer der Blende in Sekunden (sonst FLY.BLINK)
+//   after          (optional) Funktion, die nach dem Versetzen aufgerufen wird
+// (Nicht "done" nennen: so heißt schon das Merkfeld des Sprungs "Kamera ist versetzt" – der Sprung fände sonst nie statt.)
 function flyGo(o) {
   fly.go = Object.assign({}, o, { kind: o.kind === undefined ? fly.kind : o.kind });
   flyProgram(fly.go.kind);                                   // stößt das Übersetzen an
@@ -8983,95 +9007,126 @@ function setFlyKit(i, silent) {
   updateFlyUi();
   if (!silent) toast('Baukasten: ' + FLY_KIT[i].name);
 }
-// Probe-Bild: Die Form wird winzig klein (32 × 32 Bildpunkte) gerechnet – von der Start-Kamera aus (Zufalls-Knopf)
-// oder von einer beliebigen Kamera (pos, quat; scale = ihr Abstand zur Oberfläche: Maßstab für Nebel und Licht).
-// Daraus vier Zahlen: cover = Anteil der Bildpunkte, die die Form treffen (0 = nichts zu sehen, 1 = Bild ganz voll),
-// edges = Anteil der Nachbar-Paare mit einem Sprung in der Entfernung (viel = zerfällt zu Staub),
-// bumps = Anteil der getroffenen Stellen, an denen die Oberfläche uneben ist (0 = glatter Klotz oder runder Klumpen),
-// light = mittlere Helligkeit der getroffenen Stellen (sehr dunkel = fast unsichtbares Gestrüpp).
-function flyViewProbe(pos, quat, scale = 1) {
-  const e = flyProgram(fly.kind);
-  if (!e) return null;
-  const N = 32, T = fly.tiny || (fly.tiny = flyTarget(N, N));
+// PROBE-BILDER: Die Form wird winzig klein (32 × 32 Bildpunkte) gerechnet und ausgewertet – so lässt sich prüfen, ob
+// eine Ansicht sehenswert ist, ohne sie zu zeigen. Bis zu 16 Probe-Bilder liegen als Kacheln nebeneinander in EINEM
+// Zielbild (fly.tiny) und werden gemeinsam zurückgelesen.
+// WICHTIG: Jedes direkte Zurücklesen von der Grafikkarte (readPixels) hält das Programm an, bis sie fertig ist – im
+// laufenden Betrieb gemessen etwa ein ganzes Bildschirm-Bild (17 ms) pro Aufruf. Deshalb: erst ALLE Kacheln rechnen
+// (flyViewRender), dann EINMAL lesen (flyViewRead). Einzeln gelesen stand das Bild bis zu 0,5 s still.
+const FLY_VIEW = 32, FLY_VIEWS = 16;
+// Kachel i rechnen: Kamera (pos, quat), scale = ihr Abstand zur Oberfläche (Maßstab für Nebel, Licht und Auswertung)
+function flyViewRender(i, pos, quat, scale = 1) {
+  const e = flyProgram(fly.kind), N = FLY_VIEW;
+  if (!e) return false;
+  if (!fly.tiny) fly.tiny = flyTarget(N * FLY_VIEWS, N);
   // (Kamera kurz dorthin setzen – nur für diese Rechnung; dist = 0 heißt: Strahlen beginnen direkt an der Kamera)
   const keep = { pos: fly.pos, quat: fly.quat, scale: fly.scale, dist: fly.dist, probePos: fly.probePos };
   Object.assign(fly, { pos: pos.slice(), quat, scale, dist: 0, probePos: pos });
-  flyRender(e, T, N, N, { still: true });
+  flyRender(e, fly.tiny, N, N, { still: true, at: [i * N, 0] });
   Object.assign(fly, keep);
-  const c = new Float32Array(N * N * 4), d = new Float32Array(N * N * 4);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, T.fbo);
-  gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, c);           // erste Textur: Anteile der Palettenfarben (Summe ≈ Helligkeit)
-  gl.readBuffer(gl.COLOR_ATTACHMENT1);                       // zweite Textur: z = Entfernung des Treffers (sehr groß = vorbei)
-  gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, d);
-  gl.readBuffer(gl.COLOR_ATTACHMENT0);
-  // (unit = Maßstab der Entfernungen: von der Start-Kamera aus ganze Einheiten, nah an der Oberfläche entsprechend kleiner)
-  const depth = (x, y) => d[(y * N + x) * 4 + 2], unit = Math.min(scale, 1), hit = z => z < 20 * unit;
-  let cover = 0, edges = 0, bumps = 0, inner = 0, light = 0;
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const i = (y * N + x) * 4, z = depth(x, y);
-    if (hit(z)) { cover++; light += c[i] + c[i + 1] + c[i + 2] + c[i + 3] + d[i]; }
-    if (x + 1 < N) { const z2 = depth(x + 1, y); if (hit(z) !== hit(z2) || (hit(z) && Math.abs(z - z2) > 0.12 * unit)) edges++; }
-    // uneben: Die Entfernung weicht vom Mittel der beiden Nachbarn ab (auf einer ebenen Fläche ist das null)
-    if (x > 0 && x + 1 < N && hit(z) && hit(depth(x - 1, y)) && hit(depth(x + 1, y))) {
-      inner++;
-      if (Math.abs(depth(x - 1, y) + depth(x + 1, y) - 2 * z) > 0.03 * unit) bumps++;
-    }
-  }
-  return { cover: cover / (N * N), edges: edges / (N * (N - 1)), bumps: bumps / Math.max(inner, 1), light: light / Math.max(cover, 1) };
+  fly.tinyScale = fly.tinyScale || [];
+  fly.tinyScale[i] = scale;
+  return true;
 }
+// Die ersten n Kacheln auswerten. Je Kachel vier Zahlen:
+//   cover = Anteil der Bildpunkte, die die Form treffen (0 = nichts zu sehen, 1 = Bild ganz voll),
+//   edges = Anteil der Nachbar-Paare mit einem Sprung in der Entfernung (viel = zerfällt zu Staub),
+//   bumps = Anteil der getroffenen Stellen, an denen die Oberfläche uneben ist (0 = glatter Klotz oder runder Klumpen),
+//   light = mittlere Helligkeit der getroffenen Stellen (sehr dunkel = fast unsichtbares Gestrüpp).
+function flyViewRead(n) {
+  const N = FLY_VIEW, W = N * n, c = new Float32Array(W * N * 4), d = new Float32Array(W * N * 4);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fly.tiny.fbo);
+  gl.readPixels(0, 0, W, N, gl.RGBA, gl.FLOAT, c);           // erste Textur: Anteile der Palettenfarben (Summe ≈ Helligkeit)
+  gl.readBuffer(gl.COLOR_ATTACHMENT1);                       // zweite Textur: z = Entfernung des Treffers (sehr groß = vorbei)
+  gl.readPixels(0, 0, W, N, gl.RGBA, gl.FLOAT, d);
+  gl.readBuffer(gl.COLOR_ATTACHMENT0);
+  const out = [];
+  for (let k = 0; k < n; k++) {
+    // (unit = Maßstab der Entfernungen: von der Start-Kamera aus ganze Einheiten, nah an der Oberfläche entsprechend kleiner)
+    const unit = Math.min(fly.tinyScale[k], 1), hit = z => z < 20 * unit, at = (x, y) => (y * W + k * N + x) * 4;
+    const depth = (x, y) => d[at(x, y) + 2];
+    let cover = 0, edges = 0, bumps = 0, inner = 0, light = 0;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const i = at(x, y), z = depth(x, y);
+      if (hit(z)) { cover++; light += c[i] + c[i + 1] + c[i + 2] + c[i + 3] + d[i]; }
+      if (x + 1 < N) { const z2 = depth(x + 1, y); if (hit(z) !== hit(z2) || (hit(z) && Math.abs(z - z2) > 0.12 * unit)) edges++; }
+      // uneben: Die Entfernung weicht vom Mittel der beiden Nachbarn ab (auf einer ebenen Fläche ist das null)
+      if (x > 0 && x + 1 < N && hit(z) && hit(depth(x - 1, y)) && hit(depth(x + 1, y))) {
+        inner++;
+        if (Math.abs(depth(x - 1, y) + depth(x + 1, y) - 2 * z) > 0.03 * unit) bumps++;
+      }
+    }
+    out.push({ cover: cover / (N * N), edges: edges / (N * (N - 1)), bumps: bumps / Math.max(inner, 1), light: light / Math.max(cover, 1) });
+  }
+  return out;
+}
+// ein einzelnes Probe-Bild (für Tests): von einer Kamera aus bzw. von der Start-Kamera des Fraktals
+const flyViewProbe = (pos, quat, scale) => (flyViewRender(0, pos, quat, scale) ? flyViewRead(1)[0] : null);
 const flyKitProbe = () => { const home = FLY_KINDS[fly.kind].home; return flyViewProbe(home.pos, qLook(vSub(home.look, home.pos))); };
 
-// Sehenswerte Stelle suchen (für den Kameraflug im Auto-Play): eine Kamera dicht über der Oberfläche, die flach über
-// sie hinwegschaut – so sieht man zugleich nahe Details und die Tiefe dahinter.
+// Um diesen Winkel liegt der Horizont unter der Waagrechten, wenn die Kamera im Abstand clear über dem Fraktal
+// schwebt (so gerechnet, als wäre es eine Kugel um den Mittelpunkt). Aus großer Höhe muss die Kamera stärker nach unten
+// schauen als im Tiefflug – sonst zeigt das Bild fast nur leeren Himmel.
+const flyDip = (pos, clear) => { const r = vLen(pos); return r > 1e-6 ? Math.acos(clampNum((r - Math.max(clear, 0)) / r, 0, 1)) : 0; };
+
+// STELLEN-SUCHE (für den Kameraflug im Auto-Play): eine Kamera dicht über der Oberfläche, die flach über sie
+// hinwegschaut – so sieht man zugleich nahe Details und die Tiefe dahinter.
 //   level   gewünschter Abstand zur Oberfläche
-// So geht es: Start an einem zufälligen Punkt auf der Hüllkugel, Flug auf einen zufälligen Punkt im Inneren zu –
-// Schritt für Schritt um den gemessenen Abstand (wie ein Strahl beim Raymarching, nur mit dem Messfühler), bis der
-// Abstand level erreicht ist. Dort zeigt fly.grad von der Oberfläche weg: Die Kamera schaut quer dazu (in
-// Flugrichtung an der Oberfläche entlang) und um ca. 20° zur Oberfläche hin geneigt; "oben" ist von der Oberfläche weg.
-// Von mehreren Versuchen (tries) gewinnt der mit dem schönsten Probe-Bild. Liefert { pos, quat, dist } oder null.
-function flyFindSpot(level, tries = 6) {
-  const f = fly, kind = FLY_KINDS[f.kind], e = flyProgram(f.kind), P = f.probe;
+// So geht es: tries Strahlen (höchstens 8) starten an zufälligen Punkten einer Kugel um das Fraktal und zielen auf
+// zufällige Punkte im Inneren. Der Shader (uTask = 2, Funktion seek) tastet sich für alle zugleich heran, bis der
+// Abstand level erreicht ist, und meldet je Strahl: die Richtung von der Oberfläche weg, die Strecke und wie hell
+// die Stelle in der Sonne liegt. Das ganze Ergebnis sind 8 × 2 Bildpunkte – EINMAL lesen genügt.
+// Gewählt wird die am besten beschienene Stelle (dunkle Schattenhänge sehen langweilig aus). Die Kamera schaut dort
+// in Flugrichtung an der Oberfläche entlang, zur Oberfläche hin geneigt; "oben" ist von der Oberfläche weg.
+// Liefert { pos, quat, dist, light } oder null.
+function flyFindSpot(level, tries = 8) {
+  const f = fly, kind = FLY_KINDS[f.kind], e = flyProgram(f.kind), n = Math.min(tries, 8);
   if (!e) return null;
-  if (!P.target) P.target = createFBO(1, 1, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
-  const keep = { pos: f.pos, quat: f.quat };
-  const R = kind.bound() * 1.1, unit = () => vNorm([rand(-1, 1), rand(-1, 1), rand(-1, 1)]), out = new Float32Array(4);
-  let best = null, bestScore = -1e9;
-  for (let n = 0; n < tries; n++) {
-    const from = vMul(unit(), R), rd = vNorm(vSub(vMul(unit(), R * rand(0, 0.45)), from));
-    // das Herantasten rechnet der Shader (uTask = 2, ein einziger Bildpunkt): eine Messung statt vieler
-    f.pos = from; f.quat = qLook(rd);
-    gl.disable(gl.BLEND);
-    gl.useProgram(e.program);
-    flyUniforms(e.uniforms, 1, 1, 2);
-    gl.uniform1f(e.uniforms.uLevel, level);
-    gl.uniform1f(e.uniforms.uFar, 2.1 * R);
-    blit(P.target);
-    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.FLOAT, out);
-    Object.assign(f, keep);
-    if (!(out[3] > 0) || !Number.isFinite(out[0] + out[1] + out[2])) continue;   // nichts Brauchbares getroffen
-    const nrm = [out[0], out[1], out[2]], pos = vAdd(from, vMul(rd, out[3]));
-    const along = vSub(rd, vMul(nrm, vDot(rd, nrm)));
+  if (!f.seekBuf) f.seekBuf = createFBO(8, 2, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+  // (Start weit genug draußen, dass der Abstand dort sicher größer als level ist – sonst wäre die Suche sofort "am Ziel")
+  const R = kind.bound() * 1.1 + level * 1.5, unit = () => vNorm([rand(-1, 1), rand(-1, 1), rand(-1, 1)]);
+  const from = [], dir = [];
+  for (let k = 0; k < 8; k++) {
+    from.push(vMul(unit(), R));
+    dir.push(vNorm(vSub(vMul(unit(), kind.bound() * rand(0, 0.5)), from[k])));
+  }
+  gl.disable(gl.BLEND);
+  gl.useProgram(e.program);
+  flyUniforms(e.uniforms, 1, 1, 2);
+  gl.uniform1f(e.uniforms.uLevel, level);
+  gl.uniform1f(e.uniforms.uFar, 2.1 * R);
+  gl.uniform3fv(e.uniforms['uSeekFrom[0]'], from.flat());
+  gl.uniform3fv(e.uniforms['uSeekDir[0]'], dir.flat());
+  blit(f.seekBuf);
+  const out = new Float32Array(8 * 2 * 4);
+  gl.readPixels(0, 0, 8, 2, gl.RGBA, gl.FLOAT, out);
+  let best = null, bestScore = -1;
+  for (let k = 0; k < n; k++) {
+    const t = out[k * 4 + 3], nrm = [out[k * 4], out[k * 4 + 1], out[k * 4 + 2]], light = out[32 + k * 4];
+    if (!(t >= 0) || !Number.isFinite(nrm[0] + nrm[1] + nrm[2] + light)) continue;   // nichts Brauchbares getroffen (w = −1)
+    const along = vSub(dir[k], vMul(nrm, vDot(dir[k], nrm)));
     if (vLen(along) < 0.05) continue;                            // genau senkrecht aufgetroffen: keine Richtung "entlang"
-    const tilt = rand(0.2, 0.5);                                 // Neigung zur Oberfläche hin (Bogenmaß)
+    const score = light + rand(0, 0.15);                         // (etwas Zufall: nicht immer dieselbe Art von Stelle)
+    if (score <= bestScore) continue;
+    const pos = vAdd(from[k], vMul(dir[k], t));
+    const tilt = Math.min(0.85 * flyDip(pos, level) + rand(0.2, 0.4), 1.2);    // Neigung zur Oberfläche hin (Bogenmaß)
     const fwd = vSub(vMul(vNorm(along), Math.cos(tilt)), vMul(nrm, Math.sin(tilt)));
-    const spot = { pos, quat: qLook(fwd, nrm), dist: level };
-    const m = flyViewProbe(spot.pos, spot.quat, clampNum(level, flyFloor(), FLY.REACH_MAX));
-    // schön: Bild gut gefüllt (aber nicht ganz zu), reich gegliedert, vor allem nicht zu dunkel
-    const score = -Math.abs(m.cover - 0.8) + Math.min(m.bumps, 0.7) + 3 * Math.min(m.light, 0.35) - Math.max(m.edges - 0.5, 0);
-    if (score > bestScore) { bestScore = score; best = spot; best.look = m; }
+    bestScore = score;
+    best = { pos, quat: qLook(fwd, nrm), dist: level, light };
   }
   return best;
 }
 
 // Zufalls-Form würfeln. Nicht jede Kombination ergibt etwas Sehenswertes: Viele zerfallen zu Staub oder füllen als
-// Klotz das ganze Bild. Deshalb werden bis zu 16 Kandidaten gewürfelt (in Bereichen, die sich bewährt haben), jeder
-// wird mit einem winzigen Probe-Bild geprüft, und der erste brauchbare gewinnt (sonst der beste).
+// Klotz das ganze Bild. Deshalb werden 16 Kandidaten gewürfelt (in Bereichen, die sich bewährt haben), von jedem wird
+// ein winziges Probe-Bild gerechnet, und der erste brauchbare gewinnt (sonst der beste).
 function flyKitRandom() {
   const pick = (...w) => { let r = Math.random() * w.reduce((a, b) => a + b); return w.findIndex(v => (r -= v) < 0); };
-  const P = PARAMS, old = {};
+  const P = PARAMS, old = {}, cands = [];
+  const kit = FLY_KINDS.findIndex(k => k.id === 'kit'), home = FLY_KINDS[kit].home, homeQuat = qLook(vSub(home.look, home.pos));
   for (const key of Object.keys(flyKitValues(FLY_KIT[0]))) old[key] = [P[key].target, P[key].current];
-  let best = null, bestScore = -1e9;
-  for (let n = 0; n < 16; n++) {
+  const ready = fly.kind === kit && !!flyProgram(kit);        // (Probe-Bilder gehen nur, wenn der Baukasten gerade gezeigt wird)
+  for (let n = 0; n < FLY_VIEWS; n++) {
     const fold = 1 + pick(0.3, 0.15, 0.3, 0.25);            // 1 Spiegeln, 2 Tetraeder, 3 Menger, 4 Kasten
     const turn = fold === 2 ? 12 : fold === 3 ? 30 : 40;    // größte Drehung (Tetraeder zerfällt bei mehr zu Staub)
     const angle = () => Math.round(rand(8, turn)) * (Math.random() < 0.5 ? -1 : 1);
@@ -9087,16 +9142,22 @@ function flyKitRandom() {
     };
     // (Spiegeln ohne Drehung ergibt nur einen glatten Quader → mindestens eine Achse drehen)
     if (fold === 1 && !k.rot.some(Boolean)) k.rot[pick(1, 1, 1)] = angle();
-    flyKitSet(k, true);
-    const m = flyKitProbe();
-    if (!m) { best = best || k; break; }                      // (Shader noch nicht fertig: nimm den ersten)
-    // am schönsten: etwa 40 % des Bildes gefüllt, überall gegliedert, aber weder Staub noch dunkles Gestrüpp
-    const score = -Math.abs(m.cover - 0.4) - 1.5 * Math.max(m.edges - 0.25, 0) + Math.min(m.bumps, 0.6) + Math.min(m.light, 0.3);
-    if (score > bestScore) { bestScore = score; best = k; }
-    if (m.cover > 0.14 && m.cover < 0.68 && m.edges < 0.36 && m.bumps > 0.3 && m.light > 0.2) { best = k; break; }
+    cands.push(k);
+    if (ready) { flyKitSet(k, true); flyViewRender(n, home.pos, homeQuat); }
   }
   for (const key in old) [P[key].target, P[key].current] = old[key];    // (Probe-Werte zurück: umgestellt wird erst im Dunkeln)
-  const kit = FLY_KINDS.findIndex(k => k.id === 'kit'), home = FLY_KINDS[kit].home;
+  let best = cands[0];
+  if (ready) {
+    let bestScore = -1e9;
+    const looks = flyViewRead(FLY_VIEWS);
+    for (let n = 0; n < FLY_VIEWS; n++) {
+      const m = looks[n];
+      // am schönsten: etwa 40 % des Bildes gefüllt, überall gegliedert, aber weder Staub noch dunkles Gestrüpp
+      const score = -Math.abs(m.cover - 0.4) - 1.5 * Math.max(m.edges - 0.25, 0) + Math.min(m.bumps, 0.6) + Math.min(m.light, 0.3);
+      if (score > bestScore) { bestScore = score; best = cands[n]; }
+      if (m.cover > 0.14 && m.cover < 0.68 && m.edges < 0.36 && m.bumps > 0.3 && m.light > 0.2) { best = cands[n]; break; }
+    }
+  }
   flyGo({ kind: kit, pos: home.pos, look: home.look, apply() { flyKitSet(best, true); fly.kit = -2; updateFlyUi(); } });
   audioClick(0.5, 0.6);
   toast('Baukasten: neue Zufalls-Form');
@@ -9176,7 +9237,8 @@ function updateFlight(dt, now) {
   }
   // Sprung: in der Mitte der Blende (Bild ist dunkel) wird alles umgestellt und die Kamera versetzt
   if (f.jump) {
-    f.jump.t += dt / FLY.BLINK;
+    // ("Flackern reduzieren": die Blende dauert doppelt so lange – ein langsames Ab- und Aufblenden statt eines Blinkens)
+    f.jump.t += dt / ((f.jump.blink || FLY.BLINK) * (1 + PARAMS.calm.current));
     if (!f.jump.done && f.jump.t >= 0.5) {
       f.jump.done = true;
       if (f.jump.kind !== f.kind) {
@@ -9186,11 +9248,13 @@ function updateFlight(dt, now) {
       }
       if (f.jump.apply) f.jump.apply();
       updateFlyUi();
+      if (f.jump.spot) Object.assign(f.jump, f.jump.spot() || { pos: f.pos, quat: f.quat });
       if (f.jump.quat) { f.pos = f.jump.pos.slice(); f.quat = qNorm(f.jump.quat); f.vel = [0, 0, 0]; f.turn = [0, 0]; }
       else flySetPose(f.jump.pos, f.jump.look);
       f.roll = 0; f.leveling = false;
       flyProbe(true);
       f.scale = f.reach = clampNum(f.dist, flyFloor(), FLY.REACH_MAX);
+      if (f.jump.after) f.jump.after();
     }
     if (f.jump.t >= 1) f.jump = null;
   }
@@ -9235,11 +9299,10 @@ function updateFlight(dt, now) {
     autoplay.lastInput = now;
     lastPaint = now;
   } else if (f.auto && !braking) {
-    // Auto-Play: zum Ziel auf der Rundflug-Bahn steuern und dabei zum Blickpunkt drehen
-    want = vMul(vSub(f.auto.to, f.pos), 0.6 / Math.max(f.reach, 1e-6));
-    const l = vLen(want), max = FLY.SPEED * 1.5;
-    if (l > max) want = vMul(want, max / l);
-    f.quat = qMix(f.quat, qLook(vSub(f.auto.look, f.pos)), 1 - Math.exp(-0.9 * dt));
+    // Auto-Play (Kameraflug): Richtung, Tempo und Blickrichtung gibt flyAutoplay vor – geflogen wird über denselben
+    // Weg wie von Hand (Trägheit, Abstand zur Oberfläche, Schutz vor dem Hineinfliegen)
+    want = vMul(f.auto.dir, f.auto.speed);
+    f.quat = qMix(f.quat, f.auto.quat, 1 - Math.exp(-FLY.TOUR_TURN * dt));
   }
   // Trägheit: Das Tempo läuft dem Wunsch weich hinterher; ohne Taste rollt die Kamera aus – wie lange, bestimmt der
   // Regler "Trägheit" (0 % = steht fast sofort, 100 % = gleitet sehr lange). Die Bremse hält sie schnell, aber weich an.
@@ -9264,6 +9327,7 @@ function updateFlight(dt, now) {
     if (flying && clear < floor * 1.5 && now - f.limitToast > 6000) {
       f.limitToast = now;
       toast('Näher geht es nicht – hier endet die Rechengenauigkeit der Grafikkarte');
+      audioFlyLimit();
     }
   }
   // … und insgesamt nie mehr als der halbe freie Abstand in einem Bild (schützt bei großen Zeitsprüngen)
@@ -9289,6 +9353,8 @@ function updateFlight(dt, now) {
   const dl = Math.log(clampNum(clear, floor, FLY.REACH_MAX) / f.scale);
   if (Math.abs(dl) > 0.004) f.scale *= Math.exp(dl * (1 - Math.exp(-2.5 * dt)));
 
+  updateFlySound(dt, clear);
+
   // Cursor: kleiner Ring; ist die Maus gefangen, sitzt er als Zielpunkt in der Bildmitte
   if (f.locked) showCursor(window.innerWidth / 2, window.innerHeight / 2);
   cursorEl.style.setProperty('--brush', paletteColor(0.4));
@@ -9309,14 +9375,94 @@ function updateFlight(dt, now) {
   }
 }
 
-// Auto-Play (vorläufig): ein ruhiger Rundflug um das Fraktal, der Blick bleibt auf der Mitte
+// ----- Kameraflug (Auto-Play / Bildschirmschoner) -----
+// Eine sanfte Fahrt zu schönen Stellen des Fraktals, das gerade gewählt ist (Form, Farben und alle Regler bleiben,
+// wie der Nutzer sie eingestellt hat – auch eigene Baukasten-Formen):
+//   1) GLEITEN: Die Kamera gleitet langsam dicht über die Oberfläche. Sie schaut flach über die Oberfläche hinweg,
+//      schlängelt leicht hin und her und hält ihre Höhe: Ist sie zu hoch, steuert sie zur Oberfläche hin, ist sie zu
+//      tief (ein Hügel kommt), steigt sie darüber hinweg. "Oben" ist dabei immer "von der Oberfläche weg".
+//   2) WECHSEL: Nach 18–26 s blendet das Bild langsam ab; im Dunkeln sucht flyFindSpot die nächste Stelle (in einem
+//      anderen Abstand: mal ganz nah an den Details, mal mit Überblick), dann blendet es dort wieder auf.
+// Am Anfang bleibt die Kamera 4 s fast stehen (sie treibt nur ganz langsam vorwärts) – dann kommt die erste Blende.
+// Geflogen wird über denselben Weg wie von Hand (updateFlight) – deshalb kann auch der Kameraflug nicht in die
+// Oberfläche geraten.
+function flyTourStart() {
+  const clear = flyClear();
+  fly.tour = { t: 0, len: 4, n: Math.floor(rand(0, 4)), level: clampNum(clear, flyFloor() * 4, 0.5), up: fly.grad.slice(), phase: rand(0, 6.28), hold: true };
+  flyLock(false);
+}
 function flyAutoplay(dt) {
-  const f = fly;
-  if (!autoplay.active) { f.auto = null; return; }
-  const R = FLY_KINDS[f.kind].orbit;
-  f.autoAngle += 0.07 * dt * (1 - 0.4 * PARAMS.calm.current);
-  const a = f.autoAngle, lat = 0.3 * Math.sin(a * 0.43);
-  f.auto = { to: [R * Math.sin(a) * Math.cos(lat), R * Math.sin(lat), R * Math.cos(a) * Math.cos(lat)], look: [0, 0, 0] };
+  const f = fly, T = f.tour;
+  if (!autoplay.active || !T) { f.auto = null; return; }
+  const slow = 1 - 0.4 * PARAMS.calm.current;                  // "Flackern reduzieren": alles 40 % langsamer
+  T.t += dt;
+  // nächste Stelle? (nicht, solange noch ein Sprung läuft)
+  if (T.t > T.len && !f.jump && !f.go) {
+    T.t = 0;
+    T.len = rand(FLY.TOUR_TIME[0], FLY.TOUR_TIME[1]) / slow;
+    T.n++;
+    const level = Math.max(FLY.TOUR_LEVELS[T.n % FLY.TOUR_LEVELS.length] * rand(0.75, 1.3), flyFloor() * 6);
+    flyGo({ blink: FLY.TOUR_BLINK, spot: () => flyFindSpot(level), after() { T.hold = false; T.level = clampNum(flyClear(), level * 0.5, level * 2); T.up = f.grad.slice(); T.t = 0; audioBurst(); } });
+  }
+  const fwd = qRot(f.quat, [0, 0, -1]), right = qRot(f.quat, [1, 0, 0]), clear = flyClear();
+  if (T.hold) { f.auto = { dir: fwd, speed: 0.04, quat: f.quat }; return; }   // vor der ersten Blende: nur sacht treiben
+  // "oben" = von der Oberfläche weg, stark geglättet (auf einem Fraktal springt diese Richtung von Stelle zu Stelle)
+  T.up = vNorm(vAdd(T.up, vMul(vSub(f.grad, T.up), 1 - Math.exp(-0.7 * dt))));
+  // flache Flugrichtung: die Blickrichtung ohne ihren Anteil zur Oberfläche hin/weg, dazu ein leichtes Schlängeln
+  let flat = vSub(fwd, vMul(T.up, vDot(fwd, T.up)));
+  if (vLen(flat) < 0.05) flat = right;                         // (Blick genau senkrecht zur Oberfläche: irgendeine Richtung)
+  flat = vNorm(vAdd(vNorm(flat), vMul(right, 0.12 * Math.sin(T.t * 0.21 + T.phase))));
+  // Höhe halten: err > 0 = zu hoch (hin zur Oberfläche), err < 0 = zu tief (weg von ihr; das wirkt stärker)
+  const err = clampNum((clear - T.level) / T.level, -1, 2);
+  const dir = vNorm(vSub(flat, vMul(T.up, err * (err < 0 ? 1.2 : 0.35))));
+  // Blick: in Flugrichtung, zur Oberfläche geneigt (so bleiben nahe Details und die Ferne zugleich im Bild) – aus
+  // größerer Höhe stärker, damit der Horizont nicht aus dem Bild rutscht
+  const tilt = Math.min(0.85 * flyDip(f.pos, clear) + 0.3, 1.2);
+  const look = vAdd(vMul(flat, Math.cos(tilt)), vMul(T.up, -Math.sin(tilt)));
+  f.auto = { dir, speed: FLY.TOUR_SPEED * slow, quat: qLook(look, T.up) };
+}
+
+// ----- Klang -----
+// Wie in den anderen Modi: gezupfte Töne der Pentatonik, alles im Code erzeugt.
+//   Fahrtwind:    das gemeinsame Pinsel-Rauschen – je schneller der Flug, desto lauter und heller
+//   Flug-Töne:    ein Ton pro Stück geflogener Strecke (schneller Flug = mehr und lautere Töne); vier wechselnde
+//                 Stufen ergeben eine kleine Melodie. Tonhöhe = Nähe zur Oberfläche: in der Übersicht hoch, tief im
+//                 Fraktal tief (wie im Mandelbrot-Modus bei der Zoomtiefe).
+//   Tiefen-Ton:   ein leiser, langer, tiefer Ton jedes Mal, wenn der Abstand zur Oberfläche eine Stufe näher oder
+//                 ferner wird (Stufe = Faktor 1,41) – man hört, dass man sich nähert, auch bei langsamem Flug.
+// clear = aktueller Abstand zur Oberfläche
+function updateFlySound(dt, clear) {
+  const f = fly, S = f.snd, speed = vLen(f.vel);               // Tempo in "Abständen zur Oberfläche pro Sekunde"
+  const v = Math.min(speed / 2.2, 1);                          // 0..1 (1 = Vollgas mit Umschalt-Taste)
+  audio.energy = Math.min(1, audio.energy + speed * dt * (f.auto ? 0.04 : 0.16));   // die Musik öffnet sich beim Fliegen
+  if (!f.auto) audio.brushLevel = Math.max(audio.brushLevel, 0.7 * Math.sqrt(v));
+  // Tiefe: wie oft sich der Abstand gegenüber der Übersicht halbiert hat (0 = Übersicht … ca. 11 = an der Grenze)
+  const depth = Math.max(0, -Math.log2(Math.max(clear, 1e-7) / FLY.REACH_MAX));
+  const step = Math.floor(depth * 2), before = S.step;
+  S.step = step;
+  S.travel += speed * dt;
+  if (!audioReady() || !audio.sfxOn || audio.muted || f.jump) return;
+  const t = audio.ctx.currentTime, quiet = (1 - 0.4 * PARAMS.calm.current) * (f.auto ? 0.8 : 1);
+  if (S.travel > FLY.NOTE_TRAVEL && t - audio.lastNote > 0.09) {
+    S.travel = 0;
+    audio.lastNote = t;
+    S.n = (S.n + 1) % 4;
+    // Stereo: Flug nach rechts klingt rechts
+    const pan = speed > 1e-3 ? 0.6 * clampNum(vDot(f.vel, qRot(f.quat, [1, 0, 0])) / speed, -1, 1) : 0;
+    const i = Math.round(15 - depth * 0.9) + [0, 2, 1, 3][S.n];
+    pluck(scaleFreq(clampNum(i, 0, 18)), t, (0.04 + 0.12 * v) * quiet, pan, audio.sfxBus, 1.2);
+  }
+  // (höchstens ein Tiefen-Ton pro 0,8 s und nicht zu lang: Beim schnellen Anflug überlagerten sich sonst viele lange,
+  // fast gleiche tiefe Töne – gemessen bis Spitze 0,77 am Ausgang, dreimal so laut wie alles andere)
+  if (before !== null && step !== before && t - S.last > 0.8) {
+    S.last = t;
+    pluck(scaleFreq(clampNum(Math.round(10 - step * 0.45), 0, 12)) / 2, t, 0.055 * quiet, 0, audio.sfxBus, 1.4);
+  }
+}
+// Näher geht es nicht (Grenze der Rechengenauigkeit): ein weicher, tiefer Ton
+function audioFlyLimit() {
+  if (!audioReady() || !audio.sfxOn || audio.muted) return;
+  tone(scaleFreq(0) / 2, audio.ctx.currentTime, { peak: 0.13, attack: 0.03, decay: 0.9 });
 }
 
 // ----- einmal pro Bild: zeichnen -----
@@ -9427,12 +9573,13 @@ $('flyHome').addEventListener('click', e => { flyHome(); e.currentTarget.blur();
 $('flyLevel').addEventListener('click', e => { flyLevel(); e.currentTarget.blur(); });
 $('flyKitRandom').addEventListener('click', e => { flyKitRandom(); e.currentTarget.blur(); });
 $('flyCamSave').addEventListener('click', e => { flySaveCam(); e.currentTarget.blur(); });
+$('flyTour').addEventListener('click', e => { if (!autoplay.active) startAutoplay(true); e.currentTarget.blur(); });
 updateFlyUi();
 
 MODES.push({
   id: 'flight', name: '3D-Fraktal-Flug', label: '3D-Flug',
   hint: 'Klick = Maus fangen und umsehen · <b>W A S D</b> = fliegen · Mausrad = Tempo · <b>Tab</b> = Modus wechseln',
-  autoplayHint: 'Rundflug · Bewege die Maus, um selbst zu fliegen',
+  autoplayHint: 'Kameraflug · Bewege die Maus, um selbst zu fliegen',
   autoplayKey: 'KeyP',                                       // A wird zum Fliegen gebraucht → Auto-Play startet hier mit P
   enter() {
     $('paletteSection').classList.remove('unused');          // Palette und Bloom wirken hier immer
@@ -9453,8 +9600,8 @@ MODES.push({
   shotBusy: () => !!(fly.go || fly.jump),
   shotReady: () => !fly.waiting && !fly.moving && fly.ref.n >= flyQuality().aa,
   shotProgress: () => (fly.moving ? 0 : (fly.ref.n + fly.ref.row / fly.acc.h) / flyQuality().aa),
-  autoplayStart() { fly.autoAngle = Math.atan2(fly.pos[0], fly.pos[2]); flyLock(false); },
-  autoplayStop() { fly.auto = null; },
+  autoplayStart: flyTourStart,
+  autoplayStop() { fly.auto = null; fly.tour = null; },
   autoplay: flyAutoplay,
   pointerMove: flyPointerMove,
   pointerDown: flyPointerDown,
